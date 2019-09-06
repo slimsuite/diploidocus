@@ -1,0 +1,122 @@
+#~~#	#~+~~+~#	#~~#
+#LOG	00:00:00	Activity Log for Diploidocus V0.3.0: Fri Sep  6 22:21:46 2019
+#DIR	00:00:00	Run from directory: /Users/redwards/OneDrive - UNSW/projects/Diploidocus/code/example
+#ARG	00:00:00	Commandline arguments: ini=example.ini i=-1
+#INI	00:00:00	INI file: ../code/diploidocus.ini; Commands loaded: -minimap2 /Users/redwards/Data/BiowareOSX/minimap2/minimap2 minimap2=/Users/redwards/Bioware/minimap2/minimap2
+#INI	00:00:00	INI file: example.ini; Commands loaded: seqin=example_pseudodip.fasta runmode=diphapnr forks=4 basefile=diploidocus genomesize=3.2e5
+#CMD	00:00:00	Full Command List: log=diploidocus.log minimap2=/Users/redwards/Bioware/minimap2/minimap2 ini seqin=example_pseudodip.fasta runmode=diphapnr forks=4 basefile=diploidocus genomesize=3.2e5 i=-1
+#VIO	00:00:00	Verbosity: 1; Interactivity: -1.
+#WARN	00:00:00	genomesize=3.2e5 needs integer -> genomesize=3
+#BASE	00:00:00	Output file basename: diploidocus
+#SEQ	00:00:00	192 of 192 sequences loaded from example_pseudodip.fasta.index (Format: index).
+#FILT	00:00:00	192 of 192 sequences retained.
+#NULL	00:00:00	0 100% N sequences filtered.
+#TMP	00:00:00	192 gap-reduced sequences output to temporary file diploidocus.tmp.fasta for minimap2 search
+#BASE	00:00:00	diploidocus
+#REFIN	00:00:00	Loading reference (target) sequences.
+#SEQ	00:00:00	192 of 192 sequences loaded from diploidocus.tmp.fasta (Format: fas).
+#INDEX	00:00:00	Index file diploidocus.tmp.fasta.index made
+#FILT	00:00:00	192 of 192 sequences retained.
+#SEQIN	00:00:00	Loading assembly (query) sequences.
+#SEQ	00:00:00	192 of 192 sequences loaded from diploidocus.tmp.fasta.index (Format: index).
+#FILT	00:00:00	192 of 192 sequences retained.
+#SYS	00:00:00	/Users/redwards/Bioware/minimap2/minimap2 --cs -p 0.0001 -t 4 -x asm20 -N 250 diploidocus.tmp.fasta diploidocus.tmp.fasta > diploidocus.tmp.paf
+#~~#	00:00:00	# ~~~~~~~~~~~~~~~~ Parsing PAF Alignments ~~~~~~~~~~~~~~~~ #
+#PAF	00:00:00	Parsing diploidocus.tmp.paf
+#PAF	00:00:00	Parsed 738 lines from diploidocus.tmp.paf
+#FILT	00:00:00	132 PAF lines filtered with (Length+nn) < minloclen=954
+#FILT	00:00:00	210 PAF lines filtered with (Identity+nn)/(Length+nn) < minlocid=100.00%
+#NR	00:00:00	95 redundant sequences filtered from PAF CS strings: see diploidocus.redundant.txt.
+#OUT	00:00:00	97 Sequences output to diploidocus.nr.fasta
+#CLEAN	00:00:00	diploidocus.tmp.paf deleted
+#CLEAN	00:00:00	diploidocus.tmp.paf.cmd deleted
+#CLEAN	00:00:00	diploidocus.tmp.fasta deleted
+#CLEAN	00:00:00	diploidocus.tmp.fasta.index deleted
+#BATCH	00:00:00	Batch summarising 2 input files
+#SEQ	00:00:00	192 of 192 sequences loaded from example_pseudodip.fasta.index (Format: index).
+#FILT	00:00:00	192 of 192 sequences retained.
+#~~#	00:00:00	# ~~~~~~~~ Sequence Summary for example_pseudodip ~~~~~~~~ #
+#SUM	00:00:00	Total number of sequences: 192
+#SUM	00:00:00	Total length of sequences: 650,607
+#SUM	00:00:00	Min. length of sequences: 1,005
+#SUM	00:00:00	Max. length of sequences: 31,311
+#SUM	00:00:00	Mean length of sequences: 3,388.58
+#SUM	00:00:00	Median length of sequences: 2,226
+#SUM	00:00:00	N50 length of sequences: 4,292
+#SUM	00:00:00	L50 count of sequences: 36
+#SUM	00:00:00	NG50 length of sequences (320.00 kb): 8,872
+#SUM	00:00:00	LG50 count of sequences (320.00 kb): 10
+#SUM	00:00:00	GC content: 41.19%
+#SUM	00:00:00	Gap (N) length: 40 (0.01%)
+#SEQ	00:00:00	97 of 97 sequences loaded from diploidocus.nr.fasta (Format: fas).
+#INDEX	00:00:00	Index file diploidocus.nr.fasta.index made
+#FILT	00:00:00	97 of 97 sequences retained.
+#~~#	00:00:00	# ~~~~~~~~~ Sequence Summary for diploidocus.nr ~~~~~~~~~~ #
+#SUM	00:00:00	Total number of sequences: 97
+#SUM	00:00:00	Total length of sequences: 378,354
+#SUM	00:00:00	Min. length of sequences: 1,005
+#SUM	00:00:00	Max. length of sequences: 31,311
+#SUM	00:00:00	Mean length of sequences: 3,900.56
+#SUM	00:00:00	Median length of sequences: 2,410
+#SUM	00:00:00	N50 length of sequences: 5,805
+#SUM	00:00:00	L50 count of sequences: 14
+#SUM	00:00:00	NG50 length of sequences (320.00 kb): 8,424
+#SUM	00:00:00	LG50 count of sequences (320.00 kb): 10
+#SUM	00:00:00	GC content: 41.11%
+#SUM	00:00:00	Gap (N) length: 40 (0.01%)
+#SAVE	00:00:00	Table "summarise" saved to "diploidocus.summarise.tdt": 2 entries.
+#DIPHAP	00:00:00	Pseudodiploid haplotig assignment complete!
+#OUT	00:00:00	95 Primary assembly haplotigs (inc. 93 Diploid) output to diploidocus.pri.fasta
+#OUT	00:00:00	2 Alternative assembly haplotigs output to diploidocus.alt.fasta
+#OUT	00:00:00	97 Combined Primary+Alternative assembly haplotigs output to diploidocus.dipnr.fasta
+#BATCH	00:00:00	Batch summarising 3 input files
+#SEQ	00:00:00	97 of 97 sequences loaded from diploidocus.dipnr.fasta (Format: fas).
+#INDEX	00:00:00	Index file diploidocus.dipnr.fasta.index made
+#FILT	00:00:00	97 of 97 sequences retained.
+#~~#	00:00:00	# ~~~~~~~~ Sequence Summary for diploidocus.dipnr ~~~~~~~~ #
+#SUM	00:00:00	Total number of sequences: 97
+#SUM	00:00:00	Total length of sequences: 378,354
+#SUM	00:00:00	Min. length of sequences: 1,005
+#SUM	00:00:00	Max. length of sequences: 31,311
+#SUM	00:00:00	Mean length of sequences: 3,900.56
+#SUM	00:00:00	Median length of sequences: 2,410
+#SUM	00:00:00	N50 length of sequences: 5,805
+#SUM	00:00:00	L50 count of sequences: 14
+#SUM	00:00:00	NG50 length of sequences (320.00 kb): 8,424
+#SUM	00:00:00	LG50 count of sequences (320.00 kb): 10
+#SUM	00:00:00	GC content: 41.11%
+#SUM	00:00:00	Gap (N) length: 40 (0.01%)
+#SEQ	00:00:00	95 of 95 sequences loaded from diploidocus.pri.fasta (Format: fas).
+#INDEX	00:00:00	Index file diploidocus.pri.fasta.index made
+#FILT	00:00:00	95 of 95 sequences retained.
+#~~#	00:00:00	# ~~~~~~~~~ Sequence Summary for diploidocus.pri ~~~~~~~~~ #
+#SUM	00:00:00	Total number of sequences: 95
+#SUM	00:00:00	Total length of sequences: 322,450
+#SUM	00:00:00	Min. length of sequences: 1,005
+#SUM	00:00:00	Max. length of sequences: 31,309
+#SUM	00:00:00	Mean length of sequences: 3,394.21
+#SUM	00:00:00	Median length of sequences: 2,245
+#SUM	00:00:00	N50 length of sequences: 4,292
+#SUM	00:00:00	L50 count of sequences: 18
+#SUM	00:00:00	NG50 length of sequences (320.00 kb): 4,292
+#SUM	00:00:00	LG50 count of sequences (320.00 kb): 18
+#SUM	00:00:00	GC content: 41.11%
+#SUM	00:00:00	Gap (N) length: 20 (0.01%)
+#SEQ	00:00:00	2 of 2 sequences loaded from diploidocus.alt.fasta (Format: fas).
+#INDEX	00:00:00	Index file diploidocus.alt.fasta.index made
+#FILT	00:00:00	2 of 2 sequences retained.
+#~~#	00:00:00	# ~~~~~~~~~ Sequence Summary for diploidocus.alt ~~~~~~~~~ #
+#SUM	00:00:00	Total number of sequences: 2
+#SUM	00:00:00	Total length of sequences: 55,904
+#SUM	00:00:00	Min. length of sequences: 24,593
+#SUM	00:00:00	Max. length of sequences: 31,311
+#SUM	00:00:00	Mean length of sequences: 27,952.00
+#SUM	00:00:00	Median length of sequences: 27,952
+#SUM	00:00:00	N50 length of sequences: 31,311
+#SUM	00:00:00	L50 count of sequences: 1
+#SUM	00:00:00	Half genome size (320.00 kb) not reached for NG50!
+#SUM	00:00:00	GC content: 41.06%
+#SUM	00:00:00	Gap (N) length: 20 (0.04%)
+#SAVE	00:00:00	Table "summarise" saved to "diploidocus.summarise.tdt": 5 entries.
+#WARN	00:00:00	1 warning messages: check log for details.
+#LOG	00:00:00	Diploidocus V0.3.0 End: Fri Sep  6 22:21:47 2019

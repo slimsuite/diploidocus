@@ -1,0 +1,6 @@
+File	SeqNum	TotLength	MinLength	MaxLength	MeanLength	MedLength	N50Length	L50Count	NG50Length	LG50Count	GapLength	GapPC	GCPC
+diploidocus.alt.fasta	2	55904	24593	31311	27952.0	27952.0	31311	1	0	-1	20	0.04	41.06
+diploidocus.dipnr.fasta	97	378354	1005	31311	3900.6	2410	5805	14	8424	10	40	0.01	41.11
+diploidocus.nr.fasta	97	378354	1005	31311	3900.6	2410	5805	14	8424	10	40	0.01	41.11
+diploidocus.pri.fasta	95	322450	1005	31309	3394.2	2245	4292	18	4292	18	20	0.01	41.11
+example_pseudodip.fasta	192	650607	1005	31311	3388.6	2226.5	4292	36	8872	10	40	0.01	41.19
