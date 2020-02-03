@@ -8,8 +8,6 @@ Diploidocus has functions for removing redundancy, generating a non-redundant ps
 and secondary scaffolds from 10x pseudohap output, and creating an _in silico_ diploid set of long reads from two
 haploid parents (for testing phasing etc.).
 
-Please note that Diploidocus is still in development and documentation is currently a bit sparse.
-
 The different run modes are set using `runmode=X`:
 
 * `diploidocus` default run mode will run `gensize`, `telomeres`, `vecscreen` and `purgehap` analysis
