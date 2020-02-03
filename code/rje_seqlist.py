@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.33.1
-Last Edit:    06/09/19
+Version:      1.36.0
+Last Edit:    31/01/20
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -95,6 +95,7 @@ Commandline:
     spcode=X        : Species code for non-gnspacc format sequences [None]
     newacc=X        : New base for sequence accession numbers - will rename sequences [None]
     newgene=X       : New gene for renamed sequences (if blank will use newacc or 'seq' if none read) [None]
+    genecounter=T/F : Whether new gene have a numbered suffix (will match newacc numbering) [False]
     newdesc=FILE    : File of new names for sequences (over-rules other naming). First word should match input [None]
     concatenate=T   : Concatenate sequences into single output sequence named after file [False]
     split=X         : String to be inserted between each concatenated sequence [''].
@@ -203,7 +204,10 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.32.3 - Added checkNames() to check for duplicate sequence names and/or lack of gnspacc format.
     # 1.32.3 - Added duperr=T/F : Whether identification of duplicate sequence names should raise an error [True]
     # 1.33.0 - Added newdesc=FILE : File of new names for sequences (over-rules other naming). First word should match input [None]
-    # 1.34.0 - Fixed bug with appending sequences with gap insertion.
+    # 1.33.1 - Fixed bug with appending sequences with gap insertion.
+    # 1.34.0 - Added genecounter=T/F : Whether new gene have a numbered suffix (will match newacc numbering) [False]
+    # 1.35.0 - Added initial extraction of sequences from BLASTDB from rje_seq.
+    # 1.36.0 - Added bpFromStr(seqlen)
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -226,7 +230,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.33.1', 'September 2019', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.36.0', 'January 2020', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -316,6 +320,7 @@ class SeqList(rje_obj.RJE_Object):
     - DNA = Alternative option to indicate dealing with nucleotide sequences [False]
     - DupErr = Whether identification of duplicate sequence names should raise an error [True]
     - Edit = Enter sequence edit mode upon loading (will switch seqmode=list) [False]
+    - GeneCounter=T/F : Whether new gene have a numbered suffix (will match newacc numbering) [False]
     - GrepNR = Whether to use grep based forking NR mode (needs sized-sorted one-line-per-sequence fasta) [True]
     - Maker = Whether to extract MAKER2 statistics (AED, eAED, QI) from sequence names [False]
     - Mixed = Whether to allow auto-identification of mixed sequences types (else uses first seq only) [False]
@@ -364,7 +369,7 @@ class SeqList(rje_obj.RJE_Object):
         self.strlist = ['Edit','Name','NameFormat','NewAcc','NewDesc','Region',
                         'SeqDB','SeqDictType','SeqFormat','SeqIn','SeqMode','SeqType','SeqOut',
                         'Reformat','SpCode','SeqNR','NewGene','Split','SortSeq','SplitSeq','TmpDir']
-        self.boollist = ['AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GrepNR','Maker',
+        self.boollist = ['AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GeneCounter','GrepNR','Maker',
                          'Mixed','ORFMet','ReName','RevCompNR','SizeSort','TwoPass',
                          'SeqIndex','SeqShuffle','Summarise','UseCase']
         self.intlist = ['MinLen','MaxLen','MinORF','RFTran','TerMinORF']
@@ -402,7 +407,7 @@ class SeqList(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'int',['MinLen','MaxLen','MinORF','RFTran','TerMinORF'])
                 self._cmdReadList(cmd,'num',['GenomeSize'])
                 self._cmdReadList(cmd,'nlist',['Sampler'])
-                self._cmdReadList(cmd,'bool',['Align','AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GrepNR','Maker','Mixed','ORFMet','ReName','RevCompNR','SizeSort','SeqIndex','SeqNR','SeqShuffle','Summarise','TwoPass','UseCase'])
+                self._cmdReadList(cmd,'bool',['Align','AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GeneCounter','GrepNR','Maker','Mixed','ORFMet','ReName','RevCompNR','SizeSort','SeqIndex','SeqNR','SeqShuffle','Summarise','TwoPass','UseCase'])
             except: self.errorLog('Problem with cmd:%s' % cmd)
         ## ~ [1a] ~ Tidy Commands ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
         if self.getStrLC('SeqMode') == 'tuple': self.setStr({'SeqMode':'list'})
@@ -453,7 +458,7 @@ class SeqList(rje_obj.RJE_Object):
                 if self.getBool('GrepNR'): self.grepNR()
                 else: self.seqNR(twopass=not self.getStrLC('SortSeq'),grepnr=self.getBool('GrepNR'))
             if self.getBool('Concatenate'): self.concatenate()
-            if self.getBool('ReName'): self.rename()
+            if self.getBool('ReName'): self.rename(genecounter=self.getBool('GeneCounter'))
             self.loadSeq()
             if self.getBool('AutoFilter'): self.filterSeqs(screen=self.v()>0)
             if self.getBool('Edit'):
@@ -610,7 +615,7 @@ class SeqList(rje_obj.RJE_Object):
 #########################################################################################################################
     def makeSeqNameDic(self,keytype=None,clear=True,warnings=True):  ### Make SeqDict sequence name dictionary.
         '''
-        >> keytype:str [None] = Type of data to use as key for dictionary (accnum/short/name/max)
+        >> keytype:str [None] = Type of data to use as key for dictionary (accnum/short/name/max/loci)
         >> clear:bool [True] = whether to clear self.dict['SeqDict'] before filling
         >> warnings:bool [True] = whether to warn when keys are getting over-written
         << returns self.dict['SeqDict']
@@ -619,15 +624,15 @@ class SeqList(rje_obj.RJE_Object):
             if keytype: self.setStr({'SeqDictType':keytype.lower()})
             if not self.getStrLC('SeqDictType'): self.setStr({'SeqDictType':'short'})
             keytype = self.getStrLC('SeqDictType')
-            if keytype not in ['name','full','max','short','acc','accnum','id']: raise ValueError('SeqNameDic keytype "%s" not recognised!' % keytype)
+            if keytype not in ['name','full','max','short','acc','accnum','id','loci']: raise ValueError('SeqNameDic keytype "%s" not recognised!' % keytype)
             if clear: self.dict['SeqDict'] = {}
             ### ~ [1] Populate ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             for seq in self.seqs():
                 skeys = []
                 name = self.getSeq(seq,'tuple')[0]
                 if keytype in ['name','full','max']: skeys.append(name)
-                if keytype in ['short','full','max']: skeys.append(string.split(name)[0])
-                if keytype in ['acc','accnum','full','max']: skeys.append(string.split(string.split(name)[0],'__')[-1])
+                if keytype in ['short','full','max','loci']: skeys.append(string.split(name)[0])
+                if keytype in ['acc','accnum','full','max','loci']: skeys.append(string.split(string.split(name)[0],'__')[-1])
                 if keytype in ['id','full','max']: skeys.append(string.split(string.split(name)[0],'__')[0])
                 skeys = rje.sortUnique(skeys)
                 #self.bugPrint('%s >> %s' % (name,skeys))
@@ -728,6 +733,7 @@ class SeqList(rje_obj.RJE_Object):
         '''
         try:### ~ [0] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if seq == None: seq = self.obj['Current']
+            if type(seq) == type(()): mode = 'list'
             if not mode: mode = self.mode()
             if case == None: case = self.getBool('UseCase')
             #self.deBug('%s: %s (%s)' % (seq,format,mode))
@@ -2021,7 +2027,7 @@ class SeqList(rje_obj.RJE_Object):
                 entry = {'Name':name,'FPos':fpos}
                 db.addEntry(entry)  #!# Later, add method to expand/extract data
                 self.list['Seq'].append(entry)
-        except: self.errorLog('%s._addSeq error (%s)' % (self,name))
+        except: self.errorLog('%s._addSeq error (%s)' % (self.prog(),name))
 #########################################################################################################################
     def OLD_addSeq(self,name,sequence):    ### Adds a new Sequence Object to list                               !TEMP!
         '''
@@ -2181,6 +2187,90 @@ class SeqList(rje_obj.RJE_Object):
                 #self.debug(len(self.seqs()))
                 self.obj['Current'] = None
         except: self.errorLog('Major error during filterSeqs()')
+#########################################################################################################################
+    def seqFromBlastDBCmd(self,id,dbase=None,expect=True,add=False):  ### Returns sequence object(s) of sequence as obtained with blastdbcmd
+        '''
+        Returns sequence object of sequence as obtained with blastdbcmd.
+        >> id:str = id (or list of ids) of sequence to pass to blastdbcmd
+        >> dbase:str = formatted database
+        >> expect:bool [True] = whether sequences are expected to be returned.
+        '''
+        try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if not self.dev(): raise ValueError('seqFromBlastDBCmd() not yet implemented. Contact author for alternative processing options.')
+            cmdseq = []
+            try: id = id.split(); singleseq = True
+            except: singleseq = False    # Already a list of IDs
+            id = string.join(id,',')
+            if not dbase: dbase = self.getStr('SeqIn')
+            blastpath = rje.makePath(self.getStr('BLAST+ Path')) + 'blastdbcmd'
+            if self.getBool('Win32'): BLASTDBCMD = os.popen("%s -entry \"%s\" -db %s -long_seqids" % (blastpath,id,dbase))
+            else:
+                self.debug('%s -entry "%s" -db %s -long_seqids' % (blastpath,id,dbase))
+                BLASTDBCMD = os.popen('%s -entry "%s" -db %s -long_seqids' % (blastpath,id,dbase))
+            ### ~ [2] Extract details and add sequences ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            lastline = 'BLASTDBCMD'; sx = 0
+            (blastseq,lastline) = self.nextFasSeq(BLASTDBCMD,lastline,raw=True)
+            while blastseq:
+                (name,sequence) = blastseq; sx += 1
+                self.bugPrint(name)
+                if name.startswith('lcl|'): name = name[4:]
+                if add: cmdseq.append(self._addSeq(name=name, sequence=sequence))
+                else: cmdseq.append((name,sequence))
+                (blastseq,lastline) = self.nextFasSeq(BLASTDBCMD,lastline,raw=True)
+            BLASTDBCMD.close()
+            ### ~ [3] Return sequences ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            self.debug('%d seqs' % len(cmdseq))
+            if cmdseq and singleseq: return cmdseq[0]
+            elif cmdseq: return cmdseq
+            else:
+                if expect: self.errorLog('No sequences extracted from %s. (%d returned by blastdbcmd)' % (dbase,sx),printerror=False)
+                return []
+        except:
+            self.errorLog('Major error during seqFromBlastDBCmd()')
+            raise
+#########################################################################################################################
+    def nextFasSeq(self,fileobject=None,lastline=None,raw=True):  ### Returns sequence object of next sequence from passed File Object
+        '''
+        Returns sequence object of next sequence from passed File Object. Returns None if end of file.
+        If lastline=None, file MUST be FASTA format and ONE LINE PER SEQUENCE, else Fasta only.
+        If lastline given, will return a tuple of (sequence object, nextline)
+        Sequence object is also placed in self.seq.
+        >> fileobject: File Object from which sequence to be read
+        >> lastline:str = last line read from FILE object, typically the next description line
+        >> raw:bool = Whether to return (name,sequence) instead of sequence object
+        << sequence object or tuple of (sequence object, nextline)
+        '''
+        try:### ~ [1] ~ Without lastline: Fasta files, one line per sequence ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if lastline == None:
+                line = fileobject.readline().strip('\r\n')
+                if not line: return None
+                if line.find('>') != 0:   # Wrong format
+                    self.errorLog("Format Problem! '>' Expected!",printerror=False)
+                    raise ValueError
+                name = line[1:]
+                sequence = fileobject.readline().strip('\r\n')
+                if raw: return (name,sequence)
+                self._addSeq(name=name, sequence=sequence)
+                return self.seqs()[-1]
+            ### ~ [2] ~ With lastline: fasta file but sequence can be multi-line ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            else:
+                line = lastline
+                while line.find('>') != 0:  # Find next description line
+                    line = fileobject.readline()
+                    if not line: return (None,'')
+                name = line.strip('\r\n')[1:]
+                sequence = fileobject.readline().strip('\r\n')
+                line = fileobject.readline()
+                while line.find('>') != 0:
+                    sequence = '%s%s' % (sequence,line.strip('\r\n'))
+                    line = fileobject.readline()
+                    if not line: break
+                if raw: return ((name,sequence),line)
+                self._addSeq(name=name, sequence=sequence)
+                return (self.seqs()[-1],line)
+        except:
+            self.errorLog('Major error during nextFasSeq()')
+            raise
 #########################################################################################################################
      ### <5> ### Class Saving Methods                                                                                   #
 #########################################################################################################################
@@ -3005,6 +3095,26 @@ def seqType(sequence):  ### Returns (and possible guesses) Sequence Type - Prote
 def phredScore(qchar,qscale=33): ### Returns the Phred quality score for a given character.
     '''Returns the Phred quality score for a given character.'''
     return ord(qchar) - qscale
+#########################################################################################################################
+def bpFromStr(seqlen):  ### Returns the number of basepairs as an integer from a str with possible [TGMk][b/bp] suffix
+    '''
+    Returns the number of basepairs as an integer from a str with possible [TGMk][b/bp] suffix
+    :param seqlen: string version of seqlen
+    :return: integer version of seqlen
+    '''
+    seqlen = ''.join(seqlen.lower().split())
+    if seqlen.endswith('p'): seqlen = seqlen[:-1]
+    if seqlen.endswith('b'): seqlen = seqlen[:-1]
+    mult = 1
+    if seqlen.endswith('t'): seqlen = seqlen[:-1]; mult = 1e12
+    elif seqlen.endswith('g'): seqlen = seqlen[:-1]; mult = 1e9
+    elif seqlen.endswith('m'): seqlen = seqlen[:-1]; mult = 1e6
+    elif seqlen.endswith('k'): seqlen = seqlen[:-1]; mult = 1e3
+    try:
+        seqlen = int(float(seqlen * mult)+0.5)
+    except:
+        raise ValueError('Expected number followed by T/G/M/k')
+    return seqlen
 #########################################################################################################################
 def dnaLen(seqlen,dp=2,sf=3):
     units = ['bp','kb','Mb','Gb','Tb']
