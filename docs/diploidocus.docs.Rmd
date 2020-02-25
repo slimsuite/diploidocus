@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.7.0 Documentation"
+title: "Diploidocus V0.9.0 Documentation"
 author: "Richard J. Edwards"
-date: "2020-02-04"
+date: "2020-02-25"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -80,19 +80,21 @@ runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere
 basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
 summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
 genomesize=INT  : Haploid genome size (bp) [0]
-dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
-tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
-### ~ Genome size prediction & Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
+scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
 bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
 reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
 readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
+dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
+tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
+### ~ Genome size prediction options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
 readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
 quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
 10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
-scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
 minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
+minlen=INT      : Minimum scaffold lenght to avoid low quality filter [500]
 phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
 phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
 phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -100,6 +102,11 @@ zeroadjust=T/F  : Add zero coverage bases to purge_haplotigs LowPerc and adjust 
 includegaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
 mingap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
 purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
+diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+deptrim=INT     : Trim termini with <X depth [1]
+mintrim=INT     : Min length of terminal depth trimming [1000]
 ### ~ Telomere options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 telofwd=X       : Regex for 5' telomere sequence search [C{2,4}T{1,2}A{1,3}]
 telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
@@ -107,9 +114,14 @@ telosize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [5
 teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
 ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
-screenmode=X    : Action to take following vecscreen searching (report/mask/trim/purge) [report]
+screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
 minvechit=INT   : Minimum length for a screendb match [50]
 efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
+vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
+vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
+vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
 ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
 seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -133,7 +145,34 @@ post an issue on GitHub if you have any questions.
 
 ---
 
+## Cycled Diploidocus filtering [runmode=dipcycle]
+
+Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until
+no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. `$BASEFILE.1.*`,
+using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
+scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
+
+Output for each cycle will be initially generated in the run directory but then moved to a `dipcycle_$BASEFILE`
+directory upon completion.
+
+Final outputs from the final cycle will then be compiled under the original `$BASEFILE` prefix:
+
+* `$BASEFILE.diploidocus.tdt` = Final ratings for the input scaffolds. This is like the single cycle output with an additional `Cycle` field containing the last cycle this scaffold was processed in.
+* `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Set`,`Cycle`).
+* `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
+* `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
+* `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
+* `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
+
+**NOTE:** Contents for these four `*.fasta` files are summarised in the main log. Individual purge cycles have their own
+log files in the `dipcycle_$BASEFILE` directory.
+
+See `runmode=diploidocus` documentation for more details.
+
+---
+
 ## Main Diploidocus filtering [runmode=diploidocus]
+
 Diploidocus builds on the PurgeHaplotigs classifications to use the depth bins, KAT assembly kmer frequencies and
 BUSCO results to reclassify scaffolds and partition them into:
 
@@ -142,35 +181,407 @@ BUSCO results to reclassify scaffolds and partition them into:
 * `*.junk.fasta` = low coverage scaffolds, removed as junk
 * `*.quarantine.fasta` = putative haplotigs, removed from the assembly but retained for reference.
 
-**NOTE:** PurgeHaplotigs was not using zero coverage bases in its percentages. This is now fixed by Diploidocus.
+Unless `summarise=F`, summary statistics for sequence data before and after processing will be included in the run log.
 
-_Further details coming soon!_
+In addition, two key output tables are generated:
 
----
+* `*.diploidocus.tdt` = full compiled data and classification. (See field descriptions, below.)
+* `*.rating.tdt` = reduced data and classification for easier extraction of sequence names with `grep` etc.
 
-## Cycled Diploidocus filtering [runmode=dipcycle]
-Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until
-no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. `$BASEFILE.1.*`,
-using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
-scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
+All output files are named with the `basefile=X` prefix. This is the prefix of the assembly given with `seqin=FILE` if no `basefile=X` setting is provided.
 
-Final outputs from the final cycle will then be copied under the original `$BASEFILE` prefix:
+### Dependencies
 
-* `$BASEFILE.diploidocus.tdt` = Final ratings for the final set of scaffolds. (See earlier cycles for purged.)
-* `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
-* `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
-* `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
-* `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
+Diploidocus needs the following programs installed for full functionality:
+
+* `bbmap`
+* `blast+`
+* `kat`
+* `minimap2`
+* `purge_haplotigs`
+* `samtools`
+
+### Input and assembly processing
+
+The main inputs for Diploidocus rating and filtering are:
+
+* `seqin=FILE` : Input sequence assembly to tidy [Required].
+* `screendb=FILE` : File of vectors/contaminants to screen out using blastn and VecScreen rules [Optional].
+* `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
+* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+* `kmerreads=FILELIST` : File of high quality (_i.e._ short or error-corrected) reads for KAT kmer analysis [Optional]
+
+If a BAM file is not provided/found, Diploidocus will use minimap2 to generate a BAM file of `reads=FILELIST` data mapped onto the `seqin=FILE` assembly. Each read file is mapped separately (`--secondary=no -L -ax map-ont` or `--secondary=no -L -ax map-pb`) and converted into a sorted BAM files, before merging the BAM files with `samtools` and indexing the combined file.
+
+Diploidocus will re-use files where they already exist, providing the downstream files are newer than the upstream files. (If files have been copied and lost their datestamp information, switching `ignoredate=T` will re-use files regardless.) Setting `force=T` should force regeneration of files even if they exist.
+
+
+#### Purge Haplotigs
+
+Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
+
+* `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
+* `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
+* `phhigh=INT` : High depth cutoff for purge_haplotigs (`-h X`).
+
+Diploidocus adjusts the `purge_haplotigs` binning proportions, which do not use the zero coverage bases, adding
+the zero coverage bases to the low coverage bin. This adjustment can be with `zeroadjust=F`. By default, gaps are
+excluded from this adjustment, defined as a run of 10+ `N` bases. Setting `includegaps=T` will include these
+regions in the adjustment, whilst changing the `mingap=INT` setting will redefine gaps.
+
+#### KAT analysis
+
+Next, the `kat sect` function of KAT is used to calculate kmer frequencies for (a) raw data using the `kmerreads=FILELIST` file of high quality (_i.e._ short or error-corrected) reads, and (b) the assembly itself. This generates four outputs:
+
+* `*.kat-stats.tsv` = summary `kmerreads` kmer coverage per sequence
+* `*.kat-counts.cvg` = `kmerreads` kmer coverage per base for each input sequence
+* `*.selfkat-stats.tsv` = summary assembly kmer coverage per sequence
+* `*.selfkat-counts.cvg` = assembly kmer coverage per base for each input sequence
+
+If the `kmerreads=FILELIST` files are 10x chromium reads, the first 16bp of read 1 (the 10x barcode) can be trimmed by setting `10xtrim=T`. (This sets `--5ptrim 16` in kat for the first read file.)
+
+#### BBMap depth statistics
+
+Read depth statistics for the BAM file are calculated per input sequence using the `pileup.sh` program of `bbmap`. This generates two files:
+
+* `*.depth.tdt` = read depth stats per sequence
+* `*.depstat` = overall read depth summary, generated by `pileup.sh` stdout and stderr
+
+#### Vector/contaminant coverage
+
+The `runmode=vecscreen` contaminant screening using vector/contaminants from `screendb=FILE` is run on the assembly - see VecScreen mode documentation for details.
+
+#### Telomeres
+
+The `runmode=telomeres` telomere identifcation screen is run on the assembly - see Telomeres mode documentation for details.
+
+#### BUSCO gene prediction
+
+The full BUSCO results table (`busco=FILE`) is used to generate counts of `Complete`, `Duplicate` and `Fragmented` BUSCO genes for each input sequence. These are converted into a single BUSCO rating of the dominant (i.e. most abundant) BUSCO class during classification.
+
+### Data compilation
+
+Once all the different elements have been run, Diploidocus compiles results per input sequence, extracting a subset of fields of interest and renaming fields where appropriate. The following results files are compiled, joined by input sequence name (`SeqName`):
+
+* `*.depth.tdt`: bbmap pileup.sh read mapping statistics
+    - `SeqName` = Scaffold sequence name
+    - `SeqLen` = Scaffold sequence length (bp)
+    - `Median_fold` = Median long read sequence depth for sequence
+    - `Avg_fold` = Mean long read sequence depth for sequence
+    - `Covered_percent` = Percentage of sequence covered by long reads
+    - `Covered_bases` = Number of bp covered by long reads
+    - `Plus_reads` = Number of reads mapped to positive strand
+    - `Minus_reads` = Number of reads mapped to negative strand
+    - `Read_GC` = GC content of reads mapping to sequence
+* `*.purge.coverage_stats.csv`: purge_haplotigs coverage stats
+    - `LowPerc` = Proportion of bases with read depth below low coverage cutoff
+    - `HapPerc` = Proportion of bases with read depth between low coverage and mid coverage cutoffs
+    - `DipPerc` = Proportion of bases with read depth between mid coverage and high coverage cutoffs
+    - `HighPerc` = Proportion of bases with read depth above high coverage
+* `*.purge.reassignments.tsv`: purge_haplotigs best sequence hits and reassignments
+    - `TopHit` = scaffold with biggest sequence coverage match
+    - `SecHit` = scaffold with second biggest sequence coverage match
+    - `TopHitCov` = percentage sequence coverage by `TopHit`
+    - `MaxHitCov` = combined percentage sequence coverage by all sequence hits
+    - `PurgeHap` = purge_haplotigs reassignment rating
+    - `TopNum` = number of sequences for which this sequence is the `TopHit`
+    - `SecNum` = number of sequences for which this sequence is the `SecHit`
+* `*.selfkat-stats.tsv`: assembly kmer coverage stats
+    - `SelfMedK` = Median assembly kmer frequency for sequence
+    - `SelfAvgK` = Mean assembly kmer frequency for sequence
+* `*.kat-stats.tsv`: short read kmer coverage stats
+    - `MedK` = Median short read kmer frequency for sequence
+    - `AvgK` = Mean short read kmer frequency for sequence
+    - `SeqGC` = GC content for sequence
+    - `KPerc` = Percentage of non-gap kmers in sequence that are found in short read data
+    - **NOTE:** In the absence of short read data, these values will be set to -1
+* `*.screencov.tdt`: Contaminant coverage from vecscreen mode
+    - `ScreenPerc` = Total combined sequence coverage by contaminants
+* `*.telomeres.tdt`: Telomere prediction results
+    - `Tel5` = Whether a 5' telomere is predicted
+    - `Tel3` = Whether a 5' telomere is predicted
+    - `TelPerc` = Percentage of sequence predicted to telomeres. (Crude calculation.)
+* `full_table_*.busco.tsv`
+    - `Complete` = Number of BUSCO Complete genes in sequence
+    - `Duplicated` = Number of BUSCO Duplicated genes in sequence
+    - `Fragmented` = Number of BUSCO Fragmented genes in sequence
+* `$SEQIN`: input assembly
+    - `N_bases` = total count of all unresolved (`N`) bases
+    - `Gap_bases` = total count of all gap (`N`) bases as determined by `mingap=INT`
+    - `SeqDesc` = sequence description
+
+
+### Diploidocus classification
+
+Diploidocus classification adds the following fields to the compiled table:
+
+* `Class` = Six-part (`PURITY|DEPTH|HOM|TOP|MEDK|BUSCO`) Diploidocus classifcation (see below)
+* `TopClass` = Class of `TopHit` (if any)
+* `SecClass` = Class of `SecHit` (if any)
+
+Classification is based on a combination of commandline parameters and hard-coded cutoffs:
+
+* `minmedian=INT` : Minimum median depth coverage to avoid low coverage filter [3]
+* `pureperc=80` : Depth class percentage to classify as `PURE`
+* `rephitcov=250` : Min `MaxHitCov` value to classifty as `REPEAT`
+
+Each sequence is given classification in six different criteria (`PURITY|DEPTH|HOM|TOP|MEDK|BUSCO`) with two possible suffixes:
+
+1. `PURITY`: Purity of dominant read depth class
+    - `PURE` = At least 80% of sequence in that depth bin
+    - `GOOD` = At least 50% of sequence in that depth bin
+    - `WEAK` = Under 50% of sequence in that depth bin
+2. `DEPTH`: Dominant read depth class
+    - `LOWX` = Median read depth (`Median_fold`) fails to meet `minmedian=INT` criterion (default=3)
+    - `LOW` = `LowPerc` read depth bin has highest percentage coverage (ties assigned to other class)
+    - `HAP` = `HapPerc` read depth bin has highest percentage coverage (non-`DIP` ties addigned to `HAP`)
+    - `DIP` = `DipPerc` read depth bin has highest percentage coverage (ties assigned to `DIP`)
+    - `EXS` = `HighPerc` read depth bin has highest percentage coverage
+3. `HOM`: Homology/repeat status based on purge_haplotigs hits
+    - `UNIQ` = No `TopHit`
+    - `PART` = Partial (<50%) coverage of `TopHit`
+    - `HAPL` = 50%+ `TopHit` coverage but no `SecHit`
+    - `HOMO` = `TopHit` and `SecHit` but combined `MaxHitCov` < 250%
+    - `REPT` = `TopHit` and `SecHit` and 250%+ combined `MaxHitCov`
+4. `TOP`: Top/Sec Hit status for sequence
+    - `TOP` = `TopHit` for at least one other sequence
+    - `SEC` = Not a `TopHit` but `SecHit` at least one other sequence
+    - `NON` = Neither a `TopHit` nor `SecHit` for any other sequence
+5. `MEDK`: Assembly redundancy based on KAT assembly kmers
+    - `PRI` = Over 50% unique kmers (`SelfMedK` = 1)
+    - `ALT` = Median kmer frequency of two  (`SelfMedK` = 2)
+    - `REP` = Median kmer frequency exceeds two  (`SelfMedK` > 2)
+6. `BUSCO`: Dominant BUSCO class (can help decide about risk)
+    - `COMP` = 1+ Complete BUSCO genes and more Complete than Duplicated
+    - `DUPL` = 1+ Duplicated BUSCO genes and more Duplicated than Complete
+    - `FRAG` = 1+ Fragmented BUSCO genes and no Complete or Duplicated
+    - `NONE` = No Complete, Duplicated or Fragmented BUSCO genes
+7. `+TEL`: If any telomeres are detected, `+TEL` is added
+8. `+VEC`: If any contamination is detected, `+VEC` is added
+
+
+
+### Purge modes [purgemode=X]
+
+Diploidocus rating based on `purgemode=X` adds the following fields to the compiled table:
+
+* `Rating` = Main Diploidocus rating of sequence (see below)
+* `TopRating` = Rating of `TopHit` (if any)
+* `SecRating` = Rating of `SecHit` (if any)
+* `Set` = Diploidocus output set (`keep`/`repeat`/`quarantine`/`junk`)
+
+There are three basic `purgemode` implementations:
+
+* `purgemode=complex` [Default] uses all of the Diploidocus classification data to partition sequences into classes and then partition those classes into the main output sets.
+* `purgemode=simple` uses a simplified set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is conceptually easier than the `complex` mode but unlikely to produce as good results.
+* `purgemode=crude` uses a crude set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is more complicated than `simple` but still conceptually easier than the `complex` mode but unlikely to produce as good results.
+* `purgemode=nala` uses a simplified and conservative set of filtering rules used for the Nala German Shepherd Dog assembly.
+
+Details for these modes can be found below.
+
+Ratings are based on a combination of commandline parameters and hard-coded cutoffs:
+
+* `minlen=INT` : Minimum scaffold length to avoid low quality filter [500]
+* `mindipcov=20` : Minimim DipPerc coverage to assign a "KEEP" rating (`purgemode=crude`)
+* `artefactcov=80` : Min High/Low coverage to assign as artefacts (`purgemode=crude`, `purgemode=nala`)
+* `hpurgecov=80` : Min TopHitCov to assign `HPURGE` rating.
+* `covwarning=95` : Read coverage threshold for warnings
+
+#### Complex rating
+
+Diploidocus performs a hierarchical rating of scaffolds, based on their classifications and compiled data:
+
+1. Initial low quality filter:
+    * `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+    * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+    * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+    * `LOWCOV` = Low read depth and 50%+ sequence without short read kmers (`PURE|LOW|...` or `GOOD|LOW|...`, and `MedK=0`)
+    * `LOWCOV` = Low read depth and high frequency short read kmers (`...|LOW|...|REP|...`)
+2. High quality scaffolds to keep:
+    * `QUALITY` = Highest quality scaffolds: pure duploid, complete BUSCOs, no Duplicated BUSCOs (`PURE|DIP|UNIQ|...|PRI|COMP` & `Duplicated` = 0)
+    * `FINAL` = As Quality but `PRI|FRAG` and `PRI|NONE` also allowed (`PURE|DIP|UNIQ|...|PRI|...` & `Duplicated` = 0)
+    * `CORE` = Predominantly Diploid with <50% covered by `TopHit` and `SelfMedK`=1 (`[PURE/GOOD]|DIP|[UNIQ/PART]|...|PRI|...`)
+    * `COREHAP` = Predominantly haploid but <50% covered by `TopHit` and 1+ Complete BUSCOs (`...|HAP|[UNIQ/PART]|...` & `Complete` > 0)
+    * `PRIMARY` = Putative primary scaffold but with possible alternative scaffolds still in assembly and/or low quality regions (`...|DIP|[UNIQ/PART/HAPL/HOMO]|...|[PRI/ALT]|...`)
+3. Repetitive scaffolds to keep:
+    * `PRIRPT` = Putative primary scaffold but >50% repeated (`...|DIP|[UNIQ/PART]|...|REP|...` or `[PURE/GOOD]|DIP|...|REP|...`)
+    * `COLLAPSED` = High coverage scaffolds representing putative collapsed repeats. (Check for other contamination.) (`...|EXS|[UNIQ/PART]|...` or `[GOOD/PURE]|EXS|...|TOP|...`, or `WEAK|EXS|...` and less of the sequence in the Diploid coverage bin than below Diploid coverage.
+    * `REPEAT` = Predominantly Diploid scaffolds that have major signs of redundancy, probably due to presence of alternative contigs (`...|DIP|REPT|...` or `WEAK|DIP|[HAPL/HOMO]|...|REP|...`)
+4. Haploid coverage scaffolds to keep (**NOTE**: any `HAPLOTIG` rating will be converted to `HAPRPT` if `...|REP|...`)
+    * `HAPLOID` = Predominantly haploid coverage but enough unique sequence to keep for now? (Option to quarantine?) Might be very heterozygous Alternative haplotigs (`...|HAP|[UNIQ/PART]|PRI|...`)
+    * `HAPLOTIG` = Predominantly haploid coverage but enough unique sequence to keep for now - possible Alternative haplotig (`...|HAP|[UNIQ/PART]|ALT|...` or `...|HAP|...|TOP|[PRI/ALT]|...`)
+    * `HAPRPT` = Low quality scaffold that is probably most repeats, but not bad enough to dump outright (`...|HAP|[UNIQ/PART]|...|REP|...` or `...|HAP|...|TOP|...|REP|...`)
+    * `HAPLOTIG` = Low/haploid coverage scaffold with insufficient coverage of a Diploid scaffold to purge (`...|[LOW/HAP]|[HAPL/HOMO/REPT]|...` and `|DIP|` in `TopHit` rating and `TopHitCov` < `hpurgecov` (80%))
+    * `HAPLOTIG` = Low/haploid coverage scaffold with insufficient coverage of another scaffold to purge (`[PURE/GOOD]|HAP|HOMO|...' and `TopHitCov` < `hpurgecov` (80%))
+    * `HAPRPT` = Other haploid coverage scaffold with insufficient coverage of another scaffold to purge (`...|HAP|...` and `TopHitCov` < `hpurgecov` (80%))
+    * `HAPRPT` = Low coverage and collapsed repeats with insufficient coverage of another scaffold to purge (`...|EXS|...` and less of the sequence in the Diploid coverage bin than below Diploid coverage and `TopHitCov` < `hpurgecov` (80%))
+    * `REPEAT` = High coverage scaffold with insufficient coverage of another scaffold to purge (`[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]|...` and `TopHitCov` < `hpurgecov` (80%))
+5. Scaffolds to quarantine for removal
+    * `RPURGE` = Messy scaffolds that are largely repeats and are sufficiently redundant/low quality to purge (`WEAK|EXS` and less of the sequence in the Diploid coverage bin than below Diploid coverage, or `[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]`, and `TopHitCov` >= `hpurgecov` (80%))
+6. Additional low coverage scaffolds
+    * `LOWCOV` = Low depth of coverage and strong matches to other scaffolds, and not TopHit (`...|LOW|[HAPL/HOMO/REPT]|[SEC/NON]`)
+7. Further scaffolds to quarantine for removal
+    * `HPURGE` = Clear candidate haplotig to purge (`...|LOW|[HAPL/HOMO/REPT]|...` and `|DIP|` in `TopHit` rating, or `...|HAP|...`, and `TopHitCov` >= `hpurgecov` (80%))
+8. Final low quality filter
+    * `LOWQUAL` = Unconvincing scaffolds that do not fall into a clear class but are not bad enough to dump outright as junk (`...|LOW|...`)
+
+Any scaffolds that escape the above rules will be `UNRATED`. (There should not be any!)
+
+
+#### Simple rating
+
+The simplified rating system is based much more on the dominant read depth class. A subset core scaffolds are identified and the rest are classified on the basis of dominant read depth and `REP` or `REPT` status.
+
+* `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+* `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+* `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+* `LOWQUAL` = Low quality artefacts with less than 50% of the scaffold covered by short-read kmers (`MedK=0`)
+* Keep Scaffolds with Diploid+ depth (`[DIP/EXS]`), or limited homology to other scaffolds (`[UNIQ/PART]`) or Top hits for other scaffolds (`TOP`) or 1+ `Complete` BUSCO genes. These are broken down into:
+    - `PRIMARY` = Diploid depth or no `TopHit` or dominant BUSCO rating is `Complete`, and not repetitive
+    - `PRIRPT` = As `PRIMARY` but `REPT` or `REP` classifications
+    - `COLLAPSED` = Dominant high depth (`EXS`)
+    - `REPEAT` = Remaining Scaffolds to keep that have `REPT` or `REP` classifications
+    - `HAPLOID` = Remaining Scaffolds to keep without `REPT` or `REP` classifications
+* `HPURGE` = Dominant haploid read depth without `REPT` or `REP` classifications
+* `RPURGE` = Dominant haploid read depth, plus `REPT` or `REP` classifications
+* `LOWCOV` = Any remaining scaffolds (dominant `LOW` read depth)
+
+#### Crude rating
+
+The `crude` purge mode is a less nuanced version of the main Diploidocus rating.
+
+* `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+* `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+* `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+* `HPURGE` = Low+Haploid coverage meet `artefactcov` cutoff (>=80%) and `TopHitCov` meets `hpurgecov` cutoff (>=80%)
+* `HAPLOTIG` = Haploid coverage exceeds 50%, `TopHitCov` meets `hpurgecov` cutoff (>=80%), and `SelfMedK=2`
+* Scaffolds with a Diploid depth coverage otherwise meeting the `mindipcov` cutoff (>=20%) are kept:
+    - `PRIMARY` = Median assembly kmer frequency of 1
+    - `REPEAT` = `MaxHitCov` meets the `rephitcov` cutoff (>=250%)
+    - `KEEP` = Remaining diploid scaffolds.
+* `LOWCOV` = Any other scaffolds with 80%+ low coverage bases are filtered as Low Coverage.
+* `COLLAPSED` = Any other scaffolds with 80%+ high coverage bases are flagged as COLLAPSED.
+* `HAPLOTIG` = Scaffolds that are 50%+ Haploid Depth if mostly present 2+ times (median assembly kmer frequency = 2)
+* `HAPLOID` =  Scaffolds that are 50%+ Haploid Depth if mostly present once (median assembly kmer frequency = 1)
+* `ARTEFACT` = Scaffolds <50% Haploid Depth but 80%+ Low or Haploif depth
+* `HAPLOTIG` = Scaffolds with 80%+ hitting other scaffolds but does not meet the `rephitcov` cutoff (<250%)
+* `HAPRPT` = Scaffolds with 80%+ hitting other scaffolds and meets the `rephitcov` cutoff (>=250%)
+* `ARTEFACT` = Remaining scaffolds with 80%+ bases in the low/haploid coverage bins
+
+
+#### Nala rating
+
+The `purgemode=nala` rating scheme was used for the Nala German Shepherd Dog genome assembly, and features a simplified set of ratings:
+
+* `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+* `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+* `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+* `HPURGE` = Any scaffold with 80%+ bases in the low/haploid coverage bins (haplotigs or assembly artefacts).
+* `PRIMARY` = Scaffolds with 20%+ diploid coverage are marked as retention as probable diploids.
+* `COLLAPSED` = Scaffolds with <20% diploid coverage and 50%+ high coverage are marked as probable collapsed repeats.
+* `JUNK`/`HAPLOTIG`/`KEEP` = Remaining Scaffolds are given the PurgeHaplotigs rating (over 80% low/high coverage will be filtered as a probable artefact)
+
+
+#### Final sequence sets for output
+
+The `purgemode` ratings are then converted into subsets of scaffolds for output:
+
+* `keep` = Scaffolds that form part of the `*.core.fasta` and `*.diploidocus.fasta` outputs:
+    - ['QUALITY','FINAL','CORE','COREHAP','PRIMARY','PRIRPT','HAPLOID','HAPLOTIG','KEEP']
+* `repeat` = Scaffolds excluded from the `*.core.fasta` but part of the `*.diploidocus.fasta` output:
+    - ['COLLAPSED', 'REPEAT', 'HAPRPT']
+* `quarantine` = Scaffolds removed as probably Haplotigs and/or excess copies of repeats but saved to `*.quarantine.fasta` in case additional checks are required:
+    - ['HPURGE', 'RPURGE']
+* `junk` = Scaffolds removed due to low coverage, poor quality, or contamination. These are partitioned into `*.junk.fasta`:
+    - ['LOWCOV', 'LOWQUAL', 'CONTAMINATION','JUNK']
+
+The final ratings for each `TopHit` and `SecHit` are also added to the main Diploidocus table as `TopHitRating` and `SecHitRating` fields. This might flag up additional scaffolds (e.g. with `HAPLOTIG` ratings) that the user decides to remove despite failing to meet the automated criteria.
+
+**NOTE:** A cutdown output of Scaffold classifications and ratings is saved as `*.ratings.tdt`. This can be used to easily extract a subset of sequence names that can be filtered from the final output using `SeqSuite`, _e.g._
+
+```
+python $SLIMSUITE/tools/seqsuite.py seqin=$PREFIX badseq=$(grep HAPLOTIG | awk '{print $1;}' ORS=",") seqout=$PREFIX.filtered.fasta
+```
+
+#### Rating warnings
+
+Once rating is complete, the following warnings are generated in the log file:
+
+* All `CONTAMINATION` scaffolds
+* Scaffolds not classed as `junk` but:
+    - <50% covered by short read kmers
+    - any vector contamination flagged
+    - long read coverage < 95%
+* Any `COREHAP/HAPLOID/HAPLOTIG` scaffolds with `Duplicated` BUSCO genes (more evidence for redundancy)
+* Any purged (`junk` or `quarantine`) scaffolds that are the PurgeHaplotigs `TopHit` for 1+ other scaffolds
+
+
+### Full Diploidocus outputs
+
+Temporary files generated during forking will be generated in a subdirectory set by `tmpdir=PATH` (Default: `./tmpdir/`).
+
+_Details of full outputs will be added. Please see other documentation sections for specific outputs, or contact the author if anything is unclear._
+
+### Special output mode: diploidify
+
+Diploidocus features a special `diploidify=T` mode, which aims to generate fully diploid output. This is achieved by adding `HPURGE` scaffolds to the `keep` set rather than the `quarantine` set. In addition, diploid scaffolds are duplicated. For this purpose, diploid scaffolds are defined as those in the `keep` or `repeat` sets that meet are:
+
+* Classified as `...|DUP|...`
+* or Classified as `WEAK|...|NON|...`, _i.e._ are neither a `TopHit` nor `SecHit` for any other sequence
+
+Diploid scaffolds are saved with an `X2` suffix on their sequence name.
 
 ---
 
 ## Genome size prediction [runmode=gensize]
-_Details coming soon!_
+
+The main inputs for Diploidocus genome size prediction are:
+
+* `seqin=FILE` : Input sequence assembly to tidy [Required].
+* `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
+* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+* `quickdepth=T/F`  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [Default: `False`]
+
+This works on the principle that `Complete` BUSCO genes should represent predominantly single copy (diploid read
+depth) regions along with some ooor quality and/or repeat regions. Assembly artefacts and collapsed repeats etc.
+are predicted to deviate from diploid read depth in an inconsistent manner. Therefore, even if less than half the
+region is actually diploid coverage, the **modal** read depth is expected to represent the actual single copy
+read depth.
+
+Diploidocus uses `samtools mpileup` (or `samtools depth` if `quickdepth=T`) to calculate the per-base read depth
+and extracts the modal read depth for each BUSCO gene along with the overall modal read depth for all gene
+regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
+This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
+
+**NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
+ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
 
 ---
 
 ## Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap]
-_Coming soon! (Currently will run full diploidocus mode)_
+
+Diploidocus can automate the running of purge_haplotigs is automated, using the single copy (diploid) read depth
+to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single
+copy genes (see **Genome size prediction [runmode=gensize]** for details).
+
+The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth)
+and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to
+SCDepth/4 and SCDepth*2. This can be over-ridden with:
+
+* `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
+* `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
+* `phhigh=INT` : High depth cutoff for purge_haplotigs (`-h X`).
+
+Output from this run is:
+
+* `*.purge.coverage_stats.csv`: purge_haplotigs coverage stats
+* `*.purge.reassignments.tsv`: purge_haplotigs best sequence hits and reassignments
+
+Additional purge_haplotigs files and output will be saved in a subdirectory:
+
+* `purge_*/`
+
+This is to stop multiple purge_haplotigs runs from interfering with each other.
 
 ---
 
@@ -180,7 +591,104 @@ _Details coming soon!_
 ---
 
 ## Vector/contamination screening [runmode=vecscreen]
-_Details coming soon!_
+
+This mode screens scaffolds for possible contaminants, given by `screendb=FILE`.
+
+### VecScreen overview
+
+First, a `blastn` search of the `screendb=FILE` sequences is performed, using the NCBI VecScreen search and
+match strategy (see below). These parameters can be modified using `blastopt=X` and/or `optionfile=FILE`,
+which will be appended to the run command. Alternatively, the `$BASEFILE.vecscreen.blast` file produced can be
+pre-made with different parameters (if `force=F`).
+
+Results are then parsed into a local hits table and rated according to the strength of a match. This is performed
+iteratively, re-assigning internal matches as "proximal" if they are withing 25 bases of another match (of any
+strength) and re-rating the strength of the match, until no ratings changes occur. Two additional fields are
+added to the local hits table during this process: `MatchPos` and `MatchStr`. Once all assignments have been
+made, segments of the assembly between two matches and/or sequence ends are added to the table as `Suspect`.
+
+`MatchPos` will have a value of:
+
+* `Terminal` = within 25 bp of either end of the sequence.
+* `Proximal` = within 25 bp of a vecsreen match (`Weak`, `Moderate` or `Strong`).
+* `Internal` = over 25 bp of a sequence end or vecsreen match.
+* `Suspect` = Segments added as `Suspect`.
+
+`MatchStr` will have a value of:
+
+* `Strong` = `Terminal`/`Proximal` match with Score >= 24, or `Internal` match with Score >= 30.
+* `Moderate` = `Terminal`/`Proximal` match with Score 19 to 23, or `Internal` match with Score 25 to 29.
+* `Weak` = `Terminal`/`Proximal` match with Score 16 to 18, or `Internal` match with Score 23 to 24.
+* `Suspect` = Any segment of fewer than 50 bases between two vector matches or between a match and an end.
+
+These parameters seem to be designed for small (Illumina?) assemblies, and give excessive false positives for
+larger genomes. Diploidocus therefore features two additional contaminant identification filters:
+
+* `eFDR` = The "Expected False Discovery Rate` is calculated for each contaminant sequence. This is simply the
+`Expect` value for that hit, divided by the total number of hits with that `Expect` value (or lower). If `efdr=X`
+is set, any hits with an `eFDR` value exceeding the threshold will be removed. By default, this is set to `1.0`,
+i.e. any contaminants with fewer assembly hits than their `Expect` value will be dropped.
+* `Minimum hit length` = Short hits are inevitable in large assemblies and unlikely to be real for long read
+assemblies (e.g. without cloning etc.). An additional `minvechit=X` setting will remove any really short hits.
+This is set by default to `minvechit=50`, meaning that a hit of at least 50 bp is required.
+
+Finally, the percentage coverage per scaffold is calculated from the filtered hits. This is performed first for
+each contaminant individually, before being collapsed into total contamination coverage per query.
+
+Results are output into two main delimited results files:
+
+* `*.vecscreen.tdt` = Contaminant local hit table with VecScreen ratings and eFDR calculation. (Unfiltered)
+* `*.screencov.tdt` = Query coverage per contaminant
+    - `Query` = Contaminant name. For total coverage, this will be `TOTAL`.
+    - `Hit` = Scaffold name.
+    - `HitLen` = Length of scaffold (bp).
+    - `Coverage` = Covered length of scaffold (bp).
+    - `CovPC` = Percentage coverage of scaffold (0-100).
+
+### VecScreen BLAST+ parameters (from NCBI website)
+
+The VecScreen BLAST+ parameters are pre-set using blastn options: -task blastn -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust yes -soft_masking true -evalue 700 -searchsp 1750000000000
+
+VecScreen Match Categories
+Vector contamination usually occurs at the beginning or end of a sequence; therefore, different criteria are
+applied for terminal and internal matches. VecScreen considers a match to be terminal if it starts within 25
+bases of the beginning of the query sequence or stops within 25 bases of the end of the sequence. Matches that
+start or stop within 25 bases of another match are also treated like terminal matches. Matches are categorized
+according to the expected frequency of an alignment with the same score occurring between random sequences.
+
+Strong Match to Vector
+(Expect 1 random match in 1,000,000 queries of length 350 kb.)
+Terminal match with Score >= 24.
+Internal match with Score >= 30.
+
+Moderate Match to Vector
+(Expect 1 random match in 1,000 queries of length 350 kb.)
+Terminal match with Score 19 to 23.
+Internal match with Score 25 to 29.
+
+Weak Match to Vector
+(Expect 1 random match in 40 queries of length 350 kb.)
+Terminal match with Score 16 to 18.
+Internal match with Score 23 to 24.
+
+Segment of Suspect Origin
+Any segment of fewer than 50 bases between two vector matches or between a match and an end.
+
+### Vector coverage checking
+
+If `veccheck=T` then long reads given by `reads=FILELIST readtype=LIST` will be mapped onto the assembly using
+minimap2 and complete coverage of each hit reported. This will report the number of reads that span the entrie
+contaminant hit, plus flanking distances each side set by `checkflanks=LIST` (default: 0,100,1000,5000). If the
+flanking distance (bp) or the end of the sequence is reached before the end of the read in both directions, that
+read will be added to the coverage count. Because this can inflate apparent flanking coverage for hits near the
+end of a sequence, the distance from each end of the sequence is also returned as `MaxFlank5` and `MaxFlank3`.
+
+---
+
+## Depth trimming [runmode=deptrim]
+
+    deptrim=INT     : Trim termini with <X depth [1]
+    mintrim=INT     : Min length of terminal depth trimming [1000]
 
 ---
 

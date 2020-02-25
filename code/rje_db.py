@@ -1823,12 +1823,21 @@ class Table(rje.RJE_Object):
 #########################################################################################################################
     def dropEntry(self,entry):    ### Drops specific entry from Table
         ekey = self.makeKey(entry)
+        if ekey not in self.dict['Data']:
+            if entry not in self.dict['Data'].values():
+                self.warnLog('Could not find table %s entry: %s' % (self.name(),entry))
+                return
+            for ekey in self.dict['Data']:
+                if self.dict['Data'][ekey] == entry: break
         for ikey in self.dict['Index'].keys():
             try:
                 self.dict['Index'][ikey][entry[ikey]].remove(ekey)
                 if not self.dict['Index'][ikey][entry[ikey]]: self.dict['Index'][ikey].pop(entry[ikey])
             except: self.dict['Index'].pop(ikey)
-        self.dict['Data'].pop(ekey)
+        try:
+            self.dict['Data'].pop(ekey)
+        except:
+            self.errorLog('DropEntry error!')
 #########################################################################################################################
     def dropEntries(self,filters,inverse=False,log=True,logtxt='',purelist=False,keylist=False):    ### Drops certain entries from Table
         '''

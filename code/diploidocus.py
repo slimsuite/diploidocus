@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.7.0
-Last Edit:    02/02/20
+Version:      0.9.0
+Last Edit:    23/02/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -64,29 +64,53 @@ Run Modes:
 
     **NOTE:** PurgeHaplotigs was not using zero coverage bases in its percentages. This is now fixed by Diploidocus.
 
-    _Further details coming soon!_
+    _See main docs for details._
 
     ---
     ### ~ Cycled Diploidocus filtering [runmode=dipcycle] ~ ###
+
     Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until
     no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. `$BASEFILE.1.*`,
     using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
     scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
 
-    Final outputs from the final cycle will then be copied under the original `$BASEFILE` prefix:
+    Output for each cycle will be initially generated in the run directory but then moved to a `dipcycle_$BASEFILE`
+    directory upon completion.
 
-    * `$BASEFILE.diploidocus.tdt` = Final ratings for the final set of scaffolds. (See earlier cycles for purged.)
+    Final outputs from the final cycle will then be compiled under the original `$BASEFILE` prefix:
+
+    * `$BASEFILE.diploidocus.tdt` = Final ratings for the input scaffolds. This is like the single cycle output with an additional `Cycle` field containing the last cycle this scaffold was processed in.
+    * `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Cycle`).
     * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
     * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
     * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
     * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
 
+    **NOTE:** Contents for these four `*.fasta` files are summarised in the main log. Individual purge cycles have their own
+    log files in the `dipcycle_$BASEFILE` directory.
+
+    See `runmode=diploidocus` documentation for more details.
+
     ---
     ### ~ Genome size prediction [runmode=gensize] ~ ###
 
+    This works on the principle that `Complete` BUSCO genes should represent predominantly single copy (diploid read
+    depth) regions along with some ooor quality and/or repeat regions. Assembly artefacts and collapsed repeats etc.
+    are predicted to deviate from diploid read depth in an inconsistent manner. Therefore, even if less than half the
+    region is actually diploid coverage, the **modal** read depth is expected to represent the actual single copy
+    read depth.
+
+    Diploidocus uses `samtools mpileup` (or `samtools depth` if `quickdepth=T`) to calculate the per-base read depth
+    and extracts the modal read depth for each BUSCO gene along with the overall modal read depth for all gene
+    regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
+    This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
+
+    **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
+    ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
+
     ---
     ### ~ Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap] ~ ###
-    _Coming soon!_
+    _See main docs_
 
     ---
     ### ~ Telomere finding [runmode=telomere] ~ ###
@@ -94,7 +118,14 @@ Run Modes:
 
     ---
     ### ~ Vector/contamination screening [runmode=vecscreen] ~ ###
-    _Details coming soon!_
+    _See main docs_
+
+    ---
+    ### ~ Depth trimming [runmode=deptrim] ~ ###
+
+        deptrim=INT     : Trim termini with <X depth [1]
+        mintrim=INT     : Min length of terminal depth trimming [1000]
+
 
     ---
     ### ~ Sorted non-redundant assembly cleanup [runmode=sortnr] ~ ###
@@ -214,23 +245,25 @@ Run Modes:
 Commandline:
     ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     seqin=FILE      : Input sequence assembly [None]
-    runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize]
+    runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim]
     basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
     summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     genomesize=INT  : Haploid genome size (bp) [0]
-    dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
-    tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
-    ### ~ Genome size prediction & Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-    busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
+    scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
     reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
     readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
+    dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
+    tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
+    ### ~ Genome size prediction options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
     readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+    ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
     10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
-    scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
+    minlen=INT      : Minimum scaffold lenght to avoid low quality filter [500]
     phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
     phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
     phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -238,6 +271,11 @@ Commandline:
     includegaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
     mingap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
     purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
+    diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+    pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+    ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    deptrim=INT     : Trim termini with <X depth [1]
+    mintrim=INT     : Min length of terminal depth trimming [1000]
     ### ~ Telomere options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     telofwd=X       : Regex for 5' telomere sequence search [C{2,4}T{1,2}A{1,3}]
     telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
@@ -245,9 +283,14 @@ Commandline:
     teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
     ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
-    screenmode=X    : Action to take following vecscreen searching (report/mask/trim/purge) [report]
+    screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
     minvechit=INT   : Minimum length for a screendb match [50]
     efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
+    vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
+    vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
+    vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+    veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+    checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
     ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
     seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -263,7 +306,7 @@ Commandline:
 #########################################################################################################################
 ### SECTION I: GENERAL SETUP & PROGRAM DETAILS                                                                          #
 #########################################################################################################################
-import os, re, string, subprocess, sys, time, shutil
+import glob, os, re, string, subprocess, sys, time, shutil
 slimsuitepath = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../')) + os.path.sep
 sys.path.append(os.path.join(slimsuitepath,'libraries/'))
 sys.path.append(os.path.join(slimsuitepath,'tools/'))
@@ -281,7 +324,15 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.4.0 - Added VecScreen mode.
     # 0.5.0 - Added Telomere finding mode based on https://github.com/JanaSperschneider/FindTelomeres.
     # 0.6.0 - Added GenomeSize option.
-    # 0.7.0 - Added PurgeHaplotigs, minimum vescreen hit length, eFDR and vecscreen coverage.
+    # 0.7.0 - Added PurgeHaplotigs, minimum vescreen hit length, eFDR and vecscreen coverage. [GitHub]
+    # 0.7.1 - Code tidying and documentation improvements. Added dipcycle subdirectory and minlen=INT.
+    #       - Fixed purge_haplotigs temp directory issues by running in subdirectory.
+    #       - Added diploidify=T/F : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+    # 0.8.0 - Added deptrim=INT mode for trimming the ends of contigs based on low depth.
+    # 0.8.1 - Fixed failure to screen contaminants in nala, simple and crude purgemode. Add dev minimap2 fix.
+    # 0.8.2 - Shifted LOWQUAL to quarantine rather than junk. Fixed eFDR calculation error (inverse ranking).
+    #       - Added veccheck=T/F : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+    # 0.9.0 - Added pretrim, vecpurge, vecmask and vectrim options. Reduced screenmode to report/purge.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -293,19 +344,31 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [X] : Add REST outputs to restSetup() and restOutputOrder()
     # [ ] : Add to SLiMSuite or SeqSuite.
     # [ ] : Add download of NCBI Vector Database if vecdb=ncbi.
-    # [ ] : Need to add a eukaryote mode and/or minlen for VecScreen - too many expected hits with NCBI rules.
-    # [ ] : Add eFDR calculation and filtering to VecScreen.
-    # [ ] : Implement long read BUSCO read depth and genome size prediction.
-    # [ ] : Implement running of Purge haplotigs using BUSCO read depths to set cutoffs.
+    # [Y] : Need to add a eukaryote mode and/or minlen for VecScreen - too many expected hits with NCBI rules.
+    # [Y] : Add eFDR calculation and filtering to VecScreen.
+    # [Y] : Implement long read BUSCO read depth and genome size prediction.
+    # [Y] : Implement running of Purge haplotigs using BUSCO read depths to set cutoffs.
     # [Y] : Fix generation of warnings and error when Description is not available!
-    # [ ] : Change purgehap to run purge_haplotigs only
-    # [ ] : Add saving and reloading of total read count and depth?
+    # [Y] : Change purgehap to run purge_haplotigs only
+    # [Y] : Add saving and reloading of total read count and depth?
     # [ ] : Add renaming of sequences to the dipnr analysis mode.
+    # [Y] : Move dipcycle output into a subdirectory.
+    # [Y] : Add minlength filter.
+    # [Y] : Add diploidify=T/F : Duplicate "pure" diploid scaffolds (DIP, NON) and keep haplotigs [False]
+    # [Y] : Change minlength=INT to minlen=INT.
+    # [ ] : Add option for simplified sequence descriptions.
+    # [ ] : Add auto-recognition of ont and pb subreads for BAM generation.
+    # [ ] : Add katana-specific spawning of BUSCO analysis?
+    # [Y] : Add vecpurge=PERC cutoff for ScreenPerc contamination filtering
+    # [Y] : Add vecmask=INT cutoff to mask contamination above a certain length
+    # [Y] : Add vectrim=INT cutoff to trim contamination within INT bp of sequence ends
+    # [N] : Replace screenmode=X with vecpurge, vectrim, vecmask hierarchy.
+    # [Y] : Add optional and pretrim=T/F for dipcycle to run vecscreen and/or depthtrim
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.7.0', 'February 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.0', 'February 2020', '2017')
     description = 'Diploid genome assembly analysis tools.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -379,7 +442,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - PurgeMode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
     - RunMode=X       : Diploidocus run mode [insilico/sortnr/diphap/vecscreen]
     - ScreenDB=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
-    - ScreenMode=X    : Action to take following vecscreen searching (report/mask/trim/purge) [report]
+    - ScreenMode=X    : Action to take following vecscreen searching (report/purge) [report]
     - SeqIn=FILE      : Input sequence assembly (sortnr/diphap modes) []
     - SeqOut=FILE     : Output sequence assembly [$BASEFILE.fasta]
     - TeloFwd=X      : Basic telomere sequence for search [C{2,4}T{1,2}A{1,3}]
@@ -388,17 +451,23 @@ class Diploidocus(rje_obj.RJE_Object):
 
     Bool:boolean
     - DocHTML=T/F     : Generate HTML BUSCOMP documentation (*.info.html) instead of main run [False]
+    - Diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
+    - PreTrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
+    - VecCheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     - ZeroAdjust=T/F  : Add zero coverage bases to purge_haplotigs LowPerc and adjust total [True]
     - 10xTrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer reads data [False]
 
     Int:integer
+    - DepTrim=INT     : Trim termini with <X depth [1]
     - GenomeSize=INT  : Haploid genome size (bp) [0]
     - LenFilter=X     : Min read length for filtered subreads [500]
     - MinGap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
+    - MinLength=INT   : Minimum scaffold lenght to avoid low quality filter [500]
     - MinMedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
+    - MinTrim=INT     : Min length of terminal depth trimming [1000]
     - MinVecHit=INT   : Minimum length for a screendb match [50]
     - PHLow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
     - PHMid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
@@ -406,12 +475,15 @@ class Diploidocus(rje_obj.RJE_Object):
     - ReadBP=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     - SCDepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     - TeloSize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
+    - VecMask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+    - VecTrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
 
     Num:float
     - CheckCov=PERC   : Percentage coverage for double-checking partial exact matches [95]
     - eFDR=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
     - RQFilter=X      : Minimum RQ for output subreads [0]
     - TeloPerc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
+    - VecPurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
 
     File:file handles with matching str filenames
     
@@ -434,9 +506,9 @@ class Diploidocus(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['DocHTML','IncludeGaps','QuickDepth','Summarise','ZeroAdjust','10xTrim']
-        self.intlist = ['GenomeSize','LenFilter','MinGap','MinMedian','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize']
-        self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc']
+        self.boollist = ['Diploidify','DocHTML','IncludeGaps','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim']
+        self.intlist = ['DepTrim','GenomeSize','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
+        self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc','VecPurge']
         self.filelist = []
         self.listlist = ['KmerReads','Reads','ReadType']
         self.dictlist = []
@@ -444,9 +516,9 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'DocHTML':False,'IncludeGaps':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
-        self.setInt({'LenFilter':500,'MinMedian':3,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10})
-        self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0})
+        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
+        self.setInt({'DepTrim':0,'LenFilter':500,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
+        self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.list['ReadType'] = ['ont']
         self.obj['SeqIn'] = None
@@ -468,10 +540,10 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['DocHTML','IncludeGaps','QuickDepth','Summarise','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['LenFilter','MinGap','MinMedian','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
+                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
-                self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc']) # Percentage
+                self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
                 #self._cmdReadList(cmd,'max',['Att'])   # Integer value part of min,max command
                 self._cmdReadList(cmd,'list',['ReadType'])  # List of strings (split on commas or file lines)
@@ -549,19 +621,21 @@ class Diploidocus(rje_obj.RJE_Object):
         basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
         summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
         genomesize=INT  : Haploid genome size (bp) [0]
-        dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
-        tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
-        ### ~ Genome size prediction & Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
+        scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
         bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
         reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
         readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
+        dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
+        tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
+        ### ~ Genome size prediction options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
         readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
         quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+        ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
         10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
-        scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
         minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
+        minlen=INT      : Minimum scaffold lenght to avoid low quality filter [500]
         phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
         phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
         phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -569,6 +643,11 @@ class Diploidocus(rje_obj.RJE_Object):
         includegaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
         mingap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
         purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
+        diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+        pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+        ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        deptrim=INT     : Trim termini with <X depth [1]
+        mintrim=INT     : Min length of terminal depth trimming [1000]
         ### ~ Telomere options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         telofwd=X       : Regex for 5' telomere sequence search [C{2,4}T{1,2}A{1,3}]
         telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
@@ -576,9 +655,14 @@ class Diploidocus(rje_obj.RJE_Object):
         teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
         ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
-        screenmode=X    : Action to take following vecscreen searching (report/mask/trim/purge) [report]
+        screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
         minvechit=INT   : Minimum length for a screendb match [50]
         efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
+        vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
+        vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
+        vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+        veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+        checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
         ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
         seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -602,7 +686,34 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
+        ## Cycled Diploidocus filtering [runmode=dipcycle]
+
+        Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until
+        no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. `$BASEFILE.1.*`,
+        using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
+        scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
+
+        Output for each cycle will be initially generated in the run directory but then moved to a `dipcycle_$BASEFILE`
+        directory upon completion.
+
+        Final outputs from the final cycle will then be compiled under the original `$BASEFILE` prefix:
+
+        * `$BASEFILE.diploidocus.tdt` = Final ratings for the input scaffolds. This is like the single cycle output with an additional `Cycle` field containing the last cycle this scaffold was processed in.
+        * `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Set`,`Cycle`).
+        * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
+        * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
+        * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
+        * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
+
+        **NOTE:** Contents for these four `*.fasta` files are summarised in the main log. Individual purge cycles have their own
+        log files in the `dipcycle_$BASEFILE` directory.
+
+        See `runmode=diploidocus` documentation for more details.
+
+        ---
+
         ## Main Diploidocus filtering [runmode=diploidocus]
+
         Diploidocus builds on the PurgeHaplotigs classifications to use the depth bins, KAT assembly kmer frequencies and
         BUSCO results to reclassify scaffolds and partition them into:
 
@@ -611,35 +722,407 @@ class Diploidocus(rje_obj.RJE_Object):
         * `*.junk.fasta` = low coverage scaffolds, removed as junk
         * `*.quarantine.fasta` = putative haplotigs, removed from the assembly but retained for reference.
 
-        **NOTE:** PurgeHaplotigs was not using zero coverage bases in its percentages. This is now fixed by Diploidocus.
+        Unless `summarise=F`, summary statistics for sequence data before and after processing will be included in the run log.
 
-        _Further details coming soon!_
+        In addition, two key output tables are generated:
 
-        ---
+        * `*.diploidocus.tdt` = full compiled data and classification. (See field descriptions, below.)
+        * `*.rating.tdt` = reduced data and classification for easier extraction of sequence names with `grep` etc.
 
-        ## Cycled Diploidocus filtering [runmode=dipcycle]
-        Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until
-        no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. `$BASEFILE.1.*`,
-        using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
-        scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
+        All output files are named with the `basefile=X` prefix. This is the prefix of the assembly given with `seqin=FILE` if no `basefile=X` setting is provided.
 
-        Final outputs from the final cycle will then be copied under the original `$BASEFILE` prefix:
+        ### Dependencies
 
-        * `$BASEFILE.diploidocus.tdt` = Final ratings for the final set of scaffolds. (See earlier cycles for purged.)
-        * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
-        * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
-        * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
-        * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
+        Diploidocus needs the following programs installed for full functionality:
+
+        * `bbmap`
+        * `blast+`
+        * `kat`
+        * `minimap2`
+        * `purge_haplotigs`
+        * `samtools`
+
+        ### Input and assembly processing
+
+        The main inputs for Diploidocus rating and filtering are:
+
+        * `seqin=FILE` : Input sequence assembly to tidy [Required].
+        * `screendb=FILE` : File of vectors/contaminants to screen out using blastn and VecScreen rules [Optional].
+        * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
+        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+        * `kmerreads=FILELIST` : File of high quality (_i.e._ short or error-corrected) reads for KAT kmer analysis [Optional]
+
+        If a BAM file is not provided/found, Diploidocus will use minimap2 to generate a BAM file of `reads=FILELIST` data mapped onto the `seqin=FILE` assembly. Each read file is mapped separately (`--secondary=no -L -ax map-ont` or `--secondary=no -L -ax map-pb`) and converted into a sorted BAM files, before merging the BAM files with `samtools` and indexing the combined file.
+
+        Diploidocus will re-use files where they already exist, providing the downstream files are newer than the upstream files. (If files have been copied and lost their datestamp information, switching `ignoredate=T` will re-use files regardless.) Setting `force=T` should force regeneration of files even if they exist.
+
+
+        #### Purge Haplotigs
+
+        Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
+
+        * `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
+        * `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
+        * `phhigh=INT` : High depth cutoff for purge_haplotigs (`-h X`).
+
+        Diploidocus adjusts the `purge_haplotigs` binning proportions, which do not use the zero coverage bases, adding
+        the zero coverage bases to the low coverage bin. This adjustment can be with `zeroadjust=F`. By default, gaps are
+        excluded from this adjustment, defined as a run of 10+ `N` bases. Setting `includegaps=T` will include these
+        regions in the adjustment, whilst changing the `mingap=INT` setting will redefine gaps.
+
+        #### KAT analysis
+
+        Next, the `kat sect` function of KAT is used to calculate kmer frequencies for (a) raw data using the `kmerreads=FILELIST` file of high quality (_i.e._ short or error-corrected) reads, and (b) the assembly itself. This generates four outputs:
+
+        * `*.kat-stats.tsv` = summary `kmerreads` kmer coverage per sequence
+        * `*.kat-counts.cvg` = `kmerreads` kmer coverage per base for each input sequence
+        * `*.selfkat-stats.tsv` = summary assembly kmer coverage per sequence
+        * `*.selfkat-counts.cvg` = assembly kmer coverage per base for each input sequence
+
+        If the `kmerreads=FILELIST` files are 10x chromium reads, the first 16bp of read 1 (the 10x barcode) can be trimmed by setting `10xtrim=T`. (This sets `--5ptrim 16` in kat for the first read file.)
+
+        #### BBMap depth statistics
+
+        Read depth statistics for the BAM file are calculated per input sequence using the `pileup.sh` program of `bbmap`. This generates two files:
+
+        * `*.depth.tdt` = read depth stats per sequence
+        * `*.depstat` = overall read depth summary, generated by `pileup.sh` stdout and stderr
+
+        #### Vector/contaminant coverage
+
+        The `runmode=vecscreen` contaminant screening using vector/contaminants from `screendb=FILE` is run on the assembly - see VecScreen mode documentation for details.
+
+        #### Telomeres
+
+        The `runmode=telomeres` telomere identifcation screen is run on the assembly - see Telomeres mode documentation for details.
+
+        #### BUSCO gene prediction
+
+        The full BUSCO results table (`busco=FILE`) is used to generate counts of `Complete`, `Duplicate` and `Fragmented` BUSCO genes for each input sequence. These are converted into a single BUSCO rating of the dominant (i.e. most abundant) BUSCO class during classification.
+
+        ### Data compilation
+
+        Once all the different elements have been run, Diploidocus compiles results per input sequence, extracting a subset of fields of interest and renaming fields where appropriate. The following results files are compiled, joined by input sequence name (`SeqName`):
+
+        * `*.depth.tdt`: bbmap pileup.sh read mapping statistics
+            - `SeqName` = Scaffold sequence name
+            - `SeqLen` = Scaffold sequence length (bp)
+            - `Median_fold` = Median long read sequence depth for sequence
+            - `Avg_fold` = Mean long read sequence depth for sequence
+            - `Covered_percent` = Percentage of sequence covered by long reads
+            - `Covered_bases` = Number of bp covered by long reads
+            - `Plus_reads` = Number of reads mapped to positive strand
+            - `Minus_reads` = Number of reads mapped to negative strand
+            - `Read_GC` = GC content of reads mapping to sequence
+        * `*.purge.coverage_stats.csv`: purge_haplotigs coverage stats
+            - `LowPerc` = Proportion of bases with read depth below low coverage cutoff
+            - `HapPerc` = Proportion of bases with read depth between low coverage and mid coverage cutoffs
+            - `DipPerc` = Proportion of bases with read depth between mid coverage and high coverage cutoffs
+            - `HighPerc` = Proportion of bases with read depth above high coverage
+        * `*.purge.reassignments.tsv`: purge_haplotigs best sequence hits and reassignments
+            - `TopHit` = scaffold with biggest sequence coverage match
+            - `SecHit` = scaffold with second biggest sequence coverage match
+            - `TopHitCov` = percentage sequence coverage by `TopHit`
+            - `MaxHitCov` = combined percentage sequence coverage by all sequence hits
+            - `PurgeHap` = purge_haplotigs reassignment rating
+            - `TopNum` = number of sequences for which this sequence is the `TopHit`
+            - `SecNum` = number of sequences for which this sequence is the `SecHit`
+        * `*.selfkat-stats.tsv`: assembly kmer coverage stats
+            - `SelfMedK` = Median assembly kmer frequency for sequence
+            - `SelfAvgK` = Mean assembly kmer frequency for sequence
+        * `*.kat-stats.tsv`: short read kmer coverage stats
+            - `MedK` = Median short read kmer frequency for sequence
+            - `AvgK` = Mean short read kmer frequency for sequence
+            - `SeqGC` = GC content for sequence
+            - `KPerc` = Percentage of non-gap kmers in sequence that are found in short read data
+            - **NOTE:** In the absence of short read data, these values will be set to -1
+        * `*.screencov.tdt`: Contaminant coverage from vecscreen mode
+            - `ScreenPerc` = Total combined sequence coverage by contaminants
+        * `*.telomeres.tdt`: Telomere prediction results
+            - `Tel5` = Whether a 5' telomere is predicted
+            - `Tel3` = Whether a 5' telomere is predicted
+            - `TelPerc` = Percentage of sequence predicted to telomeres. (Crude calculation.)
+        * `full_table_*.busco.tsv`
+            - `Complete` = Number of BUSCO Complete genes in sequence
+            - `Duplicated` = Number of BUSCO Duplicated genes in sequence
+            - `Fragmented` = Number of BUSCO Fragmented genes in sequence
+        * `$SEQIN`: input assembly
+            - `N_bases` = total count of all unresolved (`N`) bases
+            - `Gap_bases` = total count of all gap (`N`) bases as determined by `mingap=INT`
+            - `SeqDesc` = sequence description
+
+
+        ### Diploidocus classification
+
+        Diploidocus classification adds the following fields to the compiled table:
+
+        * `Class` = Six-part (`PURITY|DEPTH|HOM|TOP|MEDK|BUSCO`) Diploidocus classifcation (see below)
+        * `TopClass` = Class of `TopHit` (if any)
+        * `SecClass` = Class of `SecHit` (if any)
+
+        Classification is based on a combination of commandline parameters and hard-coded cutoffs:
+
+        * `minmedian=INT` : Minimum median depth coverage to avoid low coverage filter [3]
+        * `pureperc=80` : Depth class percentage to classify as `PURE`
+        * `rephitcov=250` : Min `MaxHitCov` value to classifty as `REPEAT`
+
+        Each sequence is given classification in six different criteria (`PURITY|DEPTH|HOM|TOP|MEDK|BUSCO`) with two possible suffixes:
+
+        1. `PURITY`: Purity of dominant read depth class
+            - `PURE` = At least 80% of sequence in that depth bin
+            - `GOOD` = At least 50% of sequence in that depth bin
+            - `WEAK` = Under 50% of sequence in that depth bin
+        2. `DEPTH`: Dominant read depth class
+            - `LOWX` = Median read depth (`Median_fold`) fails to meet `minmedian=INT` criterion (default=3)
+            - `LOW` = `LowPerc` read depth bin has highest percentage coverage (ties assigned to other class)
+            - `HAP` = `HapPerc` read depth bin has highest percentage coverage (non-`DIP` ties addigned to `HAP`)
+            - `DIP` = `DipPerc` read depth bin has highest percentage coverage (ties assigned to `DIP`)
+            - `EXS` = `HighPerc` read depth bin has highest percentage coverage
+        3. `HOM`: Homology/repeat status based on purge_haplotigs hits
+            - `UNIQ` = No `TopHit`
+            - `PART` = Partial (<50%) coverage of `TopHit`
+            - `HAPL` = 50%+ `TopHit` coverage but no `SecHit`
+            - `HOMO` = `TopHit` and `SecHit` but combined `MaxHitCov` < 250%
+            - `REPT` = `TopHit` and `SecHit` and 250%+ combined `MaxHitCov`
+        4. `TOP`: Top/Sec Hit status for sequence
+            - `TOP` = `TopHit` for at least one other sequence
+            - `SEC` = Not a `TopHit` but `SecHit` at least one other sequence
+            - `NON` = Neither a `TopHit` nor `SecHit` for any other sequence
+        5. `MEDK`: Assembly redundancy based on KAT assembly kmers
+            - `PRI` = Over 50% unique kmers (`SelfMedK` = 1)
+            - `ALT` = Median kmer frequency of two  (`SelfMedK` = 2)
+            - `REP` = Median kmer frequency exceeds two  (`SelfMedK` > 2)
+        6. `BUSCO`: Dominant BUSCO class (can help decide about risk)
+            - `COMP` = 1+ Complete BUSCO genes and more Complete than Duplicated
+            - `DUPL` = 1+ Duplicated BUSCO genes and more Duplicated than Complete
+            - `FRAG` = 1+ Fragmented BUSCO genes and no Complete or Duplicated
+            - `NONE` = No Complete, Duplicated or Fragmented BUSCO genes
+        7. `+TEL`: If any telomeres are detected, `+TEL` is added
+        8. `+VEC`: If any contamination is detected, `+VEC` is added
+
+
+
+        ### Purge modes [purgemode=X]
+
+        Diploidocus rating based on `purgemode=X` adds the following fields to the compiled table:
+
+        * `Rating` = Main Diploidocus rating of sequence (see below)
+        * `TopRating` = Rating of `TopHit` (if any)
+        * `SecRating` = Rating of `SecHit` (if any)
+        * `Set` = Diploidocus output set (`keep`/`repeat`/`quarantine`/`junk`)
+
+        There are three basic `purgemode` implementations:
+
+        * `purgemode=complex` [Default] uses all of the Diploidocus classification data to partition sequences into classes and then partition those classes into the main output sets.
+        * `purgemode=simple` uses a simplified set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is conceptually easier than the `complex` mode but unlikely to produce as good results.
+        * `purgemode=crude` uses a crude set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is more complicated than `simple` but still conceptually easier than the `complex` mode but unlikely to produce as good results.
+        * `purgemode=nala` uses a simplified and conservative set of filtering rules used for the Nala German Shepherd Dog assembly.
+
+        Details for these modes can be found below.
+
+        Ratings are based on a combination of commandline parameters and hard-coded cutoffs:
+
+        * `minlen=INT` : Minimum scaffold length to avoid low quality filter [500]
+        * `mindipcov=20` : Minimim DipPerc coverage to assign a "KEEP" rating (`purgemode=crude`)
+        * `artefactcov=80` : Min High/Low coverage to assign as artefacts (`purgemode=crude`, `purgemode=nala`)
+        * `hpurgecov=80` : Min TopHitCov to assign `HPURGE` rating.
+        * `covwarning=95` : Read coverage threshold for warnings
+
+        #### Complex rating
+
+        Diploidocus performs a hierarchical rating of scaffolds, based on their classifications and compiled data:
+
+        1. Initial low quality filter:
+            * `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+            * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+            * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+            * `LOWCOV` = Low read depth and 50%+ sequence without short read kmers (`PURE|LOW|...` or `GOOD|LOW|...`, and `MedK=0`)
+            * `LOWCOV` = Low read depth and high frequency short read kmers (`...|LOW|...|REP|...`)
+        2. High quality scaffolds to keep:
+            * `QUALITY` = Highest quality scaffolds: pure duploid, complete BUSCOs, no Duplicated BUSCOs (`PURE|DIP|UNIQ|...|PRI|COMP` & `Duplicated` = 0)
+            * `FINAL` = As Quality but `PRI|FRAG` and `PRI|NONE` also allowed (`PURE|DIP|UNIQ|...|PRI|...` & `Duplicated` = 0)
+            * `CORE` = Predominantly Diploid with <50% covered by `TopHit` and `SelfMedK`=1 (`[PURE/GOOD]|DIP|[UNIQ/PART]|...|PRI|...`)
+            * `COREHAP` = Predominantly haploid but <50% covered by `TopHit` and 1+ Complete BUSCOs (`...|HAP|[UNIQ/PART]|...` & `Complete` > 0)
+            * `PRIMARY` = Putative primary scaffold but with possible alternative scaffolds still in assembly and/or low quality regions (`...|DIP|[UNIQ/PART/HAPL/HOMO]|...|[PRI/ALT]|...`)
+        3. Repetitive scaffolds to keep:
+            * `PRIRPT` = Putative primary scaffold but >50% repeated (`...|DIP|[UNIQ/PART]|...|REP|...` or `[PURE/GOOD]|DIP|...|REP|...`)
+            * `COLLAPSED` = High coverage scaffolds representing putative collapsed repeats. (Check for other contamination.) (`...|EXS|[UNIQ/PART]|...` or `[GOOD/PURE]|EXS|...|TOP|...`, or `WEAK|EXS|...` and less of the sequence in the Diploid coverage bin than below Diploid coverage.
+            * `REPEAT` = Predominantly Diploid scaffolds that have major signs of redundancy, probably due to presence of alternative contigs (`...|DIP|REPT|...` or `WEAK|DIP|[HAPL/HOMO]|...|REP|...`)
+        4. Haploid coverage scaffolds to keep (**NOTE**: any `HAPLOTIG` rating will be converted to `HAPRPT` if `...|REP|...`)
+            * `HAPLOID` = Predominantly haploid coverage but enough unique sequence to keep for now? (Option to quarantine?) Might be very heterozygous Alternative haplotigs (`...|HAP|[UNIQ/PART]|PRI|...`)
+            * `HAPLOTIG` = Predominantly haploid coverage but enough unique sequence to keep for now - possible Alternative haplotig (`...|HAP|[UNIQ/PART]|ALT|...` or `...|HAP|...|TOP|[PRI/ALT]|...`)
+            * `HAPRPT` = Low quality scaffold that is probably most repeats, but not bad enough to dump outright (`...|HAP|[UNIQ/PART]|...|REP|...` or `...|HAP|...|TOP|...|REP|...`)
+            * `HAPLOTIG` = Low/haploid coverage scaffold with insufficient coverage of a Diploid scaffold to purge (`...|[LOW/HAP]|[HAPL/HOMO/REPT]|...` and `|DIP|` in `TopHit` rating and `TopHitCov` < `hpurgecov` (80%))
+            * `HAPLOTIG` = Low/haploid coverage scaffold with insufficient coverage of another scaffold to purge (`[PURE/GOOD]|HAP|HOMO|...' and `TopHitCov` < `hpurgecov` (80%))
+            * `HAPRPT` = Other haploid coverage scaffold with insufficient coverage of another scaffold to purge (`...|HAP|...` and `TopHitCov` < `hpurgecov` (80%))
+            * `HAPRPT` = Low coverage and collapsed repeats with insufficient coverage of another scaffold to purge (`...|EXS|...` and less of the sequence in the Diploid coverage bin than below Diploid coverage and `TopHitCov` < `hpurgecov` (80%))
+            * `REPEAT` = High coverage scaffold with insufficient coverage of another scaffold to purge (`[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]|...` and `TopHitCov` < `hpurgecov` (80%))
+        5. Scaffolds to quarantine for removal
+            * `RPURGE` = Messy scaffolds that are largely repeats and are sufficiently redundant/low quality to purge (`WEAK|EXS` and less of the sequence in the Diploid coverage bin than below Diploid coverage, or `[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]`, and `TopHitCov` >= `hpurgecov` (80%))
+        6. Additional low coverage scaffolds
+            * `LOWCOV` = Low depth of coverage and strong matches to other scaffolds, and not TopHit (`...|LOW|[HAPL/HOMO/REPT]|[SEC/NON]`)
+        7. Further scaffolds to quarantine for removal
+            * `HPURGE` = Clear candidate haplotig to purge (`...|LOW|[HAPL/HOMO/REPT]|...` and `|DIP|` in `TopHit` rating, or `...|HAP|...`, and `TopHitCov` >= `hpurgecov` (80%))
+        8. Final low quality filter
+            * `LOWQUAL` = Unconvincing scaffolds that do not fall into a clear class but are not bad enough to dump outright as junk (`...|LOW|...`)
+
+        Any scaffolds that escape the above rules will be `UNRATED`. (There should not be any!)
+
+
+        #### Simple rating
+
+        The simplified rating system is based much more on the dominant read depth class. A subset core scaffolds are identified and the rest are classified on the basis of dominant read depth and `REP` or `REPT` status.
+
+        * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+        * `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+        * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+        * `LOWQUAL` = Low quality artefacts with less than 50% of the scaffold covered by short-read kmers (`MedK=0`)
+        * Keep Scaffolds with Diploid+ depth (`[DIP/EXS]`), or limited homology to other scaffolds (`[UNIQ/PART]`) or Top hits for other scaffolds (`TOP`) or 1+ `Complete` BUSCO genes. These are broken down into:
+            - `PRIMARY` = Diploid depth or no `TopHit` or dominant BUSCO rating is `Complete`, and not repetitive
+            - `PRIRPT` = As `PRIMARY` but `REPT` or `REP` classifications
+            - `COLLAPSED` = Dominant high depth (`EXS`)
+            - `REPEAT` = Remaining Scaffolds to keep that have `REPT` or `REP` classifications
+            - `HAPLOID` = Remaining Scaffolds to keep without `REPT` or `REP` classifications
+        * `HPURGE` = Dominant haploid read depth without `REPT` or `REP` classifications
+        * `RPURGE` = Dominant haploid read depth, plus `REPT` or `REP` classifications
+        * `LOWCOV` = Any remaining scaffolds (dominant `LOW` read depth)
+
+        #### Crude rating
+
+        The `crude` purge mode is a less nuanced version of the main Diploidocus rating.
+
+        * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+        * `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+        * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+        * `HPURGE` = Low+Haploid coverage meet `artefactcov` cutoff (>=80%) and `TopHitCov` meets `hpurgecov` cutoff (>=80%)
+        * `HAPLOTIG` = Haploid coverage exceeds 50%, `TopHitCov` meets `hpurgecov` cutoff (>=80%), and `SelfMedK=2`
+        * Scaffolds with a Diploid depth coverage otherwise meeting the `mindipcov` cutoff (>=20%) are kept:
+            - `PRIMARY` = Median assembly kmer frequency of 1
+            - `REPEAT` = `MaxHitCov` meets the `rephitcov` cutoff (>=250%)
+            - `KEEP` = Remaining diploid scaffolds.
+        * `LOWCOV` = Any other scaffolds with 80%+ low coverage bases are filtered as Low Coverage.
+        * `COLLAPSED` = Any other scaffolds with 80%+ high coverage bases are flagged as COLLAPSED.
+        * `HAPLOTIG` = Scaffolds that are 50%+ Haploid Depth if mostly present 2+ times (median assembly kmer frequency = 2)
+        * `HAPLOID` =  Scaffolds that are 50%+ Haploid Depth if mostly present once (median assembly kmer frequency = 1)
+        * `ARTEFACT` = Scaffolds <50% Haploid Depth but 80%+ Low or Haploif depth
+        * `HAPLOTIG` = Scaffolds with 80%+ hitting other scaffolds but does not meet the `rephitcov` cutoff (<250%)
+        * `HAPRPT` = Scaffolds with 80%+ hitting other scaffolds and meets the `rephitcov` cutoff (>=250%)
+        * `ARTEFACT` = Remaining scaffolds with 80%+ bases in the low/haploid coverage bins
+
+
+        #### Nala rating
+
+        The `purgemode=nala` rating scheme was used for the Nala German Shepherd Dog genome assembly, and features a simplified set of ratings:
+
+        * `CONTAMINATION` = 50%+ identified contamination (`ScreenPerc`)
+        * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
+        * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
+        * `HPURGE` = Any scaffold with 80%+ bases in the low/haploid coverage bins (haplotigs or assembly artefacts).
+        * `PRIMARY` = Scaffolds with 20%+ diploid coverage are marked as retention as probable diploids.
+        * `COLLAPSED` = Scaffolds with <20% diploid coverage and 50%+ high coverage are marked as probable collapsed repeats.
+        * `JUNK`/`HAPLOTIG`/`KEEP` = Remaining Scaffolds are given the PurgeHaplotigs rating (over 80% low/high coverage will be filtered as a probable artefact)
+
+
+        #### Final sequence sets for output
+
+        The `purgemode` ratings are then converted into subsets of scaffolds for output:
+
+        * `keep` = Scaffolds that form part of the `*.core.fasta` and `*.diploidocus.fasta` outputs:
+            - ['QUALITY','FINAL','CORE','COREHAP','PRIMARY','PRIRPT','HAPLOID','HAPLOTIG','KEEP']
+        * `repeat` = Scaffolds excluded from the `*.core.fasta` but part of the `*.diploidocus.fasta` output:
+            - ['COLLAPSED', 'REPEAT', 'HAPRPT']
+        * `quarantine` = Scaffolds removed as probably Haplotigs and/or excess copies of repeats but saved to `*.quarantine.fasta` in case additional checks are required:
+            - ['HPURGE', 'RPURGE']
+        * `junk` = Scaffolds removed due to low coverage, poor quality, or contamination. These are partitioned into `*.junk.fasta`:
+            - ['LOWCOV', 'LOWQUAL', 'CONTAMINATION','JUNK']
+
+        The final ratings for each `TopHit` and `SecHit` are also added to the main Diploidocus table as `TopHitRating` and `SecHitRating` fields. This might flag up additional scaffolds (e.g. with `HAPLOTIG` ratings) that the user decides to remove despite failing to meet the automated criteria.
+
+        **NOTE:** A cutdown output of Scaffold classifications and ratings is saved as `*.ratings.tdt`. This can be used to easily extract a subset of sequence names that can be filtered from the final output using `SeqSuite`, _e.g._
+
+        ```
+        python $SLIMSUITE/tools/seqsuite.py seqin=$PREFIX badseq=$(grep HAPLOTIG | awk '{print $1;}' ORS=",") seqout=$PREFIX.filtered.fasta
+        ```
+
+        #### Rating warnings
+
+        Once rating is complete, the following warnings are generated in the log file:
+
+        * All `CONTAMINATION` scaffolds
+        * Scaffolds not classed as `junk` but:
+            - <50% covered by short read kmers
+            - any vector contamination flagged
+            - long read coverage < 95%
+        * Any `COREHAP/HAPLOID/HAPLOTIG` scaffolds with `Duplicated` BUSCO genes (more evidence for redundancy)
+        * Any purged (`junk` or `quarantine`) scaffolds that are the PurgeHaplotigs `TopHit` for 1+ other scaffolds
+
+
+        ### Full Diploidocus outputs
+
+        Temporary files generated during forking will be generated in a subdirectory set by `tmpdir=PATH` (Default: `./tmpdir/`).
+
+        _Details of full outputs will be added. Please see other documentation sections for specific outputs, or contact the author if anything is unclear._
+
+        ### Special output mode: diploidify
+
+        Diploidocus features a special `diploidify=T` mode, which aims to generate fully diploid output. This is achieved by adding `HPURGE` scaffolds to the `keep` set rather than the `quarantine` set. In addition, diploid scaffolds are duplicated. For this purpose, diploid scaffolds are defined as those in the `keep` or `repeat` sets that meet are:
+
+        * Classified as `...|DUP|...`
+        * or Classified as `WEAK|...|NON|...`, _i.e._ are neither a `TopHit` nor `SecHit` for any other sequence
+
+        Diploid scaffolds are saved with an `X2` suffix on their sequence name.
 
         ---
 
         ## Genome size prediction [runmode=gensize]
-        _Details coming soon!_
+
+        The main inputs for Diploidocus genome size prediction are:
+
+        * `seqin=FILE` : Input sequence assembly to tidy [Required].
+        * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
+        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+        * `quickdepth=T/F`  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [Default: `False`]
+
+        This works on the principle that `Complete` BUSCO genes should represent predominantly single copy (diploid read
+        depth) regions along with some ooor quality and/or repeat regions. Assembly artefacts and collapsed repeats etc.
+        are predicted to deviate from diploid read depth in an inconsistent manner. Therefore, even if less than half the
+        region is actually diploid coverage, the **modal** read depth is expected to represent the actual single copy
+        read depth.
+
+        Diploidocus uses `samtools mpileup` (or `samtools depth` if `quickdepth=T`) to calculate the per-base read depth
+        and extracts the modal read depth for each BUSCO gene along with the overall modal read depth for all gene
+        regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
+        This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
+
+        **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
+        ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
 
         ---
 
         ## Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap]
-        _Coming soon! (Currently will run full diploidocus mode)_
+
+        Diploidocus can automate the running of purge_haplotigs is automated, using the single copy (diploid) read depth
+        to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single
+        copy genes (see **Genome size prediction [runmode=gensize]** for details).
+
+        The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth)
+        and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to
+        SCDepth/4 and SCDepth*2. This can be over-ridden with:
+
+        * `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
+        * `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
+        * `phhigh=INT` : High depth cutoff for purge_haplotigs (`-h X`).
+
+        Output from this run is:
+
+        * `*.purge.coverage_stats.csv`: purge_haplotigs coverage stats
+        * `*.purge.reassignments.tsv`: purge_haplotigs best sequence hits and reassignments
+
+        Additional purge_haplotigs files and output will be saved in a subdirectory:
+
+        * `purge_*/`
+
+        This is to stop multiple purge_haplotigs runs from interfering with each other.
 
         ---
 
@@ -649,7 +1132,104 @@ class Diploidocus(rje_obj.RJE_Object):
         ---
 
         ## Vector/contamination screening [runmode=vecscreen]
-        _Details coming soon!_
+
+        This mode screens scaffolds for possible contaminants, given by `screendb=FILE`.
+
+        ### VecScreen overview
+
+        First, a `blastn` search of the `screendb=FILE` sequences is performed, using the NCBI VecScreen search and
+        match strategy (see below). These parameters can be modified using `blastopt=X` and/or `optionfile=FILE`,
+        which will be appended to the run command. Alternatively, the `$BASEFILE.vecscreen.blast` file produced can be
+        pre-made with different parameters (if `force=F`).
+
+        Results are then parsed into a local hits table and rated according to the strength of a match. This is performed
+        iteratively, re-assigning internal matches as "proximal" if they are withing 25 bases of another match (of any
+        strength) and re-rating the strength of the match, until no ratings changes occur. Two additional fields are
+        added to the local hits table during this process: `MatchPos` and `MatchStr`. Once all assignments have been
+        made, segments of the assembly between two matches and/or sequence ends are added to the table as `Suspect`.
+
+        `MatchPos` will have a value of:
+
+        * `Terminal` = within 25 bp of either end of the sequence.
+        * `Proximal` = within 25 bp of a vecsreen match (`Weak`, `Moderate` or `Strong`).
+        * `Internal` = over 25 bp of a sequence end or vecsreen match.
+        * `Suspect` = Segments added as `Suspect`.
+
+        `MatchStr` will have a value of:
+
+        * `Strong` = `Terminal`/`Proximal` match with Score >= 24, or `Internal` match with Score >= 30.
+        * `Moderate` = `Terminal`/`Proximal` match with Score 19 to 23, or `Internal` match with Score 25 to 29.
+        * `Weak` = `Terminal`/`Proximal` match with Score 16 to 18, or `Internal` match with Score 23 to 24.
+        * `Suspect` = Any segment of fewer than 50 bases between two vector matches or between a match and an end.
+
+        These parameters seem to be designed for small (Illumina?) assemblies, and give excessive false positives for
+        larger genomes. Diploidocus therefore features two additional contaminant identification filters:
+
+        * `eFDR` = The "Expected False Discovery Rate` is calculated for each contaminant sequence. This is simply the
+        `Expect` value for that hit, divided by the total number of hits with that `Expect` value (or lower). If `efdr=X`
+        is set, any hits with an `eFDR` value exceeding the threshold will be removed. By default, this is set to `1.0`,
+        i.e. any contaminants with fewer assembly hits than their `Expect` value will be dropped.
+        * `Minimum hit length` = Short hits are inevitable in large assemblies and unlikely to be real for long read
+        assemblies (e.g. without cloning etc.). An additional `minvechit=X` setting will remove any really short hits.
+        This is set by default to `minvechit=50`, meaning that a hit of at least 50 bp is required.
+
+        Finally, the percentage coverage per scaffold is calculated from the filtered hits. This is performed first for
+        each contaminant individually, before being collapsed into total contamination coverage per query.
+
+        Results are output into two main delimited results files:
+
+        * `*.vecscreen.tdt` = Contaminant local hit table with VecScreen ratings and eFDR calculation. (Unfiltered)
+        * `*.screencov.tdt` = Query coverage per contaminant
+            - `Query` = Contaminant name. For total coverage, this will be `TOTAL`.
+            - `Hit` = Scaffold name.
+            - `HitLen` = Length of scaffold (bp).
+            - `Coverage` = Covered length of scaffold (bp).
+            - `CovPC` = Percentage coverage of scaffold (0-100).
+
+        ### VecScreen BLAST+ parameters (from NCBI website)
+
+        The VecScreen BLAST+ parameters are pre-set using blastn options: -task blastn -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust yes -soft_masking true -evalue 700 -searchsp 1750000000000
+
+        VecScreen Match Categories
+        Vector contamination usually occurs at the beginning or end of a sequence; therefore, different criteria are
+        applied for terminal and internal matches. VecScreen considers a match to be terminal if it starts within 25
+        bases of the beginning of the query sequence or stops within 25 bases of the end of the sequence. Matches that
+        start or stop within 25 bases of another match are also treated like terminal matches. Matches are categorized
+        according to the expected frequency of an alignment with the same score occurring between random sequences.
+
+        Strong Match to Vector
+        (Expect 1 random match in 1,000,000 queries of length 350 kb.)
+        Terminal match with Score >= 24.
+        Internal match with Score >= 30.
+
+        Moderate Match to Vector
+        (Expect 1 random match in 1,000 queries of length 350 kb.)
+        Terminal match with Score 19 to 23.
+        Internal match with Score 25 to 29.
+
+        Weak Match to Vector
+        (Expect 1 random match in 40 queries of length 350 kb.)
+        Terminal match with Score 16 to 18.
+        Internal match with Score 23 to 24.
+
+        Segment of Suspect Origin
+        Any segment of fewer than 50 bases between two vector matches or between a match and an end.
+
+        ### Vector coverage checking
+
+        If `veccheck=T` then long reads given by `reads=FILELIST readtype=LIST` will be mapped onto the assembly using
+        minimap2 and complete coverage of each hit reported. This will report the number of reads that span the entrie
+        contaminant hit, plus flanking distances each side set by `checkflanks=LIST` (default: 0,100,1000,5000). If the
+        flanking distance (bp) or the end of the sequence is reached before the end of the read in both directions, that
+        read will be added to the coverage count. Because this can inflate apparent flanking coverage for hits near the
+        end of a sequence, the distance from each end of the sequence is also returned as `MaxFlank5` and `MaxFlank3`.
+
+        ---
+
+        ## Depth trimming [runmode=deptrim]
+
+            deptrim=INT     : Trim termini with <X depth [1]
+            mintrim=INT     : Min length of terminal depth trimming [1000]
 
         ---
 
@@ -777,12 +1357,15 @@ class Diploidocus(rje_obj.RJE_Object):
             elif self.getStrLC('RunMode') in ['diphap','diphapnr']: return self.dipHap()
             elif self.getStrLC('RunMode') == 'insilico':
                 return self.inSilicoHybrid()
-            elif self.getStrLC('RunMode') == 'vecscreen': return self.vecScreen()
+            elif self.getStrLC('RunMode') == 'vecscreen':
+                if self.getStr('ScreenMode') == 'purge': return self.vecPurge()
+                else: return self.vecScreen()
             elif self.getStrLC('RunMode').startswith('telomere'): return self.findTelomeres()
-            elif self.getStrLC('RunMode') == 'diploidocus': return self.diploidocus()
-            elif self.getStrLC('RunMode').startswith('purgehap'): return self.purgeHaplotigs()
-            elif self.getStrLC('RunMode') in ['gensize','genomesize']: return self.genomeSize()
+            elif self.getStrLC('RunMode') == 'diploidocus': return self.diploidocusHocusPocus()
+            elif self.getStrLC('RunMode').startswith('purgehap'): return self.diploidocusHocusPocus()
+            elif self.getStrLC('RunMode') in ['gensize','genomesize']: return self.genomeSize(makebam=True)
             elif self.getStrLC('RunMode') in ['dipcycle','purgecycle']: return self.purgeCycle()
+            elif self.getStrLC('RunMode') in ['deptrim']: return self.depthTrim()
             else: raise ValueError('RunMode="%s" not recognised!' % self.getStrLC('RunMode'))
         except:
             self.errorLog(self.zen())
@@ -796,21 +1379,35 @@ class Diploidocus(rje_obj.RJE_Object):
         using the `*.diploidocus.fasta` output from the previous cycle as input. Cycling will continue until no further
         scaffolds are filtered into either `*.quarantine.fasta` or `*.junk.fasta`.
 
-        Final outputs from the final cycle will then be copied under the original `$BASEFILE` prefix:
+        Output for each cycle will be initially generated in the run directory but then moved to a `dipcycle_$BASEFILE`
+        directory upon completion.
 
-        * `$BASEFILE.diploidocus.tdt` = Final ratings for the final set of scaffolds. (See earlier cycles for purged.)
+        Final outputs from the final cycle will then be compiled under the original `$BASEFILE` prefix:
+
+        * `$BASEFILE.diploidocus.tdt` = Final ratings for the input scaffolds. This is like the single cycle output with an additional `Cycle` field containing the last cycle this scaffold was processed in.
+        * `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Cycle`).
         * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
         * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
         * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
         * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
 
+        **NOTE:** Contents for these four `*.fasta` files are summarised in the main log. Individual purge cycles have their own
+        log files in the `dipcycle_$BASEFILE` directory.
+
+        See `runmode=diploidocus` documentation for more details.
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            newbase = basefile = self.baseFile(strip_path=True)
+            basefile = self.baseFile(strip_path=True)
+            newbase = cycbase = basefile #'dipcycle_{}/{}'.format(basefile,basefile)
             cycle = 0
             prevseqx = 0
             seqin = self.getStr('SeqIn')
             seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
+            dipdb = None
+            ## ~ [1a] ~ Special pretim trimming ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #i# When cycling, this is done once before the cycling
+            if self.getBool('PreTrim'):
+                seqin = self.preTrim()  ### Performs vecscreen and deptrim trimming, updates self.seqinObj() and returns trimmed fasta file
 
             ### ~ [2] ~ Cycle ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             while seqlist.seqNum() != prevseqx:
@@ -818,32 +1415,48 @@ class Diploidocus(rje_obj.RJE_Object):
                 prevseqx = seqlist.seqNum()
                 cycle += 1
                 oldbase = newbase
-                newbase = '{}.{}'.format(basefile,cycle)
+                newbase = '{}.{}'.format(cycbase,cycle)
                 seqout = '{}.diploidocus.fasta'.format(newbase)
                 self.printLog('#SEQIN','Using {} as input for Diploidocus cycle {}.'.format(seqin,cycle))
                 self.printLog('#CYCLE','Cycle {}: running as {}.*'.format(cycle,newbase))
                 # Run Diploidocus
                 info = makeInfo()
-                cyccmd = self.cmd_list+['basefile={}'.format(newbase),'i=-1','runmode=diploidocus','seqin=%s' % seqin]
+                cyccmd = ['i=-1']+self.cmd_list+['basefile={}'.format(newbase),'runmode=diploidocus','seqin=%s' % seqin]
+                if self.debugging(): cyccmd.append('i=1')
                 cmd_list = rje.getCmdList(cyccmd,info=info)   # Reads arguments and load defaults from program.ini
                 out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
                 out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2
                 out.printIntro(info)                                # Prints intro text using details from Info object
                 log = rje.setLog(info,out,cmd_list)                 # Sets up Log object for controlling log file output
                 if self.debugging():
-                    Diploidocus(log,['dna=T']+cmd_list+['i=1']).run()
+                    cycdb = Diploidocus(log,['dna=T']+cmd_list+['i=1']).run()
                 else:
-                    Diploidocus(log,['dna=T']+cmd_list+['i=-1']).run()
+                    cycdb = Diploidocus(log,['dna=T','i=-1']+cmd_list).run()
+                if not cycdb:
+                    raise IOError('Cycle %s failed! Check %s.log. Aborting run.' % (cycle,newbase))
+                cycdb.addField('Cycle',evalue=cycle)
+                # Update main table
+                if not dipdb:  dipdb = cycdb
+                else:
+                    for cycseq in cycdb.dataKeys(): dipdb.data()[cycseq] = cycdb.data()[cycseq]
                 # Check and process output
                 if not rje.exists(seqout):
                     raise IOError('Expected %s output for Cycle %s not found! Check %s.log. Aborting run.' % (seqout,cycle,newbase))
                 self.printLog('#CYCLE','Cycle {} complete. See {}.log for details.'.format(cycle,newbase))
                 seqin = seqout
-                seqlist = self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','seqin=%s' % seqin])
+                seqlist = self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','seqin=%s' % seqin,'autofilter=F'])
 
             ### ~ [3] Tidy up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            cycdir = 'dipcycle_{}/'.format(basefile)
+            rje.mkDir(self,cycdir,log=True)
+            ## ~ [3a] Transfer main data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # The main diploidocus ratings table, and reduced *.ratings.tdt table, are compiled during cycling. These
+            # are saved as primary $BASFILE.* output.
             self.printLog('#CYCLE','Convergence achieved after cycle {}'.format(cycle))
-            for ext in ['diploidocus.tdt','diploidocus.fasta','core.fasta']:
+            dipdb.baseFile(basefile)
+            dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
+            dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Cycle'])
+            for ext in ['diploidocus.fasta','core.fasta']:
                 if rje.exists('{}.{}'.format(newbase,ext)):
                     rje.backup(self,'{}.{}'.format(basefile,ext))
                     shutil.copy('{}.{}'.format(newbase,ext),'{}.{}'.format(basefile,ext))
@@ -851,12 +1464,19 @@ class Diploidocus(rje_obj.RJE_Object):
             for ext in ['quarantine.fasta','junk.fasta']:
                 cycfiles = []
                 for i in range(1,cycle+1):
-                    cycbase = '{}.{}'.format(basefile,i)
-                    if rje.exists('{}.{}'.format(cycbase,ext)): cycfiles.append('{}.{}'.format(cycbase,ext))
+                    ibase = '{}.{}'.format(cycbase,i)
+                    if rje.exists('{}.{}'.format(ibase,ext)): cycfiles.append('{}.{}'.format(ibase,ext))
                 if cycfiles:
                     rje.backup(self,'{}.{}'.format(basefile,ext))
                     os.system('cat {} > {}.{}'.format(' '.join(cycfiles),basefile,ext))
                     self.printLog('#COPY','Output copied: {} *.{} files -> {}.{}'.format(len(cycfiles),ext,basefile,ext))
+            ## ~ [3b] Cleanup cycle data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            for i in range(1,cycle+1):
+                ibase = '{}.{}'.format(cycbase,i)
+                ifiles = glob.glob('{}.*'.format(ibase))
+                if rje.exists('purge_{}'.format(ibase)): ifiles.append('purge_{}'.format(ibase))
+                for ifile in ifiles: os.rename(ifile,'{}{}'.format(cycdir,ifile))
+                self.printLog('#MOVE','{} {}.* files moved to {}.'.format(len(ifiles),ibase,cycdir))
 
             ### ~ [4] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if seqlist.getBool('Summarise'):
@@ -866,9 +1486,37 @@ class Diploidocus(rje_obj.RJE_Object):
                     seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']
                     rje_seqlist.SeqList(self.log,seqcmd)
 
+
         except:
             self.errorLog(self.zen())
             raise   # Delete this if method error not terrible
+#########################################################################################################################
+    def preTrim(self):  ### Performs vecscreen and deptrim trimming, updates self.seqinObj() and returns trimmed fasta file
+        '''Main class setup method.'''
+        try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            self.headLog('DIPLOIDOCUS PRE-TIDY TRIMMING',line='=')
+            seqin = self.getStr('SeqIn')
+            basefile = self.baseFile(strip_path=True)
+
+            #i# Run VecScreen if appropriate
+            trimdb = self.vecPurge()
+            if trimdb:
+                seqin = '{}.vecscreen.fasta'.format(basefile)
+                self.setStr({'SeqIn':seqin})
+                purged = trimdb.indexDataList('Edit','mask','SeqName')
+                if purged:
+                    self.warnLog('%s purged sequences will not be in main Diploidocus output: %s' % (rje.iLen(purged),', '.join(purged)))
+            #i# Run DepTrim if appropriate
+            depdb = None
+            if self.getInt('DepTrim'): depdb = self.depthTrim()
+            if depdb:
+                seqin = '{}.trim.fasta'.format(basefile)
+                self.setStr({'SeqIn':seqin})
+                purged = depdb.indexDataList('DepTrim','dump','SeqName')
+                if purged:
+                    self.warnLog('%s dumped sequences will not be in main Diploidocus output: %s' % (rje.iLen(purged),', '.join(purged)))
+            return seqin
+        except: self.errorLog('Problem during %s setup.' % self.prog()); return False  # Setup failed
 #########################################################################################################################
     def setup(self):    ### Main class setup method.
         '''Main class setup method.'''
@@ -888,7 +1536,7 @@ class Diploidocus(rje_obj.RJE_Object):
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if not self.obj['SeqIn']:
-                self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
+                self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','autofilter=F'])
         except:
             self.errorLog('Diploidocus.seqinObj() error')
         return self.obj['SeqIn']
@@ -944,8 +1592,13 @@ class Diploidocus(rje_obj.RJE_Object):
                 if self.v() >= verbosity: cmd = '{} | tee {}'.format(cmd,syslog)
                 else: cmd = '{} > {}'.format(cmd,syslog)
             ### ~ [2] ~ Process System Call ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            self.printLog('#SYS',cmd)
-            os.system(cmd)
+            if self.dev():
+                self.printLog('#CALL',cmd)
+                excode = subprocess.call(cmd)
+            else:
+                self.printLog('#SYS',cmd)
+                excode = os.system(cmd)
+            if excode > 0: raise ValueError('Non-zero exit status for: {}'.format(cmd))
             logline = nologline
             if not logline:
                 logline = 'WARNING: No run log output!'
@@ -1107,7 +1760,7 @@ class Diploidocus(rje_obj.RJE_Object):
             debugstr = 'NOTDEBUGGING'
             if self.getStrLC('DebugStr'): debugstr = self.getStr('DebugStr')
             ## ~ [1a] Input Assembly ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            seqin = rje_seqlist.SeqList(self.log,self.cmd_list+['autoload=T','seqmode=file','summarise=F'])
+            seqin = rje_seqlist.SeqList(self.log,self.cmd_list+['autoload=T','seqmode=file','summarise=F','autofilter=F'])
             tmpseq = '%s.tmp.fasta' % self.baseFile()
             TMPSEQ = open(tmpseq,'w')
             #i# seqdict will store all the sequences, mapped by shortname onto PAF results
@@ -1266,11 +1919,13 @@ class Diploidocus(rje_obj.RJE_Object):
 #########################################################################################################################
     ### <5> ### VecScreen methods                                                                                       #
 #########################################################################################################################
-    def vecScreen(self):    ### Screen Scaffolds for possible contaminants
+    def vecScreen(self,makedb=False):    ### Screen Scaffolds for possible contaminants
         '''
         ## Vector contamination screening [runmode=vecscreen]
 
-        Screen Scaffolds for possible contaminants.
+        This mode screens scaffolds for possible contaminants, given by `screendb=FILE`.
+
+        ### VecScreen overview
 
         First, a `blastn` search of the `screendb=FILE` sequences is performed, using the NCBI VecScreen search and
         match strategy (see below). These parameters can be modified using `blastopt=X` and/or `optionfile=FILE`,
@@ -1297,9 +1952,33 @@ class Diploidocus(rje_obj.RJE_Object):
         * `Weak` = `Terminal`/`Proximal` match with Score 16 to 18, or `Internal` match with Score 23 to 24.
         * `Suspect` = Any segment of fewer than 50 bases between two vector matches or between a match and an end.
 
-        ### VecScreen parameters (from NCBI website)
+        These parameters seem to be designed for small (Illumina?) assemblies, and give excessive false positives for
+        larger genomes. Diploidocus therefore features two additional contaminant identification filters:
 
-        The VecScreen parameters are pre-set using blastn options: -task blastn -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust yes -soft_masking true -evalue 700 -searchsp 1750000000000
+        * `eFDR` = The "Expected False Discovery Rate` is calculated for each contaminant sequence. This is simply the
+        `Expect` value for that hit, divided by the total number of hits with that `Expect` value (or lower). If `efdr=X`
+        is set, any hits with an `eFDR` value exceeding the threshold will be removed. By default, this is set to `1.0`,
+        i.e. any contaminants with fewer assembly hits than their `Expect` value will be dropped.
+        * `Minimum hit length` = Short hits are inevitable in large assemblies and unlikely to be real for long read
+        assemblies (e.g. without cloning etc.). An additional `minvechit=X` setting will remove any really short hits.
+        This is set by default to `minvechit=50`, meaning that a hit of at least 50 bp is required.
+
+        Finally, the percentage coverage per scaffold is calculated from the filtered hits. This is performed first for
+        each contaminant individually, before being collapsed into total contamination coverage per query.
+
+        Results are output into two main delimited results files:
+
+        * `*.vecscreen.tdt` = Contaminant local hit table with VecScreen ratings and eFDR calculation. (Unfiltered)
+        * `*.screencov.tdt` = Query coverage per contaminant
+            - `Query` = Contaminant name. For total coverage, this will be `TOTAL`.
+            - `Hit` = Scaffold name.
+            - `HitLen` = Length of scaffold (bp).
+            - `Coverage` = Covered length of scaffold (bp).
+            - `CovPC` = Percentage coverage of scaffold (0-100).
+
+        ### VecScreen BLAST+ parameters (from NCBI website)
+
+        The VecScreen BLAST+ parameters are pre-set using blastn options: -task blastn -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust yes -soft_masking true -evalue 700 -searchsp 1750000000000
 
         VecScreen Match Categories
         Vector contamination usually occurs at the beginning or end of a sequence; therefore, different criteria are
@@ -1328,14 +2007,15 @@ class Diploidocus(rje_obj.RJE_Object):
 
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            self.headLog('DIPLOIDOCUS VECTOR SCREENING',line='-')
             db = self.db()
             #i#covdb = self.db().addEmptyTable('screencov',['Query','Hit','HitLen','Coverage','CovPC'],['Query','Hit'],log=self.debugging())
             screencov = '{}.screencov.{}'.format(db.baseFile(),rje.delimitExt(db.getStr('Delimit')))
-            if not self.force() and rje.checkForFiles(filelist=[screencov],basename='',log=self.log):
+            if not self.force() and not makedb and rje.checkForFiles(filelist=[screencov],basename='',log=self.log):
                 return screencov
             forks = self.getInt('Forks')
             bfile = '%s.vecscreen.blast' % self.baseFile()
-            locfile = '%s.Local.tdt' % self.baseFile()
+            locfile = '%s.vecscreen.Local.tdt' % self.baseFile()
             if not rje.exists(self.getStr('SeqIn')):
                 raise IOError('Diploidocus VecScreen mode needs input assembly (seqin=FILE)')
             if not rje.exists(bfile) and not rje.exists(self.getStr('ScreenDB')):
@@ -1400,10 +2080,11 @@ class Diploidocus(rje_obj.RJE_Object):
                 #i# Keys: ['Query','Hit','AlnID']
                 #i# Fields: ['Query','Hit','AlnID','Score','Expect','Length','Identity','QryStart','QryEnd','SbjStart','SbjEnd']
                 vecdb.keepFields(['Query','Hit','AlnID','Score','Expect','Length','Identity','QryStart','QryEnd','SbjStart','SbjEnd'])
-                self.printLog('#EFDR','Calculating expected FDR (eFDR) based on Expect scores and observed hits')
-                vecdb.rankFieldByIndex('Query','Expect',newfield='QRank',rev=True,absolute=True,lowest=False,warn=True,highest=True)
+                self.progLog('#EFDR','Calculating expected FDR (eFDR) based on Expect scores and observed hits...')
+                vecdb.rankFieldByIndex('Query','Expect',newfield='QRank',rev=False,absolute=True,lowest=False,warn=True,highest=True)
                 vecdb.makeField('Expect/QRank','eFDR')
-                vecdb.saveToFile()
+                self.printLog('\r#EFDR','Calculation of expected FDR (eFDR) based on Expect scores and observed hits complete.')
+                vecdb.saveToFile(locfile)
                 vecdb.setStr({'Name':'vecscreen'})
             ## ~ [2c] Filter Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             vecdb.dataFormat({'eFDR':'float'})
@@ -1531,6 +2212,15 @@ class Diploidocus(rje_obj.RJE_Object):
             ### ~ [4] Save Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             vecdb.dropFields(['MatchStart','MatchEnd','Terminal','Internal'])
             vecdb.saveToFile()
+            ## ~ [4a] Optional VecCheck output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if self.getBool('VecCheck'):
+                vfile = db.dbFileName('vecscreen')
+                pfile = self.baseFile() + '.paf'
+                pafcmd = self.cmd_list + ['checkpos={}'.format(vfile),'checkfields=Hit,SbjStart,SbjEnd','pafin={}'.format(pfile)]
+                paf = rje_paf.PAF(self.log, pafcmd)
+                vecdb = paf.checkPos(save=False)
+                vecdb.setStr({'Name':'vecscreen'})
+                vecdb.saveToFile(backup=False)
 
             ### ~ [5] Final Processing ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             #i# Need to look at numbers per contaminant to help detect false positives.
@@ -1579,6 +2269,156 @@ class Diploidocus(rje_obj.RJE_Object):
         except:
             self.errorLog(self.zen())
         return False
+#########################################################################################################################
+    def vecPurge(self): ###
+        '''
+        ### VecScreen purge mode
+
+        When `screenmode=purge`, sequences will be removed, trimmed and/or masked based on identified contamination
+        sequences. This is performed after `minvechit=INT` and `efdr=NUM` filtering. If Diploidocus is re-run (without
+        `force=T`), existing `BLAST+` results and the local hits table will be re-used, but the `*.vescreend.tdt` and
+        `*.screencov.tdt` output will be regenerated prior to purging. This enables purging to be re-run with different
+        parameters.
+
+        The three main purge parameter are:
+
+            vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
+            vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
+            vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+
+        These are applied in order:
+
+        1. First, any scaffolds meeting the vecpurge=PERC total coverage threshold are removed completely.
+        2. Next, any hits within `vectrim=INT` bp of either sequence end are trimmed off. This will continue until no hits
+        (meeting `minvechit=INT efdr=NUM`) are within `vectrim=INT` bp. If both ends are within `vectrim=INT`, the whole
+        sequence will be trimmed and the sequence will be removed.
+        3. Finally, any remaining hits meeting the `vecmask=INT` length cutoff are masked by replacing with Ns.
+
+        Output is then saved to:
+
+        * `*.vecscreen.fasta` = The purged, trimmed and masked sequences. If no sequences were identified for editing,
+        this will be the same as the input sequences.
+        * `*.vecpurge.tdt` = The table of vecsreen edits
+            - `SeqName`, `SeqLen`, `Start`, `End`, `Edit`
+
+        :return: trimdb or None if no purging/trimming/masking
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            seqin = self.getStr('SeqIn')
+            seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
+            seqdict = seqlist.seqNameDic()
+            basefile = self.baseFile(strip_path=True)
+            ## ~ [1a] ~ Setup database tables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            db = self.db()
+            vecdb = self.db('vecscreen')
+            covdb = self.db('screencov')
+            ## ~ [1b] ~ Generate database tables if needed ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #i# Re-run vecScreen() rather than load data in case filtering settings have changed.
+            #i# The BLAST results or Local hits table will be reloaded unless force=T.
+            if not (vecdb and covdb):
+                self.vecScreen(makedb=True)
+            vecdb = self.db('vecscreen')
+            covdb = self.db('screencov')    # ['Query','Hit','HitLen','Coverage','CovPC']
+            if not (vecdb and covdb): raise IOError('Problem generating vecscreen and screencov tables')
+            covdb.dataFormat({'CovPC':'num'})
+
+            ### ~ [2] ~ Perform purging, trmming and masking ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            trimdb = db.addEmptyTable('vecpurge',['SeqName','SeqLen','Start','End','Edit'],['SeqName','Start','End'],log=self.debugging())
+            ## ~ [2a] ~ Purge scaffolds ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #i# 1. First, any scaffolds meeting the vecpurge=PERC total coverage threshold are removed completely.
+            purgelist = []
+            for entry in covdb.indexEntries('Query','TOTAL'):
+                if entry['CovPC'] >= self.getNum('VecPurge'):
+                    seqname = entry['Hit']
+                    seqlen = entry['HitLen']
+                    trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':1, 'End':seqlen, 'Edit':'purge'})
+                    purgelist.append(seqname)
+            ## ~ [2b] ~ Generate collapsed [(start,end)] tuple lists for remaining sequences ~~~~~~ ##
+            for seqname in vecdb.index('Hit'):
+                if seqname in purgelist: continue
+                seqlen = seqlist.seqLen(seqdict[seqname])
+                vecpos = []
+                for entry in vecdb.indexEntries('Hit',seqname): vecpos.append((entry['SbjStart'],entry['SbjEnd']))
+                vecpos = rje.collapseTupleList(vecpos)
+                trimpos = rje.collapseTupleList(vecpos,joindistance=self.getInt('VecTrim'))
+            ## ~ [2c] ~ Identify regions to trim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #i# 2. Next, any hits within `vectrim=INT` bp of either sequence end are trimmed off. This will continue until no hits
+            #i# (meeting `minvechit=INT efdr=NUM`) are within `vectrim=INT` bp.
+                trim5 = 1; trim3 = seqlen
+                if trimpos[0][0] <= self.getInt('VecTrim'): trim5 = trimpos[0][1]   # 5' trim
+                if (seqlen-trimpos[-1][1]+1) <= self.getInt('VecTrim'): trim3 = trimpos[-1][0]   # 3' trim
+                if trim5 > trim3:
+                    trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':1, 'End':seqlen, 'Edit':'fulltrim'})
+                    purgelist.append(seqname)
+                    continue
+                if trim5 > 1:
+                    trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':1, 'End':trim5, 'Edit':'trim'})
+                if trim3 < seqlen:
+                    trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':trim3, 'End':seqlen, 'Edit':'trim'})
+            ## ~ [2d] ~ Identify regions to mask ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #i# 3. Finally, any remaining hits meeting the `vecmask=INT` length cutoff are masked by replacing with Ns.
+                for (mask5,mask3) in vecpos:
+                    masklen = mask3-mask5+1
+                    if masklen < self.getInt('VecMask'): continue
+                    if mask3 <= trim5 or mask5 >= trim3: continue
+                    trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':mask5, 'End':mask3, 'Edit':'mask'})
+
+            ### ~ [3] ~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            # If any sequences are purged/trimmed/masked, output is then saved to:
+            #
+            # * `*.vecscreen.fasta` = The purged, trimmed and masked sequences. If no sequences were identified for editing,
+            # this will not be generated.
+            # * `*.vecpurge.tdt` = The table of vecsreen edits.
+            #     - `SeqName`, `SeqLen`, `Start`, `End`, `Edit`
+            trimdb.saveToFile()
+            if not trimdb.entryNum(): return None
+            trimdb.indexReport('Edit')
+            ## ~ [3a] ~ Save sequences ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            seqlist.obj['Current'] = None
+            fasout = '{}.vecscreen.fasta'.format(basefile)
+            rje.backup(self,fasout)
+            FASOUT = open(fasout,'w')
+            sx = 0.0; stot = seqlist.seqNum(); trimx = 0; dumpx = 0; maskx = 0; seqx = 0
+            while seqlist.nextSeq():
+                self.progLog('\r#VEC','VecPurge trimming/masking of : {:.2f}%'.format(sx/stot)); sx += 100.0
+                seqname = seqlist.shortName()
+                sequence = seqlist.seqSequence()
+                seqdesc = seqlist.seqDesc()
+                seqlen = len(sequence)
+                if seqname in purgelist: dumpx += 1; continue
+                #i# Mask
+                trimmed = masked = False
+                for entry in trimdb.indexEntries('SeqName',seqname):
+                    if entry['Edit'] == 'mask':
+                        sequence = sequence[:entry['Start']-1] + 'N' * (entry['End']-entry['Start']+1) + sequence[entry['End']:]
+                        if len(sequence) != seqlen: raise ValueError('Masking problem!')
+                        masked = True
+                    elif entry['Edit'] == 'trim':
+                        sequence = sequence[:entry['Start']-1] + '-' * (entry['End']-entry['Start']+1) + sequence[entry['End']:]
+                        if len(sequence) != seqlen: raise ValueError('Masking problem!')
+                        trimmed = True
+                #i# Trim
+                sequence = sequence.replace('-','')
+                #i# Desc
+                if trimmed:
+                    seqdesc += ' (Vecscreen:trimmed)'
+                    trimx += 1
+                if masked:
+                    seqdesc += ' (Vecscreen:masked)'
+                    trimx += 1
+                if trimmed or masked: seqname = seqname+'X'
+                #i# Save
+                FASOUT.write('>%s %s\n%s\n' % (seqname,seqdesc,sequence)); seqx += 1
+            FASOUT.close()
+            self.printLog('\r#SAVE','{} sequences output to {}: {} trimmed; {} masked; {} dumped.'.format(rje.iStr(stot),fasout,rje.iStr(trimx),rje.iStr(maskx),rje.iStr(dumpx)))
+            ## ~ [3c] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if seqlist.getBool('Summarise'):
+                seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % fasout,'autofilter=F']
+                rje_seqlist.SeqList(self.log,seqcmd)
+            return trimdb
+        except:
+            self.errorLog('Diploidocus.vecPurge() error')
+        return None
 #########################################################################################################################
     ### <6> ### Genome Size and Purge Haplotigs methods                                                                 #
 #########################################################################################################################
@@ -1647,7 +2487,7 @@ class Diploidocus(rje_obj.RJE_Object):
             self.errorLog('Diploidocus.genomeSizeFromModeFile() error')
             return False
 #########################################################################################################################
-    def genomeSize(self,scdepth=False):   ### Uses read depth from BUSCO single copy genes to predict genome size
+    def genomeSize(self,scdepth=False,makebam=False):   ### Uses read depth from BUSCO single copy genes to predict genome size
         '''
         Uses read depth from BUSCO single copy genes to predict genome size.
         >> scdepth:bool [False] = Whether to return single copy read depth only (w/o Genome Size prediction)
@@ -1664,8 +2504,10 @@ class Diploidocus(rje_obj.RJE_Object):
             seqlist = self.seqinObj()
             seqdict = seqlist.seqNameDic()
             ## ~ [1a] Check Files ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            bamfile = self.getStr('BAM')
-            if not self.getStrLC('BAM'): bamfile = self.baseFile(strip_path=True) + '.bam'
+            if makebam: bamfile = self.getBamFile()
+            else:
+                bamfile = self.getStr('BAM')
+                if not self.getStrLC('BAM'): bamfile = self.baseFile(strip_path=True) + '.bam'
             if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
             self.printLog('#BAM',bamfile)
             busco = self.getStr('BUSCO')
@@ -1894,6 +2736,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 if self.list['ReadType']:
                     try: rtype = self.list['ReadType'][rx]; rx +=1
                     except: rtype = self.list['ReadType'][0]; rx = 1
+                    if rtype in ['pacbio','pac']: rtype = 'pb'
                     if rtype not in ['ont','pb']:
                         self.warnLog('Read Type "%s" not recognised (pb/ont): check readtype=LIST. Will use "ont".' % rtype)
                         rtype = 'ont'
@@ -1915,6 +2758,11 @@ class Diploidocus(rje_obj.RJE_Object):
                 #     os.system(maprun)
                 logline = self.loggedSysCall(maprun,maplog,append=False)
                 #!# Add check that run has finished #!#
+                if not rje.exists('{}.sam'.format(prefix)):
+                    if self.i() > -1 and rje.yesNo('{}.sam missing! Pause and make manually?'.format(prefix)) and not rje.yesNo('{}.sam ready? Yes to continue; No to terminate.'.format(prefix)):
+                        raise KeyboardInterrupt()
+                if not rje.exists('{}.sam'.format(prefix)):
+                    raise IOError('{}.sam missing!'.format(prefix))
                 ## ~ [2b] Converting SAM to BAM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
                 #sam2bam = 'samtools view -bo {}.tmp.bam -@ {} -S {}.sam'.format(prefix,self.threads()-1,prefix)
                 self.printLog('#BAM','Converting SAM to BAM. Using a single thread due to past issues of missing data.')
@@ -1942,11 +2790,48 @@ class Diploidocus(rje_obj.RJE_Object):
             else: os.rename(bamlist[0],bamfile)
             ## ~ [3a] Index ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             return bamfile
+        except IOError: raise
+        except KeyboardInterrupt: raise
         except:
             self.errorLog('Diploidocus.longreadMinimap() error')
             return None
 #########################################################################################################################
-    def diploidocus(self):   ### Combines purge_haplotigs data with other stats to perform assembly filtering
+    def getBamFile(self):  ### Checks/Creates indexed BAM file and returns filename as string
+        '''
+        Checks/Creates indexed BAM file and returns filename as string.
+        :return: bamfile [str]
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            for program in ['minimap2','samtools']:
+                if not os.popen('{} --version 2>&1'.format(program)).read():
+                    self.warnLog('Cannot run "{} --version": check installation or pre-generation of files'.format(program))
+            ## ~ [1a] IO names ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            seqin = self.getStr('SeqIn')
+            bamfile = self.getStr('BAM')
+
+            ### ~ [2] BAM file check/generation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if not self.getStrLC('BAM'):
+                bamfile = self.baseFile(strip_path=True) + '.bam'
+                if not rje.exists(bamfile):
+                    self.printLog('#BAM','Cannot find BAM file "{}": generating'.format(bamfile))
+                    bamfile = self.longreadMinimap()
+                elif self.needToRemake(bamfile,seqin):
+                    self.printLog('#BAM','SeqIn younger than BAM file "{}": regenerating'.format(bamfile))
+                    bamfile = self.longreadMinimap()
+            if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
+            self.setStr({'BAM':bamfile})
+            baifile = '{}.bai'.format(bamfile)
+            #i# NOTE: If Diploidocus keeps remaking files, switch ignoredate=T
+            ## ~ [2a] Index BAM file ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            rje.checkForFiles(filelist=[bamfile,baifile],basename='',log=self.log,cutshort=False,ioerror=False)
+            if self.needToRemake(baifile,bamfile):
+                makebai = 'samtools index -b {} {}.bai'.format(bamfile,bamfile)
+                logline = self.loggedSysCall(makebai,append=True)
+            return bamfile
+        except:
+            self.errorLog('Diploidocus.bamFile() error'); raise
+#########################################################################################################################
+    def diploidocusHocusPocus(self):   ### Combines purge_haplotigs data with other stats to perform assembly filtering
         '''
         Diploidocus builds on the PurgeHaplotigs classifications to use the depth bins, KAT assembly kmer frequencies and
         BUSCO results to reclassify scaffolds and partition them into:
@@ -1961,20 +2846,7 @@ class Diploidocus(rje_obj.RJE_Object):
         The first step in the classification decision process is to load the data and reduce it to the core data frame
         for analysis. `SeqName` will be used for rownames to help xref the full data.
 
-        :return:
-        '''
-        #!# Will need to split this up at some point
-        return self.purgeHaplotigs()
-#########################################################################################################################
-    def purgeHaplotigs(self):   ### Combines purge_haplotigs data with other stats to perform assembly filtering
-        '''
-        The Pilon-polished genome underwent a final scaffold cleanup to generate a high-quality core assembly, remove
-        low-coverage artefacts and haplotig sequences, and annotate remaining scaffolds with potential issues.
-
-
-
-        NOTE: The current method should be divided into submethods and renamed as the primary DiploidocusHocusPocus
-        method that runs everything!
+        NOTE: The current method should be divided into submethods.
 
         NOTE: Purge_Haplotigs only calculates coverage based on non-zero coverage bases!
         Add includegaps=T/F and mingap=INT settings to include gaps in percentages (including lowcov) or not
@@ -1984,7 +2856,8 @@ class Diploidocus(rje_obj.RJE_Object):
 
         NOTE: After adjustment, this additional filter may not be required!
 
-        :return:
+
+        :return: dipdb
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             db = self.db()
@@ -1993,7 +2866,7 @@ class Diploidocus(rje_obj.RJE_Object):
             seqin = self.getStr('SeqIn')
             seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
             seqdict = seqlist.seqNameDic()
-            bamfile = self.getStr('BAM')
+            bamfile = self.getBamFile()
             purgemode = self.getStrLC('PurgeMode')
             ## ~ [1b] Programs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #!# Make more nuanced. Add a partial=T/F mode, which can run with some of the programs? Or useX settings?
@@ -2003,63 +2876,73 @@ class Diploidocus(rje_obj.RJE_Object):
                 if not os.popen('{} --version 2>&1'.format(program)).read():
                     self.warnLog('Cannot run "{} --version": check installation or pre-generation of files'.format(program))
             ## ~ [1c] BAM file check/generation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            if not self.getStrLC('BAM'):
-                bamfile = self.baseFile(strip_path=True) + '.bam'
-                if not rje.exists(bamfile):
-                    self.printLog('#BAM','Cannot find BAM file "{}": generating'.format(bamfile))
-                    bamfile = self.longreadMinimap()
-            if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
-            self.setStr({'BAM':bamfile})
-            baifile = '{}.bai'.format(bamfile)
-            #i# NOTE: If Diploidocus keeps remaking files, switch ignoredate=T
-            rje.checkForFiles(filelist=[bamfile,baifile],basename='',log=self.log,cutshort=False,ioerror=False)
-            if self.needToRemake(baifile,bamfile):
-                makebai = 'samtools index -b {} {}.bai'.format(bamfile,bamfile)
-                logline = self.loggedSysCall(makebai,append=True)
-                #os.system('samtools index -b {} {}.bai'.format(bamfile,bamfile))
+            # if not self.getStrLC('BAM'):
+            #     bamfile = self.baseFile(strip_path=True) + '.bam'
+            #     if not rje.exists(bamfile):
+            #         self.printLog('#BAM','Cannot find BAM file "{}": generating'.format(bamfile))
+            #         bamfile = self.longreadMinimap()
+            # if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
+            # self.setStr({'BAM':bamfile})
+            # baifile = '{}.bai'.format(bamfile)
+            # #i# NOTE: If Diploidocus keeps remaking files, switch ignoredate=T
+            # rje.checkForFiles(filelist=[bamfile,baifile],basename='',log=self.log,cutshort=False,ioerror=False)
+            # if self.needToRemake(baifile,bamfile):
+            #     makebai = 'samtools index -b {} {}.bai'.format(bamfile,bamfile)
+            #     logline = self.loggedSysCall(makebai,append=True)
+            #     #os.system('samtools index -b {} {}.bai'.format(bamfile,bamfile))
 
             ### ~ [2] ~ Run PurgeHapolotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            ## ~ [2a] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
-            scdepth = self.getInt('SCDepth')
-            if self.getInt('SCDepth'):
-                self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
-            else:
-                scdepth = self.genomeSize(scdepth=True)
-                self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {}X'.format(scdepth))
-                if not scdepth: raise ValueError('Failed to establish SC read depth')
-            ## ~ [2b] ~ Setup purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            # phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
-            if self.getInt('PHLow') <= 0: self.setInt({'PHLow': int(float(scdepth)/4.0) })
-            phlow = self.getInt('PHLow')
-            # phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
-            if self.getInt('PHMid') <= 0:
-                dupdepth = scdepth/2.0
-                self.setInt({'PHMid': int(1.5 * dupdepth) })
-            phmid = self.getInt('PHMid')
-            # phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
-            if self.getInt('PHHigh') <= 0:
-                self.setInt({'PHHigh': scdepth * 2 })
-            phhigh = self.getInt('PHHigh')
-            #?# Add checks and warnings of cutoff conflicts
-            ## ~ [2c] ~ Run purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            gencov = '{}.gencov'.format(bamfile)
+            #i# This establishes SC read depth using samtools prior to running purge_haplotigs
+            self.purgeHaplotigs()
+            #scdepth = self.getInt('SCDepth')
+            bamstrip = os.path.basename(bamfile)
+            gencov = '{}.gencov'.format(bamstrip)
             covstats = '{}.purge.coverage_stats.csv'.format(basefile)
             purge = '{}.purge.reassignments.tsv'.format(basefile)
-            rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.')
-            #i# The -depth setting will be increased from 200 to 2xphhigh if >100
-            phcmd1 = 'purge_haplotigs hist -b {} -g {} -t {} -d {}'.format(bamfile,seqin,self.threads(),max(200,2*phhigh))
-            if self.needToRemake(gencov,bamfile):
-                logline = self.loggedSysCall(phcmd1,append=True)
-            #!# Option to update the automatically set cutoffs
-            self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
-            phcmd2 = 'purge_haplotigs cov -i {}.gencov -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(bamfile,phlow,phmid,phhigh,basefile)
-            if self.needToRemake(covstats,gencov):
-                logline = self.loggedSysCall(phcmd2,append=True)
-            else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
-            phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
-            if self.needToRemake(purge,covstats):
-                logline = self.loggedSysCall(phcmd3,append=True)
+            if not rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
+                raise IOError('Cannot find purge_haplotigs output. Check {}'.format(phdir))
+
+            # ## ~ [2a] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+            # scdepth = self.getInt('SCDepth')
+            # if self.getInt('SCDepth'):
+            #     self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
+            # else:
+            #     scdepth = self.genomeSize(scdepth=True)
+            #     self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {}X'.format(scdepth))
+            #     if not scdepth: raise ValueError('Failed to establish SC read depth')
+            # ## ~ [2b] ~ Setup purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # # phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
+            # if self.getInt('PHLow') <= 0: self.setInt({'PHLow': int(float(scdepth)/4.0) })
+            # phlow = self.getInt('PHLow')
+            # # phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
+            # if self.getInt('PHMid') <= 0:
+            #     dupdepth = scdepth/2.0
+            #     self.setInt({'PHMid': int(1.5 * dupdepth) })
+            # phmid = self.getInt('PHMid')
+            # # phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
+            # if self.getInt('PHHigh') <= 0:
+            #     self.setInt({'PHHigh': scdepth * 2 })
+            # phhigh = self.getInt('PHHigh')
+            # #?# Add checks and warnings of cutoff conflicts
+            # ## ~ [2c] ~ Run purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # gencov = '{}.gencov'.format(bamfile)
+            # covstats = '{}.purge.coverage_stats.csv'.format(basefile)
+            # purge = '{}.purge.reassignments.tsv'.format(basefile)
+            # rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.')
+            # #i# The -depth setting will be increased from 200 to 2xphhigh if >100
+            # phcmd1 = 'purge_haplotigs hist -b {} -g {} -t {} -d {}'.format(bamfile,seqin,self.threads(),max(200,2*phhigh))
+            # if self.needToRemake(gencov,bamfile):
+            #     logline = self.loggedSysCall(phcmd1,append=True)
+            # #!# Option to update the automatically set cutoffs
+            # self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
+            # phcmd2 = 'purge_haplotigs cov -i {}.gencov -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(bamfile,phlow,phmid,phhigh,basefile)
+            # if self.needToRemake(covstats,gencov):
+            #     logline = self.loggedSysCall(phcmd2,append=True)
+            # else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
+            # phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
+            # if self.needToRemake(purge,covstats):
+            #     logline = self.loggedSysCall(phcmd3,append=True)
             if self.getStrLC('RunMode').startswith('purgehap'):
                 self.printLog('#PURGE','purge_haplotigs run complete. Use runmode=diploidocus for additional filtering')
                 return True
@@ -2403,6 +3286,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 if entry['ScreenPerc'] >= 50: entry['Rating'] = 'CONTAMINATION'
                 #  - `Median_fold` < 3
                 elif entry['Class'].startswith('LOWX'): entry['Rating'] = 'LOWCOV'
+                elif entry['SeqLen'] < self.getInt('MinLen'): entry['Rating'] = 'LOWQUAL'
                 #  - `[GOOD/PURE]|LOW` and `MedK`<1
                 elif entry['Class'].startswith('PURE|LOW') and entry['MedK'] == 0: entry['Rating'] = 'LOWCOV'
                 elif entry['Class'].startswith('GOOD|LOW') and entry['MedK'] == 0: entry['Rating'] = 'LOWCOV'
@@ -2492,6 +3376,9 @@ class Diploidocus(rje_obj.RJE_Object):
                 ### Change HAPLOTIG to HAPRPT
                 if entry['Rating'] == "HAPLOTIG" and rep: entry['Rating'] = 'HAPRPT'
 
+                ### Special output
+                #if self.getBool('Diploidify') and entry['Rating'] == 'HPURGE': entry['Rating'] = 'HAPLOTIG'
+
             ## ~ [7b] ~ Basic Rating ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if purgemode == 'simple':
                 for entry in dipdb.entries():
@@ -2499,8 +3386,10 @@ class Diploidocus(rje_obj.RJE_Object):
                     cdata = entry['Class'].split('|')
                     #i# Low coverage artefacts (e.g. less than 50% of the scaffold covered by at least X reads)
                     if entry['Median_fold'] < minmedian: entry['Rating'] = 'LOWCOV'; continue
+                    elif entry['ScreenPerc'] >= 50: entry['Rating'] = 'CONTAMINATION'; continue
+                    elif entry['SeqLen'] < self.getInt('MinLen'): entry['Rating'] = 'LOWQUAL'; continue
                     #i# Low quality artefacts (e.g. less than 50% of the scaffold covered by short-read kmers)
-                    if entry['MedK'] == 0: entry['Rating'] = 'LOWQUAL'; continue
+                    elif entry['MedK'] == 0: entry['Rating'] = 'LOWQUAL'; continue
                     #i# KEEP set are those with DIP, EXS, UNIQ, PART, TOP or COMP = REPT/REP = REPEAT
                     if cdata[1] in ['DIP','EXS'] or cdata[2] in ['UNIQ','PART'] or cdata[3] == 'TOP' or entry['Complete'] > 0:
                         # PRIMARY
@@ -2532,6 +3421,8 @@ class Diploidocus(rje_obj.RJE_Object):
                     #i# INITIAL FILTERS #i#
                     #i# Low coverage artefacts (e.g. less than 50% of the scaffold covered by at least X reads)
                     if entry['Median_fold'] < minmedian: entry['Rating'] = 'LOWCOV'; continue
+                    elif entry['ScreenPerc'] >= 50: entry['Rating'] = 'CONTAMINATION'; continue
+                    elif entry['SeqLen'] < self.getInt('MinLen'): entry['Rating'] = 'LOWQUAL'; continue
                     #i# Any scaffolds with <80% at diploid read depth were identified by PurgeHaplotigs for reassignment.
                     # Scaffolds with 80%+ bases in the low/haploid coverage bins and 95%+ of their length mapped by
                     # PurgeHaplotigs onto another scaffold were filtered as haplotigs or assembly artefacts.
@@ -2561,6 +3452,8 @@ class Diploidocus(rje_obj.RJE_Object):
                 for entry in dipdb.entries():
                     #i# Low coverage artefacts (e.g. less than 50% of the scaffold covered by at least X reads)
                     if entry['Median_fold'] < minmedian: entry['Rating'] = 'LOWCOV'; continue
+                    elif entry['ScreenPerc'] >= 50: entry['Rating'] = 'CONTAMINATION'; continue
+                    elif entry['SeqLen'] < self.getInt('MinLen'): entry['Rating'] = 'LOWQUAL'; continue
                     #i# Any scaffolds with <80% at diploid read depth were identified by PurgeHaplotigs for reassignment.
                     # Scaffolds with 80%+ bases in the low/haploid coverage bins and 95%+ of their length mapped by
                     # PurgeHaplotigs onto another scaffold were filtered as haplotigs or assembly artefacts.
@@ -2580,21 +3473,13 @@ class Diploidocus(rje_obj.RJE_Object):
                     # Any scaffold with 80%+ bases in the low/haploid coverage bins were filtered as haplotigs or assembly artefacts.
                     elif entry['HapPerc'] < 50 and (entry['LowPerc']+entry['HapPerc']) >= artefactcov: entry['Rating'] = 'ARTEFACT'
                     # Scaffolds with at least 80% hitting other scaffolds are HAPLOTIG or REPEAT
-                    elif entry['TopHitCov'] >= hpurgecov and entry['MaxHitCov'] >= rephitcov: entry['Rating'] = 'HAPREPEAT'
+                    elif entry['TopHitCov'] >= hpurgecov and entry['MaxHitCov'] >= rephitcov: entry['Rating'] = 'HAPRPT'
                     elif entry['TopHitCov'] >= hpurgecov: entry['Rating'] = 'HAPLOTIG'
                     # Any scaffold with 80%+ bases in the low/haploid coverage bins were filtered as haplotigs or assembly artefacts.
                     elif (entry['LowPerc']+entry['HapPerc']) >= artefactcov: entry['Rating'] = 'ARTEFACT'
 
             ## ~ [7x] ~ Add Nala Rating ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            elif purgemode == 'nala':
-                self.errorLog('#PURGE','purgemode=nala not yet implemented!')
-                # Low-coverage filter
-                #
-                # The TOW5157A1 library PacBio subreads (12.5M subreads; 108Gb) were mapped onto the assembly using Minimap2 v2.16
-                # (-ax map-pb --secondary=no) [REF]. Initial read depth analysis was performed with BBMap v38.51 [REF] pileup.sh.
-                # Any scaffolds with median coverage less than 3 (e.g. less than 50% of the scaffold covered by at least 3 reads)
-                # were filtered as Low Coverage.
-                #
+            elif purgemode == 'nala1':
                 # Purge Haplotigs analysis - round 1
                 #
                 # Subreads were re-mapped on to the remaining 837 scaffolds and processed with PurgeHaplotigs v20190612 [REF]
@@ -2605,33 +3490,26 @@ class Diploidocus(rje_obj.RJE_Object):
                 # filtered as haplotigs or assembly artefacts. Any other scaffolds with 80%+ low coverage bases were filtered as
                 # Low Coverage.
                 #
-                # Purge Haplotigs analysis - round 2
-                #
-                # Subreads were re-mapped on to the remaining 558 scaffolds for a second round of slightly more stringent
-                # PurgeHaplotigs analysis. No more scaffolds with 80%+ low coverage bases were identified. Any scaffold with 80%+
-                # bases in the low/haploid coverage bins were filtered as haplotigs or assembly artefacts. Scaffolds with 20%+
-                # diploid coverage were marked as retention as probable diploids. Scaffolds with <20% diploid coverage and 50%+
-                # high coverage were marked as probable collapsed repeats. A single remaining Scaffold marked as JUNK by
-                # PurgeHaplotigs (over 80% low/high coverage) was also filtered as a probable artefact.
-                #
-                # Purge Haplotigs analysis - round 3
-                #
-                # Subreads were re-mapped on to the remaining 430 scaffolds for a third round of PurgeHaplotigs analysis. No
-                # further scaffolds were identified for filtering.
-                #
-                # Results
-                # Of the 1,057 Pilon-polished scaffolds, 627 (59.3%) totalling 20.1 Mb (0.8%) of the assembly were removed by the
-                # final scaffold cleanup. 220 scaffolds were removed in the initial Low Coverage filter. Based on the
-                # PurgeHaplotigs depth histogram, a diploid ("1X") read depth of approx. 40X was identified and used to infer a
-                # ("0.5X") haploid depth of 20X and a mid-depth point for PurgeHaplotigs of 30X. Based on the histogram, the
-                # low- and high-depth PurgeHaplotigs were set to 5X and 80X, respectively. Based on these data, a further 11
-                # Scaffolds were filtered for low coverage and 268 were filtered as haplotigs or assembly artefacts. Following the
-                # second round of PurgeHaplotigs, a further 128 Scaffolds were filtered as haplotigs or assembly artefacts. None of
-                # the remaining 430 scaffolds were identified for filtering following additional PurgeHaplotigs analysis.
+                self.errorLog('purgemode=nala1 not yet implemented!')
+            elif purgemode == 'nala':
+                for entry in dipdb.entries():
+                    #i# Low coverage artefacts (e.g. less than 50% of the scaffold covered by at least X reads)
+                    if entry['Median_fold'] < minmedian: entry['Rating'] = 'LOWCOV'; continue
+                    elif entry['ScreenPerc'] >= 50: entry['Rating'] = 'CONTAMINATION'; continue
+                    elif entry['SeqLen'] < self.getInt('MinLen'): entry['Rating'] = 'LOWQUAL'
+                    #i# Any scaffold with 80%+ bases in the low/haploid coverage bins were filtered as haplotigs or
+                    #i# assembly artefacts.
+                    elif (entry['LowPerc']+entry['HapPerc']) >= artefactcov: entry['Rating'] = 'HPURGE'
+                    #i# Scaffolds with 20%+ diploid coverage were marked as retention as probable diploids.
+                    elif (entry['DipPerc']) >= 20: entry['Rating'] = 'PRIMARY'
+                    #i# Scaffolds with <20% diploid coverage and 50%+ high coverage were marked as probable collapsed repeats.
+                    elif (entry['HighPerc']) >= 50: entry['Rating'] = 'COLLAPSED'
+                    #i# A single remaining Scaffold marked as JUNK by PurgeHaplotigs (over 80% low/high coverage) was also filtered as a probable artefact.
+                    else: entry['Rating'] = entry['PurgeHap']
 
             ## ~ [7x] ~ Add Nala Rating ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            elif purgemode not in ['','none','default','diploidocus','complex']:
-                self.errorLog('#PURGE','purgemode={} not recognised! Using purgemode=complex'.format(purgemode))
+            elif purgemode not in ['','none','default','diploidocus','complex','nala']:
+                self.errorLog('purgemode={} not recognised! Using purgemode=complex'.format(purgemode))
 
             ## ~ [7c] ~ Add Top and SecHit Ratings ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             for entry in dipdb.entries():
@@ -2642,10 +3520,13 @@ class Diploidocus(rje_obj.RJE_Object):
 
             ## ~ [7d] ~ Add Set for output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             dipdb.addField('Set',evalue='-')
-            keep = ['QUALITY','FINAL','CORE','COREHAP','PRIMARY','PRIRPT','HAPLOID','HAPLOTIG']
+            keep = ['QUALITY','FINAL','CORE','COREHAP','PRIMARY','PRIRPT','HAPLOID','HAPLOTIG','KEEP']
             repeat = ['COLLAPSED', 'REPEAT', 'HAPRPT']
-            quarantine = ['HPURGE', 'RPURGE']
-            junk = ['LOWCOV', 'LOWQUAL', 'CONTAMINATION']
+            quarantine = ['HPURGE', 'RPURGE', 'LOWQUAL']
+            if self.getBool('Diploidify'):
+                keep.append('HPURGE')
+                quarantine = ['RPURGE', 'LOWQUAL']
+            junk = ['LOWCOV', 'CONTAMINATION','JUNK','ARTEFACT']
 
             for entry in dipdb.entries():
                 if entry['Rating'] in keep: entry['Set'] = 'keep'
@@ -2688,11 +3569,12 @@ class Diploidocus(rje_obj.RJE_Object):
             self.headLog('Sequence Sets',line='-')
             dipdb.indexReport('Set')
             dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
+            dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Set'])
 
             for seqset in ['diploidocus','core','quarantine','junk']:
                 rje.backup(self,'%s.%s.fasta' % (basefile,seqset),appendable=False)
                 open('%s.%s.fasta' % (basefile,seqset),'w')
-            seqx = {'diploidocus':0,'core':0,'quarantine':0,'junk':0}
+            seqx = {'diploidocus':0,'core':0,'quarantine':0,'junk':0,'diploidify':0}
             for rating in keep:
                 for entry in dipdb.indexEntries('Rating',rating):
                     (seqname, sequence) = seqlist.getSeq(seqdict[entry['SeqName']])
@@ -2732,16 +3614,237 @@ class Diploidocus(rje_obj.RJE_Object):
                     seqx['junk'] += 1
             for seqset in ['diploidocus','core','quarantine','junk']:
                 self.printLog('#SEQ','%s sequences saved to %s.%s.fasta' % (rje.iStr(seqx[seqset]),basefile,seqset))
+            ### Special diploidify output
+            if self.getBool('Diploidify'):
+                seqset = 'diploidify'
+                rje.backup(self,'%s.%s.fasta' % (basefile,seqset),appendable=False)
+                open('%s.%s.fasta' % (basefile,seqset),'w')
+                for entry in dipdb.entries():
+                    cdata = entry['Class'].split('|')
+                    if cdata[1] == 'DIP' or (cdata[0] == 'WEAK' and cdata[3] == 'NON') and entry['Rating'] not in junk + quarantine:
+                        (seqname, sequence) = seqlist.getSeq(seqdict[entry['SeqName']])
+                        if rje.matchExp('^(\S+)_(\S+)__(\S+)',seqname):
+                            sdat = rje.matchExp('^(\S+)_(\S+)__(\S+)',seqname)
+                            seqname = '%sX2_%s__%sX2 Diploidify: %s' % (sdat[0],sdat[1],sdat[2],seqname)
+                        else:
+                            sdat = string.split(seqname)
+                            seqname = '%sX2 Diploidify: %s' % (sdat[0],seqname)
+                        open('{}.{}.fasta'.format(basefile,seqset),'a').write('>{}\n{}\n'.format(seqname, sequence))
+                        seqx[seqset] += 1
 
             if seqlist.getBool('Summarise'):
-                for seqset in ['diploidocus','core','quarantine','junk']:
+                for seqset in ['diploidocus','core','quarantine','junk','diploidify']:
                     if not seqx[seqset]: continue
                     setfas = '%s.%s.fasta' % (basefile,seqset)
                     seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']
                     rje_seqlist.SeqList(self.log,seqcmd)
+            return dipdb
+        except:
+            self.errorLog('Diploidocus.diploidocusHocusPocus() error')
+            return None
+#########################################################################################################################
+    def purgeHaplotigs(self):   ### Runs purge_haplotigs in a subdirectory, using SC read depths to set parameters.
+        '''
+        Runs purge_haplotigs in a subdirectory, using SC read depths to set parameters.
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            basefile = self.baseFile(strip_path=True)
+            bamfile = os.path.abspath(self.getStr('BAM'))
+            bamstrip = os.path.basename(bamfile)
+            seqin = os.path.abspath(self.getStr('SeqIn'))
+            #i# Need to run PH in subdirectory to avoid conflicts between runs/cycles
+            mydir = os.path.abspath(os.curdir)
+            ## ~ [1a] ~ Check need to run purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            gencov = '{}.gencov'.format(bamstrip)
+            covstats = '{}.purge.coverage_stats.csv'.format(basefile)
+            purge = '{}.purge.reassignments.tsv'.format(basefile)
+            if rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.') and not self.force():
+                return True
+            ## ~ [1b] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+            scdepth = self.getInt('SCDepth')
+            if self.getInt('SCDepth'):
+                self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
+            else:
+                scdepth = self.genomeSize(scdepth=True)
+                self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {}X'.format(scdepth))
+                if not scdepth: raise ValueError('Failed to establish SC read depth')
+                self.setInt({'SCDepth':scdepth})
+            ## ~ [1c] ~ Setup purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
+            if self.getInt('PHLow') <= 0: self.setInt({'PHLow': int(float(scdepth)/4.0) })
+            phlow = self.getInt('PHLow')
+            # phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
+            if self.getInt('PHMid') <= 0:
+                dupdepth = scdepth/2.0
+                self.setInt({'PHMid': int(1.5 * dupdepth) })
+            phmid = self.getInt('PHMid')
+            # phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
+            if self.getInt('PHHigh') <= 0:
+                self.setInt({'PHHigh': scdepth * 2 })
+            phhigh = self.getInt('PHHigh')
+            #?# Add checks and warnings of cutoff conflicts
+            ## ~ [1d] ~ Make and enter new directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            phdir = 'purge_{}/'.format(basefile)
+            rje.mkDir(self,phdir,log=True)
+            self.printLog('#PURGE','Running purge_haplotigs in: {}'.format(phdir))
+            os.chdir(phdir)
+
+            ### ~ [2] ~ Run purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            #i# The -depth setting will be increased from 200 to 2xphhigh if >100
+            phcmd1 = 'purge_haplotigs hist -b {} -g {} -t {} -d {}'.format(bamfile,seqin,self.threads(),max(200,2*phhigh))
+            if self.needToRemake(gencov,bamfile):
+                logline = self.loggedSysCall(phcmd1,append=True)
+            #!# Option to update the automatically set cutoffs
+            self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
+            phcmd2 = 'purge_haplotigs cov -i {} -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(gencov,phlow,phmid,phhigh,basefile)
+            if self.needToRemake(covstats,gencov):
+                logline = self.loggedSysCall(phcmd2,append=True)
+            else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
+            phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
+            if self.needToRemake(purge,covstats):
+                logline = self.loggedSysCall(phcmd3,append=True)
+            os.chdir(mydir)
+            ## ~ [2a] ~ Link output files back to main directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            for ofile in (gencov,covstats,purge):
+                phfile = '{}{}'.format(phdir,ofile)
+                os.system('ln {} .'.format(phfile))
+            # if not rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
+            #     raise IOError('Cannot find purge_haplotigs output. Check {}'.format(phdir))
+            return True
         except:
             self.errorLog('Diploidocus.purgeHaplotigs() error')
-            return False
+            os.chdir(mydir)
+            raise
+#########################################################################################################################
+    def depthTrim(self):    ### Trims ends off contigs based on minimum depth
+        '''
+        Trims ends off contigs based on minimum depth.
+        :return:
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            db = self.db()
+            dephead = ['SeqName','SeqLen','Trim5','Trim3','DepTrim']
+            depdb = db.addEmptyTable('deptrim',dephead,['SeqName'],log=self.debugging())
+            forker = self.obj['Forker']
+            basefile = self.baseFile(strip_path=True)
+            depmethod = 'mpileup'
+            if self.getBool('QuickDepth'): depmethod = 'depth'
+            deptrim = self.getInt('DepTrim')
+            mintrim = self.getInt('MinTrim')
+            if not deptrim: return False
+            self.printLog('#TRIM','Trimming %s+ <%dX depth' % (rje_seqlist.dnaLen(mintrim),deptrim))
+            ## ~ [1a] IO names ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            seqin = self.getStr('SeqIn')
+            seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
+            seqdict = seqlist.seqNameDic()
+            bamfile = self.getBamFile()
+            ## ~ [1b] Temp directory for forked depths ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            tmpdir = rje.makePath(self.getStr('TmpDir'),wholepath=False)
+            if not rje.exists(tmpdir): rje.mkDir(self,tmpdir)
+            ## ~ [1c] Check programs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if os.popen('samtools --version').read():
+                self.printLog('#SYS',' '.join(os.popen('samtools --version').read().split()))
+            else:
+                raise IOError('Cannot open samtools: check installation and/or module loading')
+
+            ### ~ [2] Cycle through and fork out the depth calculations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            ## ~ [2a] Setup forking ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            cleanup = 0; skipped = 0
+            forker.list['ToFork'] = []
+            for seqname in seqdict:
+                tmpfile = '{}{}.{}.{}.deptrim.tmp'.format(tmpdir,basefile,seqname,depmethod)
+                if rje.exists(tmpfile):
+                    #?# Add checking for completeness #?#
+                    if not self.force() and len(open(tmpfile,'r').readline().split()) > 1: skipped += 1; continue
+                    else: os.unlink(tmpfile); cleanup += 1
+                if depmethod == 'mpileup':
+                    forker.list['ToFork'].append("samtools view -b -h -F 0x100 %s %s | samtools mpileup -BQ0 - 2> /dev/null | awk '$4 >= %d' | (head -n1 && tail -n1) | (awk '{print $2;}' ORS=\" \" && echo) > %s" % (bamfile,seqname,deptrim,tmpfile))
+                else:
+                    forker.list['ToFork'].append("samtools view -h -F 0x100 %s %s | samtools depth - | awk '$3 >= %d' | (head -n1 && tail -n1) | (awk '{print $2;}' ORS=\" \" && echo) > %s" % (bamfile,seqname,deptrim,tmpfile))
+            self.printLog('#DEPTH','{} sequences queued for forking ({} existing files deleted); {} existing results skipped'.format(rje.iLen(forker.list['ToFork']),rje.iStr(cleanup),rje.iStr(skipped)))
+            ## ~ [2b] Fork out depth analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if forker.list['ToFork']:
+                if self.getNum('Forks') < 1:
+                    #i# Warn lack of forking
+                    self.printLog('#FORK','Note: program can be accelerated using forks=INT.')
+                    for forkcmd in forker.list['ToFork']:
+                        self.printLog('#SYS',forkcmd)
+                        os.system(forkcmd)
+                elif forker.run():
+                    self.printLog('#FORK','Forking of depth trim analysis completed.')
+                else:
+                    try:
+                        self.errorLog('Samtools forking did not complete',printerror=False,quitchoice=True)
+                    except:
+                        raise RuntimeError('Samtools forking did not complete')
+
+            ### ~ [3] Read in and process depth calculations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            ## ~ [3a] Load data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            for seqname in seqdict:
+                tmpfile = '{}{}.{}.{}.deptrim.tmp'.format(tmpdir,basefile,seqname,depmethod)
+                seqlen = seqlist.seqLen(seqdict[seqname])
+                try:
+                    if not rje.exists(tmpfile):
+                        raise IOError('Cannot find {}'.format(tmpfile))
+                    #?# Add full processing and calculation of mean coverage?
+                    try:
+                        trimdata = open(tmpfile,'r').readline().split()
+                        trim5 = int(trimdata[0])
+                        trim3 = int(trimdata[1])
+                        if not trim5 or not trim3:  # Trim entire sequence!
+                            trim5 = trim3 = seqlen
+                    except:
+                        self.errorLog('Something has gone wrong with "%s"' % tmpfile)
+                        raise
+                except:
+                    self.errorLog('Samtools depth result processing error',quitchoice=True)
+                    continue
+                depdb.addEntry({'SeqName':seqname,'SeqLen':seqlen,'Trim5':trim5,'Trim3':trim3,'DepTrim':'none'})
+            ## ~ [3b] Trim Sequences ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            seqlist.obj['Current'] = None
+            fasout = '{}.trim.fasta'.format(basefile)
+            rje.backup(self,fasout)
+            FASOUT = open(fasout,'w')
+            sx = 0.0; stot = seqlist.seqNum(); trimx = 0; dumpx = 0; seqx = 0   #?# Add shortx = 0 warning for a shorter length?
+            while seqlist.nextSeq():
+                self.progLog('\r#TRIM','Trimming {} sequences for low depth ends: {:.2f}%'.format(rje.iStr(stot),sx/stot)); sx += 100.0
+                seqname = seqlist.shortName()
+                sequence = seqlist.seqSequence()
+                seqlen = len(sequence)
+                entry = depdb.data(seqname)
+                if seqlen != entry['SeqLen']: raise ValueError('%s length mismatch!' % seqname)
+                if entry['Trim5'] == entry['SeqLen']:
+                    entry['DepTrim'] = 'dump'
+                    entry['Trim5'] = entry['Trim3'] = entry['SeqLen']
+                    dumpx += 1; continue
+                start = 1
+                if entry['Trim5'] >= mintrim: start = entry['Trim5']
+                end = seqlen
+                if seqlen - entry['Trim3'] >= mintrim: end = entry['Trim3']
+                if start == 1 and end == seqlen:
+                    FASOUT.write('>%s\n%s\n' % (seqlist.seqName(),sequence)); seqx += 1
+                    entry['DepTrim'] = 'keep'
+                else:
+                    trimx += 1; seqx += 1
+                    FASOUT.write('>%sX (DepTrim:%s-%s)\n%s\n' % (seqlist.seqName(),rje.iStr(start),rje.iStr(end),sequence[start-1:end]))
+                    entry['DepTrim'] = 'trim'
+                entry['Trim5'] = entry['Trim5'] - 1
+                entry['Trim3'] = seqlen - entry['Trim3']
+            FASOUT.close()
+            self.printLog('\r#SAVE','{} sequences output to {}: {} trimmed; {} dumped.'.format(rje.iStr(stot),fasout,rje.iStr(trimx),rje.iStr(dumpx)))
+            ## ~ [3c] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if seqlist.getBool('Summarise'):
+                seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % fasout,'autofilter=F']
+                rje_seqlist.SeqList(self.log,seqcmd)
+            ## ~ [3d] Save data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            depdb.saveToFile()
+            if rje.iStr(trimx) or rje.iStr(dumpx): return depdb
+            else: return False
+
+        except:
+            self.errorLog('Diploidocus.depthTrim() error')
+            return None
 #########################################################################################################################
     # def joinTables(self,name='',join=[],newkey=[],cleanup=True,delimit='\t',empties=True,check=False,keeptable=True,warnings=True):   ### Makes a new table using join of [(Table,Field[,Fieldlist])]
     #     '''
@@ -2845,7 +3948,7 @@ class Diploidocus(rje_obj.RJE_Object):
             ## ~ [1a] ~ Assembly ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if not rje.exists(self.getStr('SeqIn')):
                 raise IOError('Diploidocus Telomere mode needs input assembly (seqin=FILE)')
-            seqin = rje_seqlist.SeqList(self.log,self.cmd_list+['autoload=T','seqmode=file','summarise=F'])
+            seqin = rje_seqlist.SeqList(self.log,self.cmd_list+['autoload=T','seqmode=file','summarise=F','autofilter=F'])
             ## ~ [1b] ~ Results table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             teldb = self.db().addEmptyTable('telomeres',['Name','SeqLen','Tel5','Tel3','Trim5','Trim3','TelPerc'],['Name'],log=self.debugging())
             telomeres = []  # List of sequences with telomeres

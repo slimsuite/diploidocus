@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.36.0
-Last Edit:    31/01/20
+Version:      1.36.1
+Last Edit:    10/02/20
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -208,6 +208,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.34.0 - Added genecounter=T/F : Whether new gene have a numbered suffix (will match newacc numbering) [False]
     # 1.35.0 - Added initial extraction of sequences from BLASTDB from rje_seq.
     # 1.36.0 - Added bpFromStr(seqlen)
+    # 1.36.1 - Changed default duplicate suffix to X2.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -230,7 +231,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.36.0', 'January 2020', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.36.1', 'February 2020', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -2869,7 +2870,7 @@ class SeqList(rje_obj.RJE_Object):
                     self.list['Seq'] = self.list['Seq'][:ei] + self.list['Seq'][ei+cseqx:]
                     ei -= 1
                 elif choice == '++' and rje.yesNo('Duplicate %s?' % self.shortName()):
-                    newacc = rje.choice('New accession (no spaces) for duplicate %s?' % self.shortName(),default='%s.1' % self.seqAcc())
+                    newacc = rje.choice('New accession (no spaces) for duplicate %s?' % self.shortName(),default='%sX2' % self.seqAcc())
                     newacc = string.join(string.split(newacc),'')
                     newshort = '%s_%s__%s' % (self.seqGene(),self.seqSpec(),newacc)
                     self.printLog('#EDIT','%s +> %s' % (self.shortName(),newshort))

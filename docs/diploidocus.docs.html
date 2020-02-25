@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="Richard J. Edwards" />
 
-<meta name="date" content="2020-02-04" />
+<meta name="date" content="2020-02-25" />
 
-<title>Diploidocus V0.7.0 Documentation</title>
+<title>Diploidocus V0.9.0 Documentation</title>
 
 <script>/*! jQuery v1.11.3 | (c) 2005, 2015 jQuery Foundation, Inc. | jquery.org/license */
 !function(a,b){"object"==typeof module&&"object"==typeof module.exports?module.exports=a.document?b(a,!0):function(a){if(!a.document)throw new Error("jQuery requires a window with a document");return b(a)}:b(a)}("undefined"!=typeof window?window:this,function(a,b){var c=[],d=c.slice,e=c.concat,f=c.push,g=c.indexOf,h={},i=h.toString,j=h.hasOwnProperty,k={},l="1.11.3",m=function(a,b){return new m.fn.init(a,b)},n=/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,o=/^-ms-/,p=/-([\da-z])/gi,q=function(a,b){return b.toUpperCase()};m.fn=m.prototype={jquery:l,constructor:m,selector:"",length:0,toArray:function(){return d.call(this)},get:function(a){return null!=a?0>a?this[a+this.length]:this[a]:d.call(this)},pushStack:function(a){var b=m.merge(this.constructor(),a);return b.prevObject=this,b.context=this.context,b},each:function(a,b){return m.each(this,a,b)},map:function(a){return this.pushStack(m.map(this,function(b,c){return a.call(b,c,b)}))},slice:function(){return this.pushStack(d.apply(this,arguments))},first:function(){return this.eq(0)},last:function(){return this.eq(-1)},eq:function(a){var b=this.length,c=+a+(0>a?b:0);return this.pushStack(c>=0&&b>c?[this[c]]:[])},end:function(){return this.prevObject||this.constructor(null)},push:f,sort:c.sort,splice:c.splice},m.extend=m.fn.extend=function(){var a,b,c,d,e,f,g=arguments[0]||{},h=1,i=arguments.length,j=!1;for("boolean"==typeof g&&(j=g,g=arguments[h]||{},h++),"object"==typeof g||m.isFunction(g)||(g={}),h===i&&(g=this,h--);i>h;h++)if(null!=(e=arguments[h]))for(d in e)a=g[d],c=e[d],g!==c&&(j&&c&&(m.isPlainObject(c)||(b=m.isArray(c)))?(b?(b=!1,f=a&&m.isArray(a)?a:[]):f=a&&m.isPlainObject(a)?a:{},g[d]=m.extend(j,f,c)):void 0!==c&&(g[d]=c));return g},m.extend({expando:"jQuery"+(l+Math.random()).replace(/\D/g,""),isReady:!0,error:function(a){throw new Error(a)},noop:function(){},isFunction:function(a){return"function"===m.type(a)},isArray:Array.isArray||function(a){return"array"===m.type(a)},isWindow:function(a){return null!=a&&a==a.window},isNumeric:function(a){return!m.isArray(a)&&a-parseFloat(a)+1>=0},isEmptyObject:function(a){var b;for(b in a)return!1;return!0},isPlainObject:function(a){var b;if(!a||"object"!==m.type(a)||a.nodeType||m.isWindow(a))return!1;try{if(a.constructor&&!j.call(a,"constructor")&&!j.call(a.constructor.prototype,"isPrototypeOf"))return!1}catch(c){return!1}if(k.ownLast)for(b in a)return j.call(a,b);for(b in a);return void 0===b||j.call(a,b)},type:function(a){return null==a?a+"":"object"==typeof a||"function"==typeof a?h[i.call(a)]||"object":typeof a},globalEval:function(b){b&&m.trim(b)&&(a.execScript||function(b){a.eval.call(a,b)})(b)},camelCase:function(a){return a.replace(o,"ms-").replace(p,q)},nodeName:function(a,b){return a.nodeName&&a.nodeName.toLowerCase()===b.toLowerCase()},each:function(a,b,c){var d,e=0,f=a.length,g=r(a);if(c){if(g){for(;f>e;e++)if(d=b.apply(a[e],c),d===!1)break}else for(e in a)if(d=b.apply(a[e],c),d===!1)break}else if(g){for(;f>e;e++)if(d=b.call(a[e],e,a[e]),d===!1)break}else for(e in a)if(d=b.call(a[e],e,a[e]),d===!1)break;return a},trim:function(a){return null==a?"":(a+"").replace(n,"")},makeArray:function(a,b){var c=b||[];return null!=a&&(r(Object(a))?m.merge(c,"string"==typeof a?[a]:a):f.call(c,a)),c},inArray:function(a,b,c){var d;if(b){if(g)return g.call(b,a,c);for(d=b.length,c=c?0>c?Math.max(0,d+c):c:0;d>c;c++)if(c in b&&b[c]===a)return c}return-1},merge:function(a,b){var c=+b.length,d=0,e=a.length;while(c>d)a[e++]=b[d++];if(c!==c)while(void 0!==b[d])a[e++]=b[d++];return a.length=e,a},grep:function(a,b,c){for(var d,e=[],f=0,g=a.length,h=!c;g>f;f++)d=!b(a[f],f),d!==h&&e.push(a[f]);return e},map:function(a,b,c){var d,f=0,g=a.length,h=r(a),i=[];if(h)for(;g>f;f++)d=b(a[f],f,c),null!=d&&i.push(d);else for(f in a)d=b(a[f],f,c),null!=d&&i.push(d);return e.apply([],i)},guid:1,proxy:function(a,b){var c,e,f;return"string"==typeof b&&(f=a[b],b=a,a=f),m.isFunction(a)?(c=d.call(arguments,2),e=function(){return a.apply(b||this,c.concat(d.call(arguments)))},e.guid=a.guid=a.guid||m.guid++,e):void 0},now:function(){return+new Date},support:k}),m.each("Boolean Number String Function Array Date RegExp Object Error".split(" "),function(a,b){h["[object "+b+"]"]=b.toLowerCase()});function r(a){var b="length"in a&&a.length,c=m.type(a);return"function"===c||m.isWindow(a)?!1:1===a.nodeType&&b?!0:"array"===c||0===b||"number"==typeof b&&b>0&&b-1 in a}var s=function(a){var b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u="sizzle"+1*new Date,v=a.document,w=0,x=0,y=ha(),z=ha(),A=ha(),B=function(a,b){return a===b&&(l=!0),0},C=1<<31,D={}.hasOwnProperty,E=[],F=E.pop,G=E.push,H=E.push,I=E.slice,J=function(a,b){for(var c=0,d=a.length;d>c;c++)if(a[c]===b)return c;return-1},K="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",L="[\\x20\\t\\r\\n\\f]",M="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",N=M.replace("w","w#"),O="\\["+L+"*("+M+")(?:"+L+"*([*^$|!~]?=)"+L+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+N+"))|)"+L+"*\\]",P=":("+M+")(?:\\((('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|((?:\\\\.|[^\\\\()[\\]]|"+O+")*)|.*)\\)|)",Q=new RegExp(L+"+","g"),R=new RegExp("^"+L+"+|((?:^|[^\\\\])(?:\\\\.)*)"+L+"+$","g"),S=new RegExp("^"+L+"*,"+L+"*"),T=new RegExp("^"+L+"*([>+~]|"+L+")"+L+"*"),U=new RegExp("="+L+"*([^\\]'\"]*?)"+L+"*\\]","g"),V=new RegExp(P),W=new RegExp("^"+N+"$"),X={ID:new RegExp("^#("+M+")"),CLASS:new RegExp("^\\.("+M+")"),TAG:new RegExp("^("+M.replace("w","w*")+")"),ATTR:new RegExp("^"+O),PSEUDO:new RegExp("^"+P),CHILD:new RegExp("^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\("+L+"*(even|odd|(([+-]|)(\\d*)n|)"+L+"*(?:([+-]|)"+L+"*(\\d+)|))"+L+"*\\)|)","i"),bool:new RegExp("^(?:"+K+")$","i"),needsContext:new RegExp("^"+L+"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\("+L+"*((?:-\\d)?\\d*)"+L+"*\\)|)(?=[^-]|$)","i")},Y=/^(?:input|select|textarea|button)$/i,Z=/^h\d$/i,$=/^[^{]+\{\s*\[native \w/,_=/^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,aa=/[+~]/,ba=/'|\\/g,ca=new RegExp("\\\\([\\da-f]{1,6}"+L+"?|("+L+")|.)","ig"),da=function(a,b,c){var d="0x"+b-65536;return d!==d||c?b:0>d?String.fromCharCode(d+65536):String.fromCharCode(d>>10|55296,1023&d|56320)},ea=function(){m()};try{H.apply(E=I.call(v.childNodes),v.childNodes),E[v.childNodes.length].nodeType}catch(fa){H={apply:E.length?function(a,b){G.apply(a,I.call(b))}:function(a,b){var c=a.length,d=0;while(a[c++]=b[d++]);a.length=c-1}}}function ga(a,b,d,e){var f,h,j,k,l,o,r,s,w,x;if((b?b.ownerDocument||b:v)!==n&&m(b),b=b||n,d=d||[],k=b.nodeType,"string"!=typeof a||!a||1!==k&&9!==k&&11!==k)return d;if(!e&&p){if(11!==k&&(f=_.exec(a)))if(j=f[1]){if(9===k){if(h=b.getElementById(j),!h||!h.parentNode)return d;if(h.id===j)return d.push(h),d}else if(b.ownerDocument&&(h=b.ownerDocument.getElementById(j))&&t(b,h)&&h.id===j)return d.push(h),d}else{if(f[2])return H.apply(d,b.getElementsByTagName(a)),d;if((j=f[3])&&c.getElementsByClassName)return H.apply(d,b.getElementsByClassName(j)),d}if(c.qsa&&(!q||!q.test(a))){if(s=r=u,w=b,x=1!==k&&a,1===k&&"object"!==b.nodeName.toLowerCase()){o=g(a),(r=b.getAttribute("id"))?s=r.replace(ba,"\\$&"):b.setAttribute("id",s),s="[id='"+s+"'] ",l=o.length;while(l--)o[l]=s+ra(o[l]);w=aa.test(a)&&pa(b.parentNode)||b,x=o.join(",")}if(x)try{return H.apply(d,w.querySelectorAll(x)),d}catch(y){}finally{r||b.removeAttribute("id")}}}return i(a.replace(R,"$1"),b,d,e)}function ha(){var a=[];function b(c,e){return a.push(c+" ")>d.cacheLength&&delete b[a.shift()],b[c+" "]=e}return b}function ia(a){return a[u]=!0,a}function ja(a){var b=n.createElement("div");try{return!!a(b)}catch(c){return!1}finally{b.parentNode&&b.parentNode.removeChild(b),b=null}}function ka(a,b){var c=a.split("|"),e=a.length;while(e--)d.attrHandle[c[e]]=b}function la(a,b){var c=b&&a,d=c&&1===a.nodeType&&1===b.nodeType&&(~b.sourceIndex||C)-(~a.sourceIndex||C);if(d)return d;if(c)while(c=c.nextSibling)if(c===b)return-1;return a?1:-1}function ma(a){return function(b){var c=b.nodeName.toLowerCase();return"input"===c&&b.type===a}}function na(a){return function(b){var c=b.nodeName.toLowerCase();return("input"===c||"button"===c)&&b.type===a}}function oa(a){return ia(function(b){return b=+b,ia(function(c,d){var e,f=a([],c.length,b),g=f.length;while(g--)c[e=f[g]]&&(c[e]=!(d[e]=c[e]))})})}function pa(a){return a&&"undefined"!=typeof a.getElementsByTagName&&a}c=ga.support={},f=ga.isXML=function(a){var b=a&&(a.ownerDocument||a).documentElement;return b?"HTML"!==b.nodeName:!1},m=ga.setDocument=function(a){var b,e,g=a?a.ownerDocument||a:v;return g!==n&&9===g.nodeType&&g.documentElement?(n=g,o=g.documentElement,e=g.defaultView,e&&e!==e.top&&(e.addEventListener?e.addEventListener("unload",ea,!1):e.attachEvent&&e.attachEvent("onunload",ea)),p=!f(g),c.attributes=ja(function(a){return a.className="i",!a.getAttribute("className")}),c.getElementsByTagName=ja(function(a){return a.appendChild(g.createComment("")),!a.getElementsByTagName("*").length}),c.getElementsByClassName=$.test(g.getElementsByClassName),c.getById=ja(function(a){return o.appendChild(a).id=u,!g.getElementsByName||!g.getElementsByName(u).length}),c.getById?(d.find.ID=function(a,b){if("undefined"!=typeof b.getElementById&&p){var c=b.getElementById(a);return c&&c.parentNode?[c]:[]}},d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){return a.getAttribute("id")===b}}):(delete d.find.ID,d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){var c="undefined"!=typeof a.getAttributeNode&&a.getAttributeNode("id");return c&&c.value===b}}),d.find.TAG=c.getElementsByTagName?function(a,b){return"undefined"!=typeof b.getElementsByTagName?b.getElementsByTagName(a):c.qsa?b.querySelectorAll(a):void 0}:function(a,b){var c,d=[],e=0,f=b.getElementsByTagName(a);if("*"===a){while(c=f[e++])1===c.nodeType&&d.push(c);return d}return f},d.find.CLASS=c.getElementsByClassName&&function(a,b){return p?b.getElementsByClassName(a):void 0},r=[],q=[],(c.qsa=$.test(g.querySelectorAll))&&(ja(function(a){o.appendChild(a).innerHTML="<a id='"+u+"'></a><select id='"+u+"-\f]' msallowcapture=''><option selected=''></option></select>",a.querySelectorAll("[msallowcapture^='']").length&&q.push("[*^$]="+L+"*(?:''|\"\")"),a.querySelectorAll("[selected]").length||q.push("\\["+L+"*(?:value|"+K+")"),a.querySelectorAll("[id~="+u+"-]").length||q.push("~="),a.querySelectorAll(":checked").length||q.push(":checked"),a.querySelectorAll("a#"+u+"+*").length||q.push(".#.+[+~]")}),ja(function(a){var b=g.createElement("input");b.setAttribute("type","hidden"),a.appendChild(b).setAttribute("name","D"),a.querySelectorAll("[name=d]").length&&q.push("name"+L+"*[*^$|!~]?="),a.querySelectorAll(":enabled").length||q.push(":enabled",":disabled"),a.querySelectorAll("*,:x"),q.push(",.*:")})),(c.matchesSelector=$.test(s=o.matches||o.webkitMatchesSelector||o.mozMatchesSelector||o.oMatchesSelector||o.msMatchesSelector))&&ja(function(a){c.disconnectedMatch=s.call(a,"div"),s.call(a,"[s!='']:x"),r.push("!=",P)}),q=q.length&&new RegExp(q.join("|")),r=r.length&&new RegExp(r.join("|")),b=$.test(o.compareDocumentPosition),t=b||$.test(o.contains)?function(a,b){var c=9===a.nodeType?a.documentElement:a,d=b&&b.parentNode;return a===d||!(!d||1!==d.nodeType||!(c.contains?c.contains(d):a.compareDocumentPosition&&16&a.compareDocumentPosition(d)))}:function(a,b){if(b)while(b=b.parentNode)if(b===a)return!0;return!1},B=b?function(a,b){if(a===b)return l=!0,0;var d=!a.compareDocumentPosition-!b.compareDocumentPosition;return d?d:(d=(a.ownerDocument||a)===(b.ownerDocument||b)?a.compareDocumentPosition(b):1,1&d||!c.sortDetached&&b.compareDocumentPosition(a)===d?a===g||a.ownerDocument===v&&t(v,a)?-1:b===g||b.ownerDocument===v&&t(v,b)?1:k?J(k,a)-J(k,b):0:4&d?-1:1)}:function(a,b){if(a===b)return l=!0,0;var c,d=0,e=a.parentNode,f=b.parentNode,h=[a],i=[b];if(!e||!f)return a===g?-1:b===g?1:e?-1:f?1:k?J(k,a)-J(k,b):0;if(e===f)return la(a,b);c=a;while(c=c.parentNode)h.unshift(c);c=b;while(c=c.parentNode)i.unshift(c);while(h[d]===i[d])d++;return d?la(h[d],i[d]):h[d]===v?-1:i[d]===v?1:0},g):n},ga.matches=function(a,b){return ga(a,null,null,b)},ga.matchesSelector=function(a,b){if((a.ownerDocument||a)!==n&&m(a),b=b.replace(U,"='$1']"),!(!c.matchesSelector||!p||r&&r.test(b)||q&&q.test(b)))try{var d=s.call(a,b);if(d||c.disconnectedMatch||a.document&&11!==a.document.nodeType)return d}catch(e){}return ga(b,n,null,[a]).length>0},ga.contains=function(a,b){return(a.ownerDocument||a)!==n&&m(a),t(a,b)},ga.attr=function(a,b){(a.ownerDocument||a)!==n&&m(a);var e=d.attrHandle[b.toLowerCase()],f=e&&D.call(d.attrHandle,b.toLowerCase())?e(a,b,!p):void 0;return void 0!==f?f:c.attributes||!p?a.getAttribute(b):(f=a.getAttributeNode(b))&&f.specified?f.value:null},ga.error=function(a){throw new Error("Syntax error, unrecognized expression: "+a)},ga.uniqueSort=function(a){var b,d=[],e=0,f=0;if(l=!c.detectDuplicates,k=!c.sortStable&&a.slice(0),a.sort(B),l){while(b=a[f++])b===a[f]&&(e=d.push(f));while(e--)a.splice(d[e],1)}return k=null,a},e=ga.getText=function(a){var b,c="",d=0,f=a.nodeType;if(f){if(1===f||9===f||11===f){if("string"==typeof a.textContent)return a.textContent;for(a=a.firstChild;a;a=a.nextSibling)c+=e(a)}else if(3===f||4===f)return a.nodeValue}else while(b=a[d++])c+=e(b);return c},d=ga.selectors={cacheLength:50,createPseudo:ia,match:X,attrHandle:{},find:{},relative:{">":{dir:"parentNode",first:!0}," ":{dir:"parentNode"},"+":{dir:"previousSibling",first:!0},"~":{dir:"previousSibling"}},preFilter:{ATTR:function(a){return a[1]=a[1].replace(ca,da),a[3]=(a[3]||a[4]||a[5]||"").replace(ca,da),"~="===a[2]&&(a[3]=" "+a[3]+" "),a.slice(0,4)},CHILD:function(a){return a[1]=a[1].toLowerCase(),"nth"===a[1].slice(0,3)?(a[3]||ga.error(a[0]),a[4]=+(a[4]?a[5]+(a[6]||1):2*("even"===a[3]||"odd"===a[3])),a[5]=+(a[7]+a[8]||"odd"===a[3])):a[3]&&ga.error(a[0]),a},PSEUDO:function(a){var b,c=!a[6]&&a[2];return X.CHILD.test(a[0])?null:(a[3]?a[2]=a[4]||a[5]||"":c&&V.test(c)&&(b=g(c,!0))&&(b=c.indexOf(")",c.length-b)-c.length)&&(a[0]=a[0].slice(0,b),a[2]=c.slice(0,b)),a.slice(0,3))}},filter:{TAG:function(a){var b=a.replace(ca,da).toLowerCase();return"*"===a?function(){return!0}:function(a){return a.nodeName&&a.nodeName.toLowerCase()===b}},CLASS:function(a){var b=y[a+" "];return b||(b=new RegExp("(^|"+L+")"+a+"("+L+"|$)"))&&y(a,function(a){return b.test("string"==typeof a.className&&a.className||"undefined"!=typeof a.getAttribute&&a.getAttribute("class")||"")})},ATTR:function(a,b,c){return function(d){var e=ga.attr(d,a);return null==e?"!="===b:b?(e+="","="===b?e===c:"!="===b?e!==c:"^="===b?c&&0===e.indexOf(c):"*="===b?c&&e.indexOf(c)>-1:"$="===b?c&&e.slice(-c.length)===c:"~="===b?(" "+e.replace(Q," ")+" ").indexOf(c)>-1:"|="===b?e===c||e.slice(0,c.length+1)===c+"-":!1):!0}},CHILD:function(a,b,c,d,e){var f="nth"!==a.slice(0,3),g="last"!==a.slice(-4),h="of-type"===b;return 1===d&&0===e?function(a){return!!a.parentNode}:function(b,c,i){var j,k,l,m,n,o,p=f!==g?"nextSibling":"previousSibling",q=b.parentNode,r=h&&b.nodeName.toLowerCase(),s=!i&&!h;if(q){if(f){while(p){l=b;while(l=l[p])if(h?l.nodeName.toLowerCase()===r:1===l.nodeType)return!1;o=p="only"===a&&!o&&"nextSibling"}return!0}if(o=[g?q.firstChild:q.lastChild],g&&s){k=q[u]||(q[u]={}),j=k[a]||[],n=j[0]===w&&j[1],m=j[0]===w&&j[2],l=n&&q.childNodes[n];while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if(1===l.nodeType&&++m&&l===b){k[a]=[w,n,m];break}}else if(s&&(j=(b[u]||(b[u]={}))[a])&&j[0]===w)m=j[1];else while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if((h?l.nodeName.toLowerCase()===r:1===l.nodeType)&&++m&&(s&&((l[u]||(l[u]={}))[a]=[w,m]),l===b))break;return m-=e,m===d||m%d===0&&m/d>=0}}},PSEUDO:function(a,b){var c,e=d.pseudos[a]||d.setFilters[a.toLowerCase()]||ga.error("unsupported pseudo: "+a);return e[u]?e(b):e.length>1?(c=[a,a,"",b],d.setFilters.hasOwnProperty(a.toLowerCase())?ia(function(a,c){var d,f=e(a,b),g=f.length;while(g--)d=J(a,f[g]),a[d]=!(c[d]=f[g])}):function(a){return e(a,0,c)}):e}},pseudos:{not:ia(function(a){var b=[],c=[],d=h(a.replace(R,"$1"));return d[u]?ia(function(a,b,c,e){var f,g=d(a,null,e,[]),h=a.length;while(h--)(f=g[h])&&(a[h]=!(b[h]=f))}):function(a,e,f){return b[0]=a,d(b,null,f,c),b[0]=null,!c.pop()}}),has:ia(function(a){return function(b){return ga(a,b).length>0}}),contains:ia(function(a){return a=a.replace(ca,da),function(b){return(b.textContent||b.innerText||e(b)).indexOf(a)>-1}}),lang:ia(function(a){return W.test(a||"")||ga.error("unsupported lang: "+a),a=a.replace(ca,da).toLowerCase(),function(b){var c;do if(c=p?b.lang:b.getAttribute("xml:lang")||b.getAttribute("lang"))return c=c.toLowerCase(),c===a||0===c.indexOf(a+"-");while((b=b.parentNode)&&1===b.nodeType);return!1}}),target:function(b){var c=a.location&&a.location.hash;return c&&c.slice(1)===b.id},root:function(a){return a===o},focus:function(a){return a===n.activeElement&&(!n.hasFocus||n.hasFocus())&&!!(a.type||a.href||~a.tabIndex)},enabled:function(a){return a.disabled===!1},disabled:function(a){return a.disabled===!0},checked:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&!!a.checked||"option"===b&&!!a.selected},selected:function(a){return a.parentNode&&a.parentNode.selectedIndex,a.selected===!0},empty:function(a){for(a=a.firstChild;a;a=a.nextSibling)if(a.nodeType<6)return!1;return!0},parent:function(a){return!d.pseudos.empty(a)},header:function(a){return Z.test(a.nodeName)},input:function(a){return Y.test(a.nodeName)},button:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&"button"===a.type||"button"===b},text:function(a){var b;return"input"===a.nodeName.toLowerCase()&&"text"===a.type&&(null==(b=a.getAttribute("type"))||"text"===b.toLowerCase())},first:oa(function(){return[0]}),last:oa(function(a,b){return[b-1]}),eq:oa(function(a,b,c){return[0>c?c+b:c]}),even:oa(function(a,b){for(var c=0;b>c;c+=2)a.push(c);return a}),odd:oa(function(a,b){for(var c=1;b>c;c+=2)a.push(c);return a}),lt:oa(function(a,b,c){for(var d=0>c?c+b:c;--d>=0;)a.push(d);return a}),gt:oa(function(a,b,c){for(var d=0>c?c+b:c;++d<b;)a.push(d);return a})}},d.pseudos.nth=d.pseudos.eq;for(b in{radio:!0,checkbox:!0,file:!0,password:!0,image:!0})d.pseudos[b]=ma(b);for(b in{submit:!0,reset:!0})d.pseudos[b]=na(b);function qa(){}qa.prototype=d.filters=d.pseudos,d.setFilters=new qa,g=ga.tokenize=function(a,b){var c,e,f,g,h,i,j,k=z[a+" "];if(k)return b?0:k.slice(0);h=a,i=[],j=d.preFilter;while(h){(!c||(e=S.exec(h)))&&(e&&(h=h.slice(e[0].length)||h),i.push(f=[])),c=!1,(e=T.exec(h))&&(c=e.shift(),f.push({value:c,type:e[0].replace(R," ")}),h=h.slice(c.length));for(g in d.filter)!(e=X[g].exec(h))||j[g]&&!(e=j[g](e))||(c=e.shift(),f.push({value:c,type:g,matches:e}),h=h.slice(c.length));if(!c)break}return b?h.length:h?ga.error(a):z(a,i).slice(0)};function ra(a){for(var b=0,c=a.length,d="";c>b;b++)d+=a[b].value;return d}function sa(a,b,c){var d=b.dir,e=c&&"parentNode"===d,f=x++;return b.first?function(b,c,f){while(b=b[d])if(1===b.nodeType||e)return a(b,c,f)}:function(b,c,g){var h,i,j=[w,f];if(g){while(b=b[d])if((1===b.nodeType||e)&&a(b,c,g))return!0}else while(b=b[d])if(1===b.nodeType||e){if(i=b[u]||(b[u]={}),(h=i[d])&&h[0]===w&&h[1]===f)return j[2]=h[2];if(i[d]=j,j[2]=a(b,c,g))return!0}}}function ta(a){return a.length>1?function(b,c,d){var e=a.length;while(e--)if(!a[e](b,c,d))return!1;return!0}:a[0]}function ua(a,b,c){for(var d=0,e=b.length;e>d;d++)ga(a,b[d],c);return c}function va(a,b,c,d,e){for(var f,g=[],h=0,i=a.length,j=null!=b;i>h;h++)(f=a[h])&&(!c||c(f,d,e))&&(g.push(f),j&&b.push(h));return g}function wa(a,b,c,d,e,f){return d&&!d[u]&&(d=wa(d)),e&&!e[u]&&(e=wa(e,f)),ia(function(f,g,h,i){var j,k,l,m=[],n=[],o=g.length,p=f||ua(b||"*",h.nodeType?[h]:h,[]),q=!a||!f&&b?p:va(p,m,a,h,i),r=c?e||(f?a:o||d)?[]:g:q;if(c&&c(q,r,h,i),d){j=va(r,n),d(j,[],h,i),k=j.length;while(k--)(l=j[k])&&(r[n[k]]=!(q[n[k]]=l))}if(f){if(e||a){if(e){j=[],k=r.length;while(k--)(l=r[k])&&j.push(q[k]=l);e(null,r=[],j,i)}k=r.length;while(k--)(l=r[k])&&(j=e?J(f,l):m[k])>-1&&(f[j]=!(g[j]=l))}}else r=va(r===g?r.splice(o,r.length):r),e?e(null,g,r,i):H.apply(g,r)})}function xa(a){for(var b,c,e,f=a.length,g=d.relative[a[0].type],h=g||d.relative[" "],i=g?1:0,k=sa(function(a){return a===b},h,!0),l=sa(function(a){return J(b,a)>-1},h,!0),m=[function(a,c,d){var e=!g&&(d||c!==j)||((b=c).nodeType?k(a,c,d):l(a,c,d));return b=null,e}];f>i;i++)if(c=d.relative[a[i].type])m=[sa(ta(m),c)];else{if(c=d.filter[a[i].type].apply(null,a[i].matches),c[u]){for(e=++i;f>e;e++)if(d.relative[a[e].type])break;return wa(i>1&&ta(m),i>1&&ra(a.slice(0,i-1).concat({value:" "===a[i-2].type?"*":""})).replace(R,"$1"),c,e>i&&xa(a.slice(i,e)),f>e&&xa(a=a.slice(e)),f>e&&ra(a))}m.push(c)}return ta(m)}function ya(a,b){var c=b.length>0,e=a.length>0,f=function(f,g,h,i,k){var l,m,o,p=0,q="0",r=f&&[],s=[],t=j,u=f||e&&d.find.TAG("*",k),v=w+=null==t?1:Math.random()||.1,x=u.length;for(k&&(j=g!==n&&g);q!==x&&null!=(l=u[q]);q++){if(e&&l){m=0;while(o=a[m++])if(o(l,g,h)){i.push(l);break}k&&(w=v)}c&&((l=!o&&l)&&p--,f&&r.push(l))}if(p+=q,c&&q!==p){m=0;while(o=b[m++])o(r,s,g,h);if(f){if(p>0)while(q--)r[q]||s[q]||(s[q]=F.call(i));s=va(s)}H.apply(i,s),k&&!f&&s.length>0&&p+b.length>1&&ga.uniqueSort(i)}return k&&(w=v,j=t),r};return c?ia(f):f}return h=ga.compile=function(a,b){var c,d=[],e=[],f=A[a+" "];if(!f){b||(b=g(a)),c=b.length;while(c--)f=xa(b[c]),f[u]?d.push(f):e.push(f);f=A(a,ya(e,d)),f.selector=a}return f},i=ga.select=function(a,b,e,f){var i,j,k,l,m,n="function"==typeof a&&a,o=!f&&g(a=n.selector||a);if(e=e||[],1===o.length){if(j=o[0]=o[0].slice(0),j.length>2&&"ID"===(k=j[0]).type&&c.getById&&9===b.nodeType&&p&&d.relative[j[1].type]){if(b=(d.find.ID(k.matches[0].replace(ca,da),b)||[])[0],!b)return e;n&&(b=b.parentNode),a=a.slice(j.shift().value.length)}i=X.needsContext.test(a)?0:j.length;while(i--){if(k=j[i],d.relative[l=k.type])break;if((m=d.find[l])&&(f=m(k.matches[0].replace(ca,da),aa.test(j[0].type)&&pa(b.parentNode)||b))){if(j.splice(i,1),a=f.length&&ra(j),!a)return H.apply(e,f),e;break}}}return(n||h(a,o))(f,b,!p,e,aa.test(a)&&pa(b.parentNode)||b),e},c.sortStable=u.split("").sort(B).join("")===u,c.detectDuplicates=!!l,m(),c.sortDetached=ja(function(a){return 1&a.compareDocumentPosition(n.createElement("div"))}),ja(function(a){return a.innerHTML="<a href='#'></a>","#"===a.firstChild.getAttribute("href")})||ka("type|href|height|width",function(a,b,c){return c?void 0:a.getAttribute(b,"type"===b.toLowerCase()?1:2)}),c.attributes&&ja(function(a){return a.innerHTML="<input/>",a.firstChild.setAttribute("value",""),""===a.firstChild.getAttribute("value")})||ka("value",function(a,b,c){return c||"input"!==a.nodeName.toLowerCase()?void 0:a.defaultValue}),ja(function(a){return null==a.getAttribute("disabled")})||ka(K,function(a,b,c){var d;return c?void 0:a[b]===!0?b.toLowerCase():(d=a.getAttributeNode(b))&&d.specified?d.value:null}),ga}(a);m.find=s,m.expr=s.selectors,m.expr[":"]=m.expr.pseudos,m.unique=s.uniqueSort,m.text=s.getText,m.isXMLDoc=s.isXML,m.contains=s.contains;var t=m.expr.match.needsContext,u=/^<(\w+)\s*\/?>(?:<\/\1>|)$/,v=/^.[^:#\[\.,]*$/;function w(a,b,c){if(m.isFunction(b))return m.grep(a,function(a,d){return!!b.call(a,d,a)!==c});if(b.nodeType)return m.grep(a,function(a){return a===b!==c});if("string"==typeof b){if(v.test(b))return m.filter(b,a,c);b=m.filter(b,a)}return m.grep(a,function(a){return m.inArray(a,b)>=0!==c})}m.filter=function(a,b,c){var d=b[0];return c&&(a=":not("+a+")"),1===b.length&&1===d.nodeType?m.find.matchesSelector(d,a)?[d]:[]:m.find.matches(a,m.grep(b,function(a){return 1===a.nodeType}))},m.fn.extend({find:function(a){var b,c=[],d=this,e=d.length;if("string"!=typeof a)return this.pushStack(m(a).filter(function(){for(b=0;e>b;b++)if(m.contains(d[b],this))return!0}));for(b=0;e>b;b++)m.find(a,d[b],c);return c=this.pushStack(e>1?m.unique(c):c),c.selector=this.selector?this.selector+" "+a:a,c},filter:function(a){return this.pushStack(w(this,a||[],!1))},not:function(a){return this.pushStack(w(this,a||[],!0))},is:function(a){return!!w(this,"string"==typeof a&&t.test(a)?m(a):a||[],!1).length}});var x,y=a.document,z=/^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,A=m.fn.init=function(a,b){var c,d;if(!a)return this;if("string"==typeof a){if(c="<"===a.charAt(0)&&">"===a.charAt(a.length-1)&&a.length>=3?[null,a,null]:z.exec(a),!c||!c[1]&&b)return!b||b.jquery?(b||x).find(a):this.constructor(b).find(a);if(c[1]){if(b=b instanceof m?b[0]:b,m.merge(this,m.parseHTML(c[1],b&&b.nodeType?b.ownerDocument||b:y,!0)),u.test(c[1])&&m.isPlainObject(b))for(c in b)m.isFunction(this[c])?this[c](b[c]):this.attr(c,b[c]);return this}if(d=y.getElementById(c[2]),d&&d.parentNode){if(d.id!==c[2])return x.find(a);this.length=1,this[0]=d}return this.context=y,this.selector=a,this}return a.nodeType?(this.context=this[0]=a,this.length=1,this):m.isFunction(a)?"undefined"!=typeof x.ready?x.ready(a):a(m):(void 0!==a.selector&&(this.selector=a.selector,this.context=a.context),m.makeArray(a,this))};A.prototype=m.fn,x=m(y);var B=/^(?:parents|prev(?:Until|All))/,C={children:!0,contents:!0,next:!0,prev:!0};m.extend({dir:function(a,b,c){var d=[],e=a[b];while(e&&9!==e.nodeType&&(void 0===c||1!==e.nodeType||!m(e).is(c)))1===e.nodeType&&d.push(e),e=e[b];return d},sibling:function(a,b){for(var c=[];a;a=a.nextSibling)1===a.nodeType&&a!==b&&c.push(a);return c}}),m.fn.extend({has:function(a){var b,c=m(a,this),d=c.length;return this.filter(function(){for(b=0;d>b;b++)if(m.contains(this,c[b]))return!0})},closest:function(a,b){for(var c,d=0,e=this.length,f=[],g=t.test(a)||"string"!=typeof a?m(a,b||this.context):0;e>d;d++)for(c=this[d];c&&c!==b;c=c.parentNode)if(c.nodeType<11&&(g?g.index(c)>-1:1===c.nodeType&&m.find.matchesSelector(c,a))){f.push(c);break}return this.pushStack(f.length>1?m.unique(f):f)},index:function(a){return a?"string"==typeof a?m.inArray(this[0],m(a)):m.inArray(a.jquery?a[0]:a,this):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(a,b){return this.pushStack(m.unique(m.merge(this.get(),m(a,b))))},addBack:function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}});function D(a,b){do a=a[b];while(a&&1!==a.nodeType);return a}m.each({parent:function(a){var b=a.parentNode;return b&&11!==b.nodeType?b:null},parents:function(a){return m.dir(a,"parentNode")},parentsUntil:function(a,b,c){return m.dir(a,"parentNode",c)},next:function(a){return D(a,"nextSibling")},prev:function(a){return D(a,"previousSibling")},nextAll:function(a){return m.dir(a,"nextSibling")},prevAll:function(a){return m.dir(a,"previousSibling")},nextUntil:function(a,b,c){return m.dir(a,"nextSibling",c)},prevUntil:function(a,b,c){return m.dir(a,"previousSibling",c)},siblings:function(a){return m.sibling((a.parentNode||{}).firstChild,a)},children:function(a){return m.sibling(a.firstChild)},contents:function(a){return m.nodeName(a,"iframe")?a.contentDocument||a.contentWindow.document:m.merge([],a.childNodes)}},function(a,b){m.fn[a]=function(c,d){var e=m.map(this,b,c);return"Until"!==a.slice(-5)&&(d=c),d&&"string"==typeof d&&(e=m.filter(d,e)),this.length>1&&(C[a]||(e=m.unique(e)),B.test(a)&&(e=e.reverse())),this.pushStack(e)}});var E=/\S+/g,F={};function G(a){var b=F[a]={};return m.each(a.match(E)||[],function(a,c){b[c]=!0}),b}m.Callbacks=function(a){a="string"==typeof a?F[a]||G(a):m.extend({},a);var b,c,d,e,f,g,h=[],i=!a.once&&[],j=function(l){for(c=a.memory&&l,d=!0,f=g||0,g=0,e=h.length,b=!0;h&&e>f;f++)if(h[f].apply(l[0],l[1])===!1&&a.stopOnFalse){c=!1;break}b=!1,h&&(i?i.length&&j(i.shift()):c?h=[]:k.disable())},k={add:function(){if(h){var d=h.length;!function f(b){m.each(b,function(b,c){var d=m.type(c);"function"===d?a.unique&&k.has(c)||h.push(c):c&&c.length&&"string"!==d&&f(c)})}(arguments),b?e=h.length:c&&(g=d,j(c))}return this},remove:function(){return h&&m.each(arguments,function(a,c){var d;while((d=m.inArray(c,h,d))>-1)h.splice(d,1),b&&(e>=d&&e--,f>=d&&f--)}),this},has:function(a){return a?m.inArray(a,h)>-1:!(!h||!h.length)},empty:function(){return h=[],e=0,this},disable:function(){return h=i=c=void 0,this},disabled:function(){return!h},lock:function(){return i=void 0,c||k.disable(),this},locked:function(){return!i},fireWith:function(a,c){return!h||d&&!i||(c=c||[],c=[a,c.slice?c.slice():c],b?i.push(c):j(c)),this},fire:function(){return k.fireWith(this,arguments),this},fired:function(){return!!d}};return k},m.extend({Deferred:function(a){var b=[["resolve","done",m.Callbacks("once memory"),"resolved"],["reject","fail",m.Callbacks("once memory"),"rejected"],["notify","progress",m.Callbacks("memory")]],c="pending",d={state:function(){return c},always:function(){return e.done(arguments).fail(arguments),this},then:function(){var a=arguments;return m.Deferred(function(c){m.each(b,function(b,f){var g=m.isFunction(a[b])&&a[b];e[f[1]](function(){var a=g&&g.apply(this,arguments);a&&m.isFunction(a.promise)?a.promise().done(c.resolve).fail(c.reject).progress(c.notify):c[f[0]+"With"](this===d?c.promise():this,g?[a]:arguments)})}),a=null}).promise()},promise:function(a){return null!=a?m.extend(a,d):d}},e={};return d.pipe=d.then,m.each(b,function(a,f){var g=f[2],h=f[3];d[f[1]]=g.add,h&&g.add(function(){c=h},b[1^a][2].disable,b[2][2].lock),e[f[0]]=function(){return e[f[0]+"With"](this===e?d:this,arguments),this},e[f[0]+"With"]=g.fireWith}),d.promise(e),a&&a.call(e,e),e},when:function(a){var b=0,c=d.call(arguments),e=c.length,f=1!==e||a&&m.isFunction(a.promise)?e:0,g=1===f?a:m.Deferred(),h=function(a,b,c){return function(e){b[a]=this,c[a]=arguments.length>1?d.call(arguments):e,c===i?g.notifyWith(b,c):--f||g.resolveWith(b,c)}},i,j,k;if(e>1)for(i=new Array(e),j=new Array(e),k=new Array(e);e>b;b++)c[b]&&m.isFunction(c[b].promise)?c[b].promise().done(h(b,k,c)).fail(g.reject).progress(h(b,j,i)):--f;return f||g.resolveWith(k,c),g.promise()}});var H;m.fn.ready=function(a){return m.ready.promise().done(a),this},m.extend({isReady:!1,readyWait:1,holdReady:function(a){a?m.readyWait++:m.ready(!0)},ready:function(a){if(a===!0?!--m.readyWait:!m.isReady){if(!y.body)return setTimeout(m.ready);m.isReady=!0,a!==!0&&--m.readyWait>0||(H.resolveWith(y,[m]),m.fn.triggerHandler&&(m(y).triggerHandler("ready"),m(y).off("ready")))}}});function I(){y.addEventListener?(y.removeEventListener("DOMContentLoaded",J,!1),a.removeEventListener("load",J,!1)):(y.detachEvent("onreadystatechange",J),a.detachEvent("onload",J))}function J(){(y.addEventListener||"load"===event.type||"complete"===y.readyState)&&(I(),m.ready())}m.ready.promise=function(b){if(!H)if(H=m.Deferred(),"complete"===y.readyState)setTimeout(m.ready);else if(y.addEventListener)y.addEventListener("DOMContentLoaded",J,!1),a.addEventListener("load",J,!1);else{y.attachEvent("onreadystatechange",J),a.attachEvent("onload",J);var c=!1;try{c=null==a.frameElement&&y.documentElement}catch(d){}c&&c.doScroll&&!function e(){if(!m.isReady){try{c.doScroll("left")}catch(a){return setTimeout(e,50)}I(),m.ready()}}()}return H.promise(b)};var K="undefined",L;for(L in m(k))break;k.ownLast="0"!==L,k.inlineBlockNeedsLayout=!1,m(function(){var a,b,c,d;c=y.getElementsByTagName("body")[0],c&&c.style&&(b=y.createElement("div"),d=y.createElement("div"),d.style.cssText="position:absolute;border:0;width:0;height:0;top:0;left:-9999px",c.appendChild(d).appendChild(b),typeof b.style.zoom!==K&&(b.style.cssText="display:inline;margin:0;border:0;padding:1px;width:1px;zoom:1",k.inlineBlockNeedsLayout=a=3===b.offsetWidth,a&&(c.style.zoom=1)),c.removeChild(d))}),function(){var a=y.createElement("div");if(null==k.deleteExpando){k.deleteExpando=!0;try{delete a.test}catch(b){k.deleteExpando=!1}}a=null}(),m.acceptData=function(a){var b=m.noData[(a.nodeName+" ").toLowerCase()],c=+a.nodeType||1;return 1!==c&&9!==c?!1:!b||b!==!0&&a.getAttribute("classid")===b};var M=/^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,N=/([A-Z])/g;function O(a,b,c){if(void 0===c&&1===a.nodeType){var d="data-"+b.replace(N,"-$1").toLowerCase();if(c=a.getAttribute(d),"string"==typeof c){try{c="true"===c?!0:"false"===c?!1:"null"===c?null:+c+""===c?+c:M.test(c)?m.parseJSON(c):c}catch(e){}m.data(a,b,c)}else c=void 0}return c}function P(a){var b;for(b in a)if(("data"!==b||!m.isEmptyObject(a[b]))&&"toJSON"!==b)return!1;
@@ -1623,6 +1622,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -1651,6 +1651,12 @@ summary {
 }
 }
 
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
 
 .toc-content {
   padding-left: 30px;
@@ -1721,9 +1727,9 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Diploidocus V0.7.0 Documentation</h1>
+<h1 class="title toc-ignore">Diploidocus V0.9.0 Documentation</h1>
 <h4 class="author">Richard J. Edwards</h4>
-<h4 class="date">2020-02-04</h4>
+<h4 class="date">2020-02-25</h4>
 
 </div>
 
@@ -1764,19 +1770,21 @@ runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere
 basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
 summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
 genomesize=INT  : Haploid genome size (bp) [0]
-dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
-tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
-### ~ Genome size prediction &amp; Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
+scdepth=INT     : Single copy (&quot;diploid&quot;) read depth. If zero, will use SC BUSCO mode [0]
 bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
 reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
 readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
+dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
+tmpdir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
+### ~ Genome size prediction options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
 readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
 quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
 10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
-scdepth=INT     : Single copy (&quot;diploid&quot;) read depth. If zero, will use SC BUSCO mode [0]
 minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
+minlen=INT      : Minimum scaffold lenght to avoid low quality filter [500]
 phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
 phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
 phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -1784,6 +1792,11 @@ zeroadjust=T/F  : Add zero coverage bases to purge_haplotigs LowPerc and adjust 
 includegaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
 mingap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
 purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
+diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+deptrim=INT     : Trim termini with &lt;X depth [1]
+mintrim=INT     : Min length of terminal depth trimming [1000]
 ### ~ Telomere options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 telofwd=X       : Regex for 5' telomere sequence search [C{2,4}T{1,2}A{1,3}]
 telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
@@ -1791,9 +1804,14 @@ telosize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [5
 teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
 ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
-screenmode=X    : Action to take following vecscreen searching (report/mask/trim/purge) [report]
+screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
 minvechit=INT   : Minimum length for a screendb match [50]
 efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
+vecpurge=PERC   : Remove any scaffolds with &gt;= PERC % vector coverage [0]
+vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
+vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
 ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
 seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -1812,8 +1830,25 @@ See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not
 <p>Details for the main Diploidocus run modes are given below.</p>
 <p><strong>NOTE:</strong> Diploidocus is under development and documentation might be a bit sparse. Please contact the author or post an issue on GitHub if you have any questions.</p>
 <hr />
+<div id="cycled-diploidocus-filtering-runmodedipcycle" class="section level2">
+<h2><span class="header-section-number">3.1</span> Cycled Diploidocus filtering [runmode=dipcycle]</h2>
+<p>Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. <code>$BASEFILE.1.*</code>, using the <code>*.diploidocus.fasta</code> output from the previous cycle as input. Cycling will continue until no further scaffolds are filtered into either <code>*.quarantine.fasta</code> or <code>*.junk.fasta</code>.</p>
+<p>Output for each cycle will be initially generated in the run directory but then moved to a <code>dipcycle_$BASEFILE</code> directory upon completion.</p>
+<p>Final outputs from the final cycle will then be compiled under the original <code>$BASEFILE</code> prefix:</p>
+<ul>
+<li><code>$BASEFILE.diploidocus.tdt</code> = Final ratings for the input scaffolds. This is like the single cycle output with an additional <code>Cycle</code> field containing the last cycle this scaffold was processed in.</li>
+<li><code>$BASEFILE.ratings.tdt</code> = Reduced final ratings output for the input scaffolds (<code>SeqName</code>,<code>SeqLen</code>,<code>ScreenPerc</code>,<code>Class</code>,<code>Rating</code>,<code>Set</code>,<code>Cycle</code>).</li>
+<li><code>$BASEFILE.diploidocus.fasta</code> = the scaffolds kept from the final Diploidocus cycle</li>
+<li><code>$BASEFILE.core.fasta</code> = the same set of scaffolds, minus repeats</li>
+<li><code>$BASEFILE.quarantine.fasta</code> = concatenated purged scaffolds from all Diploidocus cycles.</li>
+<li><code>$BASEFILE.junk.fasta</code> = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.</li>
+</ul>
+<p><strong>NOTE:</strong> Contents for these four <code>*.fasta</code> files are summarised in the main log. Individual purge cycles have their own log files in the <code>dipcycle_$BASEFILE</code> directory.</p>
+<p>See <code>runmode=diploidocus</code> documentation for more details.</p>
+<hr />
+</div>
 <div id="main-diploidocus-filtering-runmodediploidocus" class="section level2">
-<h2><span class="header-section-number">3.1</span> Main Diploidocus filtering [runmode=diploidocus]</h2>
+<h2><span class="header-section-number">3.2</span> Main Diploidocus filtering [runmode=diploidocus]</h2>
 <p>Diploidocus builds on the PurgeHaplotigs classifications to use the depth bins, KAT assembly kmer frequencies and BUSCO results to reclassify scaffolds and partition them into:</p>
 <ul>
 <li><code>*.diploidocus.fasta</code> = the scaffolds kept for the next round of PurgeHap</li>
@@ -1821,31 +1856,440 @@ See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not
 <li><code>*.junk.fasta</code> = low coverage scaffolds, removed as junk</li>
 <li><code>*.quarantine.fasta</code> = putative haplotigs, removed from the assembly but retained for reference.</li>
 </ul>
-<p><strong>NOTE:</strong> PurgeHaplotigs was not using zero coverage bases in its percentages. This is now fixed by Diploidocus.</p>
-<p><em>Further details coming soon!</em></p>
+<p>Unless <code>summarise=F</code>, summary statistics for sequence data before and after processing will be included in the run log.</p>
+<p>In addition, two key output tables are generated:</p>
+<ul>
+<li><code>*.diploidocus.tdt</code> = full compiled data and classification. (See field descriptions, below.)</li>
+<li><code>*.rating.tdt</code> = reduced data and classification for easier extraction of sequence names with <code>grep</code> etc.</li>
+</ul>
+<p>All output files are named with the <code>basefile=X</code> prefix. This is the prefix of the assembly given with <code>seqin=FILE</code> if no <code>basefile=X</code> setting is provided.</p>
+<div id="dependencies" class="section level3">
+<h3><span class="header-section-number">3.2.1</span> Dependencies</h3>
+<p>Diploidocus needs the following programs installed for full functionality:</p>
+<ul>
+<li><code>bbmap</code></li>
+<li><code>blast+</code></li>
+<li><code>kat</code></li>
+<li><code>minimap2</code></li>
+<li><code>purge_haplotigs</code></li>
+<li><code>samtools</code></li>
+</ul>
+</div>
+<div id="input-and-assembly-processing" class="section level3">
+<h3><span class="header-section-number">3.2.2</span> Input and assembly processing</h3>
+<p>The main inputs for Diploidocus rating and filtering are:</p>
+<ul>
+<li><code>seqin=FILE</code> : Input sequence assembly to tidy [Required].</li>
+<li><code>screendb=FILE</code> : File of vectors/contaminants to screen out using blastn and VecScreen rules [Optional].</li>
+<li><code>reads=FILELIST</code>: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with <code>bam=FILE</code>. (This will be preferentially used if found, and defaults to <code>$BASEFILE.bam</code>.) Read types (pb/ont) for each file are set with <code>readtype=LIST</code>, which will be cycled if shorter (default=<code>ont</code>). Optionally, the pre-calculated total read length can be provided with <code>readbp=INT</code> and/or the pre-calculated (haploid) genome size can be provided with <code>genomesize=INT</code>.</li>
+<li><code>busco=TSVFILE</code> : BUSCO full table [<code>full_table_$BASEFILE.busco.tsv</code>] used for calculating single copy (“diploid”) read depth. This can be over-ridden by setting <code>scdepth=INT</code>.</li>
+<li><code>kmerreads=FILELIST</code> : File of high quality (<em>i.e.</em> short or error-corrected) reads for KAT kmer analysis [Optional]</li>
+</ul>
+<p>If a BAM file is not provided/found, Diploidocus will use minimap2 to generate a BAM file of <code>reads=FILELIST</code> data mapped onto the <code>seqin=FILE</code> assembly. Each read file is mapped separately (<code>--secondary=no -L -ax map-ont</code> or <code>--secondary=no -L -ax map-pb</code>) and converted into a sorted BAM files, before merging the BAM files with <code>samtools</code> and indexing the combined file.</p>
+<p>Diploidocus will re-use files where they already exist, providing the downstream files are newer than the upstream files. (If files have been copied and lost their datestamp information, switching <code>ignoredate=T</code> will re-use files regardless.) Setting <code>force=T</code> should force regeneration of files even if they exist.</p>
+<div id="purge-haplotigs" class="section level4">
+<h4><span class="header-section-number">3.2.2.1</span> Purge Haplotigs</h4>
+<p>Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If <code>scdepth=INT</code> is not set, this will be calculated using BUSCO single copy genes (see <strong>Genome size prediction [runmode=gensize]</strong> for details). The <code>purge_haplotigs</code> mid cutoff (<code>-m X</code>) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (<code>-l X</code>) and high depth (<code>-h X</code>) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:</p>
+<ul>
+<li><code>phlow=INT</code> : Low depth cutoff for purge_haplotigs (<code>-l X</code>).</li>
+<li><code>phmid=INT</code> : Middle depth for purge_haplotigs (<code>-m X</code>).</li>
+<li><code>phhigh=INT</code> : High depth cutoff for purge_haplotigs (<code>-h X</code>).</li>
+</ul>
+<p>Diploidocus adjusts the <code>purge_haplotigs</code> binning proportions, which do not use the zero coverage bases, adding the zero coverage bases to the low coverage bin. This adjustment can be with <code>zeroadjust=F</code>. By default, gaps are excluded from this adjustment, defined as a run of 10+ <code>N</code> bases. Setting <code>includegaps=T</code> will include these regions in the adjustment, whilst changing the <code>mingap=INT</code> setting will redefine gaps.</p>
+</div>
+<div id="kat-analysis" class="section level4">
+<h4><span class="header-section-number">3.2.2.2</span> KAT analysis</h4>
+<p>Next, the <code>kat sect</code> function of KAT is used to calculate kmer frequencies for (a) raw data using the <code>kmerreads=FILELIST</code> file of high quality (<em>i.e.</em> short or error-corrected) reads, and (b) the assembly itself. This generates four outputs:</p>
+<ul>
+<li><code>*.kat-stats.tsv</code> = summary <code>kmerreads</code> kmer coverage per sequence</li>
+<li><code>*.kat-counts.cvg</code> = <code>kmerreads</code> kmer coverage per base for each input sequence</li>
+<li><code>*.selfkat-stats.tsv</code> = summary assembly kmer coverage per sequence</li>
+<li><code>*.selfkat-counts.cvg</code> = assembly kmer coverage per base for each input sequence</li>
+</ul>
+<p>If the <code>kmerreads=FILELIST</code> files are 10x chromium reads, the first 16bp of read 1 (the 10x barcode) can be trimmed by setting <code>10xtrim=T</code>. (This sets <code>--5ptrim 16</code> in kat for the first read file.)</p>
+</div>
+<div id="bbmap-depth-statistics" class="section level4">
+<h4><span class="header-section-number">3.2.2.3</span> BBMap depth statistics</h4>
+<p>Read depth statistics for the BAM file are calculated per input sequence using the <code>pileup.sh</code> program of <code>bbmap</code>. This generates two files:</p>
+<ul>
+<li><code>*.depth.tdt</code> = read depth stats per sequence</li>
+<li><code>*.depstat</code> = overall read depth summary, generated by <code>pileup.sh</code> stdout and stderr</li>
+</ul>
+</div>
+<div id="vectorcontaminant-coverage" class="section level4">
+<h4><span class="header-section-number">3.2.2.4</span> Vector/contaminant coverage</h4>
+<p>The <code>runmode=vecscreen</code> contaminant screening using vector/contaminants from <code>screendb=FILE</code> is run on the assembly - see VecScreen mode documentation for details.</p>
+</div>
+<div id="telomeres" class="section level4">
+<h4><span class="header-section-number">3.2.2.5</span> Telomeres</h4>
+<p>The <code>runmode=telomeres</code> telomere identifcation screen is run on the assembly - see Telomeres mode documentation for details.</p>
+</div>
+<div id="busco-gene-prediction" class="section level4">
+<h4><span class="header-section-number">3.2.2.6</span> BUSCO gene prediction</h4>
+<p>The full BUSCO results table (<code>busco=FILE</code>) is used to generate counts of <code>Complete</code>, <code>Duplicate</code> and <code>Fragmented</code> BUSCO genes for each input sequence. These are converted into a single BUSCO rating of the dominant (i.e. most abundant) BUSCO class during classification.</p>
+</div>
+</div>
+<div id="data-compilation" class="section level3">
+<h3><span class="header-section-number">3.2.3</span> Data compilation</h3>
+<p>Once all the different elements have been run, Diploidocus compiles results per input sequence, extracting a subset of fields of interest and renaming fields where appropriate. The following results files are compiled, joined by input sequence name (<code>SeqName</code>):</p>
+<ul>
+<li><code>*.depth.tdt</code>: bbmap pileup.sh read mapping statistics
+<ul>
+<li><code>SeqName</code> = Scaffold sequence name</li>
+<li><code>SeqLen</code> = Scaffold sequence length (bp)</li>
+<li><code>Median_fold</code> = Median long read sequence depth for sequence</li>
+<li><code>Avg_fold</code> = Mean long read sequence depth for sequence</li>
+<li><code>Covered_percent</code> = Percentage of sequence covered by long reads</li>
+<li><code>Covered_bases</code> = Number of bp covered by long reads</li>
+<li><code>Plus_reads</code> = Number of reads mapped to positive strand</li>
+<li><code>Minus_reads</code> = Number of reads mapped to negative strand</li>
+<li><code>Read_GC</code> = GC content of reads mapping to sequence</li>
+</ul></li>
+<li><code>*.purge.coverage_stats.csv</code>: purge_haplotigs coverage stats
+<ul>
+<li><code>LowPerc</code> = Proportion of bases with read depth below low coverage cutoff</li>
+<li><code>HapPerc</code> = Proportion of bases with read depth between low coverage and mid coverage cutoffs</li>
+<li><code>DipPerc</code> = Proportion of bases with read depth between mid coverage and high coverage cutoffs</li>
+<li><code>HighPerc</code> = Proportion of bases with read depth above high coverage</li>
+</ul></li>
+<li><code>*.purge.reassignments.tsv</code>: purge_haplotigs best sequence hits and reassignments
+<ul>
+<li><code>TopHit</code> = scaffold with biggest sequence coverage match</li>
+<li><code>SecHit</code> = scaffold with second biggest sequence coverage match</li>
+<li><code>TopHitCov</code> = percentage sequence coverage by <code>TopHit</code></li>
+<li><code>MaxHitCov</code> = combined percentage sequence coverage by all sequence hits</li>
+<li><code>PurgeHap</code> = purge_haplotigs reassignment rating</li>
+<li><code>TopNum</code> = number of sequences for which this sequence is the <code>TopHit</code></li>
+<li><code>SecNum</code> = number of sequences for which this sequence is the <code>SecHit</code></li>
+</ul></li>
+<li><code>*.selfkat-stats.tsv</code>: assembly kmer coverage stats
+<ul>
+<li><code>SelfMedK</code> = Median assembly kmer frequency for sequence</li>
+<li><code>SelfAvgK</code> = Mean assembly kmer frequency for sequence</li>
+</ul></li>
+<li><code>*.kat-stats.tsv</code>: short read kmer coverage stats
+<ul>
+<li><code>MedK</code> = Median short read kmer frequency for sequence</li>
+<li><code>AvgK</code> = Mean short read kmer frequency for sequence</li>
+<li><code>SeqGC</code> = GC content for sequence</li>
+<li><code>KPerc</code> = Percentage of non-gap kmers in sequence that are found in short read data</li>
+<li><strong>NOTE:</strong> In the absence of short read data, these values will be set to -1</li>
+</ul></li>
+<li><code>*.screencov.tdt</code>: Contaminant coverage from vecscreen mode
+<ul>
+<li><code>ScreenPerc</code> = Total combined sequence coverage by contaminants</li>
+</ul></li>
+<li><code>*.telomeres.tdt</code>: Telomere prediction results
+<ul>
+<li><code>Tel5</code> = Whether a 5’ telomere is predicted</li>
+<li><code>Tel3</code> = Whether a 5’ telomere is predicted</li>
+<li><code>TelPerc</code> = Percentage of sequence predicted to telomeres. (Crude calculation.)</li>
+</ul></li>
+<li><code>full_table_*.busco.tsv</code>
+<ul>
+<li><code>Complete</code> = Number of BUSCO Complete genes in sequence</li>
+<li><code>Duplicated</code> = Number of BUSCO Duplicated genes in sequence</li>
+<li><code>Fragmented</code> = Number of BUSCO Fragmented genes in sequence</li>
+</ul></li>
+<li><code>$SEQIN</code>: input assembly
+<ul>
+<li><code>N_bases</code> = total count of all unresolved (<code>N</code>) bases</li>
+<li><code>Gap_bases</code> = total count of all gap (<code>N</code>) bases as determined by <code>mingap=INT</code></li>
+<li><code>SeqDesc</code> = sequence description</li>
+</ul></li>
+</ul>
+</div>
+<div id="diploidocus-classification" class="section level3">
+<h3><span class="header-section-number">3.2.4</span> Diploidocus classification</h3>
+<p>Diploidocus classification adds the following fields to the compiled table:</p>
+<ul>
+<li><code>Class</code> = Six-part (<code>PURITY|DEPTH|HOM|TOP|MEDK|BUSCO</code>) Diploidocus classifcation (see below)</li>
+<li><code>TopClass</code> = Class of <code>TopHit</code> (if any)</li>
+<li><code>SecClass</code> = Class of <code>SecHit</code> (if any)</li>
+</ul>
+<p>Classification is based on a combination of commandline parameters and hard-coded cutoffs:</p>
+<ul>
+<li><code>minmedian=INT</code> : Minimum median depth coverage to avoid low coverage filter [3]</li>
+<li><code>pureperc=80</code> : Depth class percentage to classify as <code>PURE</code></li>
+<li><code>rephitcov=250</code> : Min <code>MaxHitCov</code> value to classifty as <code>REPEAT</code></li>
+</ul>
+<p>Each sequence is given classification in six different criteria (<code>PURITY|DEPTH|HOM|TOP|MEDK|BUSCO</code>) with two possible suffixes:</p>
+<ol style="list-style-type: decimal">
+<li><code>PURITY</code>: Purity of dominant read depth class
+<ul>
+<li><code>PURE</code> = At least 80% of sequence in that depth bin</li>
+<li><code>GOOD</code> = At least 50% of sequence in that depth bin</li>
+<li><code>WEAK</code> = Under 50% of sequence in that depth bin</li>
+</ul></li>
+<li><code>DEPTH</code>: Dominant read depth class
+<ul>
+<li><code>LOWX</code> = Median read depth (<code>Median_fold</code>) fails to meet <code>minmedian=INT</code> criterion (default=3)</li>
+<li><code>LOW</code> = <code>LowPerc</code> read depth bin has highest percentage coverage (ties assigned to other class)</li>
+<li><code>HAP</code> = <code>HapPerc</code> read depth bin has highest percentage coverage (non-<code>DIP</code> ties addigned to <code>HAP</code>)</li>
+<li><code>DIP</code> = <code>DipPerc</code> read depth bin has highest percentage coverage (ties assigned to <code>DIP</code>)</li>
+<li><code>EXS</code> = <code>HighPerc</code> read depth bin has highest percentage coverage</li>
+</ul></li>
+<li><code>HOM</code>: Homology/repeat status based on purge_haplotigs hits
+<ul>
+<li><code>UNIQ</code> = No <code>TopHit</code></li>
+<li><code>PART</code> = Partial (&lt;50%) coverage of <code>TopHit</code></li>
+<li><code>HAPL</code> = 50%+ <code>TopHit</code> coverage but no <code>SecHit</code></li>
+<li><code>HOMO</code> = <code>TopHit</code> and <code>SecHit</code> but combined <code>MaxHitCov</code> &lt; 250%</li>
+<li><code>REPT</code> = <code>TopHit</code> and <code>SecHit</code> and 250%+ combined <code>MaxHitCov</code></li>
+</ul></li>
+<li><code>TOP</code>: Top/Sec Hit status for sequence
+<ul>
+<li><code>TOP</code> = <code>TopHit</code> for at least one other sequence</li>
+<li><code>SEC</code> = Not a <code>TopHit</code> but <code>SecHit</code> at least one other sequence</li>
+<li><code>NON</code> = Neither a <code>TopHit</code> nor <code>SecHit</code> for any other sequence</li>
+</ul></li>
+<li><code>MEDK</code>: Assembly redundancy based on KAT assembly kmers
+<ul>
+<li><code>PRI</code> = Over 50% unique kmers (<code>SelfMedK</code> = 1)</li>
+<li><code>ALT</code> = Median kmer frequency of two (<code>SelfMedK</code> = 2)</li>
+<li><code>REP</code> = Median kmer frequency exceeds two (<code>SelfMedK</code> &gt; 2)</li>
+</ul></li>
+<li><code>BUSCO</code>: Dominant BUSCO class (can help decide about risk)
+<ul>
+<li><code>COMP</code> = 1+ Complete BUSCO genes and more Complete than Duplicated</li>
+<li><code>DUPL</code> = 1+ Duplicated BUSCO genes and more Duplicated than Complete</li>
+<li><code>FRAG</code> = 1+ Fragmented BUSCO genes and no Complete or Duplicated</li>
+<li><code>NONE</code> = No Complete, Duplicated or Fragmented BUSCO genes</li>
+</ul></li>
+<li><code>+TEL</code>: If any telomeres are detected, <code>+TEL</code> is added</li>
+<li><code>+VEC</code>: If any contamination is detected, <code>+VEC</code> is added</li>
+</ol>
+</div>
+<div id="purge-modes-purgemodex" class="section level3">
+<h3><span class="header-section-number">3.2.5</span> Purge modes [purgemode=X]</h3>
+<p>Diploidocus rating based on <code>purgemode=X</code> adds the following fields to the compiled table:</p>
+<ul>
+<li><code>Rating</code> = Main Diploidocus rating of sequence (see below)</li>
+<li><code>TopRating</code> = Rating of <code>TopHit</code> (if any)</li>
+<li><code>SecRating</code> = Rating of <code>SecHit</code> (if any)</li>
+<li><code>Set</code> = Diploidocus output set (<code>keep</code>/<code>repeat</code>/<code>quarantine</code>/<code>junk</code>)</li>
+</ul>
+<p>There are three basic <code>purgemode</code> implementations:</p>
+<ul>
+<li><code>purgemode=complex</code> [Default] uses all of the Diploidocus classification data to partition sequences into classes and then partition those classes into the main output sets.</li>
+<li><code>purgemode=simple</code> uses a simplified set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is conceptually easier than the <code>complex</code> mode but unlikely to produce as good results.</li>
+<li><code>purgemode=crude</code> uses a crude set of Diploidocus classification rules data to partition sequences into classes before partitioning those classes into the main output sets. This is more complicated than <code>simple</code> but still conceptually easier than the <code>complex</code> mode but unlikely to produce as good results.</li>
+<li><code>purgemode=nala</code> uses a simplified and conservative set of filtering rules used for the Nala German Shepherd Dog assembly.</li>
+</ul>
+<p>Details for these modes can be found below.</p>
+<p>Ratings are based on a combination of commandline parameters and hard-coded cutoffs:</p>
+<ul>
+<li><code>minlen=INT</code> : Minimum scaffold length to avoid low quality filter [500]</li>
+<li><code>mindipcov=20</code> : Minimim DipPerc coverage to assign a “KEEP” rating (<code>purgemode=crude</code>)</li>
+<li><code>artefactcov=80</code> : Min High/Low coverage to assign as artefacts (<code>purgemode=crude</code>, <code>purgemode=nala</code>)</li>
+<li><code>hpurgecov=80</code> : Min TopHitCov to assign <code>HPURGE</code> rating.</li>
+<li><code>covwarning=95</code> : Read coverage threshold for warnings</li>
+</ul>
+<div id="complex-rating" class="section level4">
+<h4><span class="header-section-number">3.2.5.1</span> Complex rating</h4>
+<p>Diploidocus performs a hierarchical rating of scaffolds, based on their classifications and compiled data:</p>
+<ol style="list-style-type: decimal">
+<li>Initial low quality filter:
+<ul>
+<li><code>CONTAMINATION</code> = 50%+ identified contamination (<code>ScreenPerc</code>)</li>
+<li><code>LOWCOV</code> = Poor median read coverage (<code>Median_fold &lt; minmedian=INT</code>)</li>
+<li><code>LOWQUAL</code> = Scaffolds below the sequence length set by <code>minlen=INT</code></li>
+<li><code>LOWCOV</code> = Low read depth and 50%+ sequence without short read kmers (<code>PURE|LOW|...</code> or <code>GOOD|LOW|...</code>, and <code>MedK=0</code>)</li>
+<li><code>LOWCOV</code> = Low read depth and high frequency short read kmers (<code>...|LOW|...|REP|...</code>)</li>
+</ul></li>
+<li>High quality scaffolds to keep:
+<ul>
+<li><code>QUALITY</code> = Highest quality scaffolds: pure duploid, complete BUSCOs, no Duplicated BUSCOs (<code>PURE|DIP|UNIQ|...|PRI|COMP</code> &amp; <code>Duplicated</code> = 0)</li>
+<li><code>FINAL</code> = As Quality but <code>PRI|FRAG</code> and <code>PRI|NONE</code> also allowed (<code>PURE|DIP|UNIQ|...|PRI|...</code> &amp; <code>Duplicated</code> = 0)</li>
+<li><code>CORE</code> = Predominantly Diploid with &lt;50% covered by <code>TopHit</code> and <code>SelfMedK</code>=1 (<code>[PURE/GOOD]|DIP|[UNIQ/PART]|...|PRI|...</code>)</li>
+<li><code>COREHAP</code> = Predominantly haploid but &lt;50% covered by <code>TopHit</code> and 1+ Complete BUSCOs (<code>...|HAP|[UNIQ/PART]|...</code> &amp; <code>Complete</code> &gt; 0)</li>
+<li><code>PRIMARY</code> = Putative primary scaffold but with possible alternative scaffolds still in assembly and/or low quality regions (<code>...|DIP|[UNIQ/PART/HAPL/HOMO]|...|[PRI/ALT]|...</code>)</li>
+</ul></li>
+<li>Repetitive scaffolds to keep:
+<ul>
+<li><code>PRIRPT</code> = Putative primary scaffold but &gt;50% repeated (<code>...|DIP|[UNIQ/PART]|...|REP|...</code> or <code>[PURE/GOOD]|DIP|...|REP|...</code>)</li>
+<li><code>COLLAPSED</code> = High coverage scaffolds representing putative collapsed repeats. (Check for other contamination.) (<code>...|EXS|[UNIQ/PART]|...</code> or <code>[GOOD/PURE]|EXS|...|TOP|...</code>, or <code>WEAK|EXS|...</code> and less of the sequence in the Diploid coverage bin than below Diploid coverage.</li>
+<li><code>REPEAT</code> = Predominantly Diploid scaffolds that have major signs of redundancy, probably due to presence of alternative contigs (<code>...|DIP|REPT|...</code> or <code>WEAK|DIP|[HAPL/HOMO]|...|REP|...</code>)</li>
+</ul></li>
+<li>Haploid coverage scaffolds to keep (<strong>NOTE</strong>: any <code>HAPLOTIG</code> rating will be converted to <code>HAPRPT</code> if <code>...|REP|...</code>)
+<ul>
+<li><code>HAPLOID</code> = Predominantly haploid coverage but enough unique sequence to keep for now? (Option to quarantine?) Might be very heterozygous Alternative haplotigs (<code>...|HAP|[UNIQ/PART]|PRI|...</code>)</li>
+<li><code>HAPLOTIG</code> = Predominantly haploid coverage but enough unique sequence to keep for now - possible Alternative haplotig (<code>...|HAP|[UNIQ/PART]|ALT|...</code> or <code>...|HAP|...|TOP|[PRI/ALT]|...</code>)</li>
+<li><code>HAPRPT</code> = Low quality scaffold that is probably most repeats, but not bad enough to dump outright (<code>...|HAP|[UNIQ/PART]|...|REP|...</code> or <code>...|HAP|...|TOP|...|REP|...</code>)</li>
+<li><code>HAPLOTIG</code> = Low/haploid coverage scaffold with insufficient coverage of a Diploid scaffold to purge (<code>...|[LOW/HAP]|[HAPL/HOMO/REPT]|...</code> and <code>|DIP|</code> in <code>TopHit</code> rating and <code>TopHitCov</code> &lt; <code>hpurgecov</code> (80%))</li>
+<li><code>HAPLOTIG</code> = Low/haploid coverage scaffold with insufficient coverage of another scaffold to purge (<code>[PURE/GOOD]|HAP|HOMO|...' and</code>TopHitCov<code>&lt;</code>hpurgecov` (80%))</li>
+<li><code>HAPRPT</code> = Other haploid coverage scaffold with insufficient coverage of another scaffold to purge (<code>...|HAP|...</code> and <code>TopHitCov</code> &lt; <code>hpurgecov</code> (80%))</li>
+<li><code>HAPRPT</code> = Low coverage and collapsed repeats with insufficient coverage of another scaffold to purge (<code>...|EXS|...</code> and less of the sequence in the Diploid coverage bin than below Diploid coverage and <code>TopHitCov</code> &lt; <code>hpurgecov</code> (80%))</li>
+<li><code>REPEAT</code> = High coverage scaffold with insufficient coverage of another scaffold to purge (<code>[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]|...</code> and <code>TopHitCov</code> &lt; <code>hpurgecov</code> (80%))</li>
+</ul></li>
+<li>Scaffolds to quarantine for removal
+<ul>
+<li><code>RPURGE</code> = Messy scaffolds that are largely repeats and are sufficiently redundant/low quality to purge (<code>WEAK|EXS</code> and less of the sequence in the Diploid coverage bin than below Diploid coverage, or <code>[GOOD/PURE]|EXS|[HAPL/HOMO/REPT]|[SEC/NON]</code>, and <code>TopHitCov</code> &gt;= <code>hpurgecov</code> (80%))</li>
+</ul></li>
+<li>Additional low coverage scaffolds
+<ul>
+<li><code>LOWCOV</code> = Low depth of coverage and strong matches to other scaffolds, and not TopHit (<code>...|LOW|[HAPL/HOMO/REPT]|[SEC/NON]</code>)</li>
+</ul></li>
+<li>Further scaffolds to quarantine for removal
+<ul>
+<li><code>HPURGE</code> = Clear candidate haplotig to purge (<code>...|LOW|[HAPL/HOMO/REPT]|...</code> and <code>|DIP|</code> in <code>TopHit</code> rating, or <code>...|HAP|...</code>, and <code>TopHitCov</code> &gt;= <code>hpurgecov</code> (80%))</li>
+</ul></li>
+<li>Final low quality filter
+<ul>
+<li><code>LOWQUAL</code> = Unconvincing scaffolds that do not fall into a clear class but are not bad enough to dump outright as junk (<code>...|LOW|...</code>)</li>
+</ul></li>
+</ol>
+<p>Any scaffolds that escape the above rules will be <code>UNRATED</code>. (There should not be any!)</p>
+</div>
+<div id="simple-rating" class="section level4">
+<h4><span class="header-section-number">3.2.5.2</span> Simple rating</h4>
+<p>The simplified rating system is based much more on the dominant read depth class. A subset core scaffolds are identified and the rest are classified on the basis of dominant read depth and <code>REP</code> or <code>REPT</code> status.</p>
+<ul>
+<li><code>LOWCOV</code> = Poor median read coverage (<code>Median_fold &lt; minmedian=INT</code>)</li>
+<li><code>CONTAMINATION</code> = 50%+ identified contamination (<code>ScreenPerc</code>)</li>
+<li><code>LOWQUAL</code> = Scaffolds below the sequence length set by <code>minlen=INT</code></li>
+<li><code>LOWQUAL</code> = Low quality artefacts with less than 50% of the scaffold covered by short-read kmers (<code>MedK=0</code>)</li>
+<li>Keep Scaffolds with Diploid+ depth (<code>[DIP/EXS]</code>), or limited homology to other scaffolds (<code>[UNIQ/PART]</code>) or Top hits for other scaffolds (<code>TOP</code>) or 1+ <code>Complete</code> BUSCO genes. These are broken down into:
+<ul>
+<li><code>PRIMARY</code> = Diploid depth or no <code>TopHit</code> or dominant BUSCO rating is <code>Complete</code>, and not repetitive</li>
+<li><code>PRIRPT</code> = As <code>PRIMARY</code> but <code>REPT</code> or <code>REP</code> classifications</li>
+<li><code>COLLAPSED</code> = Dominant high depth (<code>EXS</code>)</li>
+<li><code>REPEAT</code> = Remaining Scaffolds to keep that have <code>REPT</code> or <code>REP</code> classifications</li>
+<li><code>HAPLOID</code> = Remaining Scaffolds to keep without <code>REPT</code> or <code>REP</code> classifications</li>
+</ul></li>
+<li><code>HPURGE</code> = Dominant haploid read depth without <code>REPT</code> or <code>REP</code> classifications</li>
+<li><code>RPURGE</code> = Dominant haploid read depth, plus <code>REPT</code> or <code>REP</code> classifications</li>
+<li><code>LOWCOV</code> = Any remaining scaffolds (dominant <code>LOW</code> read depth)</li>
+</ul>
+</div>
+<div id="crude-rating" class="section level4">
+<h4><span class="header-section-number">3.2.5.3</span> Crude rating</h4>
+<p>The <code>crude</code> purge mode is a less nuanced version of the main Diploidocus rating.</p>
+<ul>
+<li><code>LOWCOV</code> = Poor median read coverage (<code>Median_fold &lt; minmedian=INT</code>)</li>
+<li><code>CONTAMINATION</code> = 50%+ identified contamination (<code>ScreenPerc</code>)</li>
+<li><code>LOWQUAL</code> = Scaffolds below the sequence length set by <code>minlen=INT</code></li>
+<li><code>HPURGE</code> = Low+Haploid coverage meet <code>artefactcov</code> cutoff (&gt;=80%) and <code>TopHitCov</code> meets <code>hpurgecov</code> cutoff (&gt;=80%)</li>
+<li><code>HAPLOTIG</code> = Haploid coverage exceeds 50%, <code>TopHitCov</code> meets <code>hpurgecov</code> cutoff (&gt;=80%), and <code>SelfMedK=2</code></li>
+<li>Scaffolds with a Diploid depth coverage otherwise meeting the <code>mindipcov</code> cutoff (&gt;=20%) are kept:
+<ul>
+<li><code>PRIMARY</code> = Median assembly kmer frequency of 1</li>
+<li><code>REPEAT</code> = <code>MaxHitCov</code> meets the <code>rephitcov</code> cutoff (&gt;=250%)</li>
+<li><code>KEEP</code> = Remaining diploid scaffolds.</li>
+</ul></li>
+<li><code>LOWCOV</code> = Any other scaffolds with 80%+ low coverage bases are filtered as Low Coverage.</li>
+<li><code>COLLAPSED</code> = Any other scaffolds with 80%+ high coverage bases are flagged as COLLAPSED.</li>
+<li><code>HAPLOTIG</code> = Scaffolds that are 50%+ Haploid Depth if mostly present 2+ times (median assembly kmer frequency = 2)</li>
+<li><code>HAPLOID</code> = Scaffolds that are 50%+ Haploid Depth if mostly present once (median assembly kmer frequency = 1)</li>
+<li><code>ARTEFACT</code> = Scaffolds &lt;50% Haploid Depth but 80%+ Low or Haploif depth</li>
+<li><code>HAPLOTIG</code> = Scaffolds with 80%+ hitting other scaffolds but does not meet the <code>rephitcov</code> cutoff (&lt;250%)</li>
+<li><code>HAPRPT</code> = Scaffolds with 80%+ hitting other scaffolds and meets the <code>rephitcov</code> cutoff (&gt;=250%)</li>
+<li><code>ARTEFACT</code> = Remaining scaffolds with 80%+ bases in the low/haploid coverage bins</li>
+</ul>
+</div>
+<div id="nala-rating" class="section level4">
+<h4><span class="header-section-number">3.2.5.4</span> Nala rating</h4>
+<p>The <code>purgemode=nala</code> rating scheme was used for the Nala German Shepherd Dog genome assembly, and features a simplified set of ratings:</p>
+<ul>
+<li><code>CONTAMINATION</code> = 50%+ identified contamination (<code>ScreenPerc</code>)</li>
+<li><code>LOWCOV</code> = Poor median read coverage (<code>Median_fold &lt; minmedian=INT</code>)</li>
+<li><code>LOWQUAL</code> = Scaffolds below the sequence length set by <code>minlen=INT</code></li>
+<li><code>HPURGE</code> = Any scaffold with 80%+ bases in the low/haploid coverage bins (haplotigs or assembly artefacts).</li>
+<li><code>PRIMARY</code> = Scaffolds with 20%+ diploid coverage are marked as retention as probable diploids.</li>
+<li><code>COLLAPSED</code> = Scaffolds with &lt;20% diploid coverage and 50%+ high coverage are marked as probable collapsed repeats.</li>
+<li><code>JUNK</code>/<code>HAPLOTIG</code>/<code>KEEP</code> = Remaining Scaffolds are given the PurgeHaplotigs rating (over 80% low/high coverage will be filtered as a probable artefact)</li>
+</ul>
+</div>
+<div id="final-sequence-sets-for-output" class="section level4">
+<h4><span class="header-section-number">3.2.5.5</span> Final sequence sets for output</h4>
+<p>The <code>purgemode</code> ratings are then converted into subsets of scaffolds for output:</p>
+<ul>
+<li><code>keep</code> = Scaffolds that form part of the <code>*.core.fasta</code> and <code>*.diploidocus.fasta</code> outputs:
+<ul>
+<li>[‘QUALITY’,‘FINAL’,‘CORE’,‘COREHAP’,‘PRIMARY’,‘PRIRPT’,‘HAPLOID’,‘HAPLOTIG’,‘KEEP’]</li>
+</ul></li>
+<li><code>repeat</code> = Scaffolds excluded from the <code>*.core.fasta</code> but part of the <code>*.diploidocus.fasta</code> output:
+<ul>
+<li>[‘COLLAPSED’, ‘REPEAT’, ‘HAPRPT’]</li>
+</ul></li>
+<li><code>quarantine</code> = Scaffolds removed as probably Haplotigs and/or excess copies of repeats but saved to <code>*.quarantine.fasta</code> in case additional checks are required:
+<ul>
+<li>[‘HPURGE’, ‘RPURGE’]</li>
+</ul></li>
+<li><code>junk</code> = Scaffolds removed due to low coverage, poor quality, or contamination. These are partitioned into <code>*.junk.fasta</code>:
+<ul>
+<li>[‘LOWCOV’, ‘LOWQUAL’, ‘CONTAMINATION’,‘JUNK’]</li>
+</ul></li>
+</ul>
+<p>The final ratings for each <code>TopHit</code> and <code>SecHit</code> are also added to the main Diploidocus table as <code>TopHitRating</code> and <code>SecHitRating</code> fields. This might flag up additional scaffolds (e.g. with <code>HAPLOTIG</code> ratings) that the user decides to remove despite failing to meet the automated criteria.</p>
+<p><strong>NOTE:</strong> A cutdown output of Scaffold classifications and ratings is saved as <code>*.ratings.tdt</code>. This can be used to easily extract a subset of sequence names that can be filtered from the final output using <code>SeqSuite</code>, <em>e.g.</em></p>
+<pre><code>python $SLIMSUITE/tools/seqsuite.py seqin=$PREFIX badseq=$(grep HAPLOTIG | awk '{print $1;}' ORS=&quot;,&quot;) seqout=$PREFIX.filtered.fasta</code></pre>
+</div>
+<div id="rating-warnings" class="section level4">
+<h4><span class="header-section-number">3.2.5.6</span> Rating warnings</h4>
+<p>Once rating is complete, the following warnings are generated in the log file:</p>
+<ul>
+<li>All <code>CONTAMINATION</code> scaffolds</li>
+<li>Scaffolds not classed as <code>junk</code> but:
+<ul>
+<li>&lt;50% covered by short read kmers</li>
+<li>any vector contamination flagged</li>
+<li>long read coverage &lt; 95%</li>
+</ul></li>
+<li>Any <code>COREHAP/HAPLOID/HAPLOTIG</code> scaffolds with <code>Duplicated</code> BUSCO genes (more evidence for redundancy)</li>
+<li>Any purged (<code>junk</code> or <code>quarantine</code>) scaffolds that are the PurgeHaplotigs <code>TopHit</code> for 1+ other scaffolds</li>
+</ul>
+</div>
+</div>
+<div id="full-diploidocus-outputs" class="section level3">
+<h3><span class="header-section-number">3.2.6</span> Full Diploidocus outputs</h3>
+<p>Temporary files generated during forking will be generated in a subdirectory set by <code>tmpdir=PATH</code> (Default: <code>./tmpdir/</code>).</p>
+<p><em>Details of full outputs will be added. Please see other documentation sections for specific outputs, or contact the author if anything is unclear.</em></p>
+</div>
+<div id="special-output-mode-diploidify" class="section level3">
+<h3><span class="header-section-number">3.2.7</span> Special output mode: diploidify</h3>
+<p>Diploidocus features a special <code>diploidify=T</code> mode, which aims to generate fully diploid output. This is achieved by adding <code>HPURGE</code> scaffolds to the <code>keep</code> set rather than the <code>quarantine</code> set. In addition, diploid scaffolds are duplicated. For this purpose, diploid scaffolds are defined as those in the <code>keep</code> or <code>repeat</code> sets that meet are:</p>
+<ul>
+<li>Classified as <code>...|DUP|...</code></li>
+<li>or Classified as <code>WEAK|...|NON|...</code>, <em>i.e.</em> are neither a <code>TopHit</code> nor <code>SecHit</code> for any other sequence</li>
+</ul>
+<p>Diploid scaffolds are saved with an <code>X2</code> suffix on their sequence name.</p>
 <hr />
 </div>
-<div id="cycled-diploidocus-filtering-runmodedipcycle" class="section level2">
-<h2><span class="header-section-number">3.2</span> Cycled Diploidocus filtering [runmode=dipcycle]</h2>
-<p>Diploidocus can be automated to cycle through repeated rounds of the main purge_haplotigs/filtering method until no further scaffolds are removed. Each cycle will run Diploidocus with a numerical suffix, e.g. <code>$BASEFILE.1.*</code>, using the <code>*.diploidocus.fasta</code> output from the previous cycle as input. Cycling will continue until no further scaffolds are filtered into either <code>*.quarantine.fasta</code> or <code>*.junk.fasta</code>.</p>
-<p>Final outputs from the final cycle will then be copied under the original <code>$BASEFILE</code> prefix:</p>
-<ul>
-<li><code>$BASEFILE.diploidocus.tdt</code> = Final ratings for the final set of scaffolds. (See earlier cycles for purged.)</li>
-<li><code>$BASEFILE.diploidocus.fasta</code> = the scaffolds kept from the final Diploidocus cycle</li>
-<li><code>$BASEFILE.core.fasta</code> = the same set of scaffolds, minus repeats</li>
-<li><code>$BASEFILE.quarantine.fasta</code> = concatenated purged scaffolds from all Diploidocus cycles.</li>
-<li><code>$BASEFILE.junk.fasta</code> = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.</li>
-</ul>
-<hr />
 </div>
 <div id="genome-size-prediction-runmodegensize" class="section level2">
 <h2><span class="header-section-number">3.3</span> Genome size prediction [runmode=gensize]</h2>
-<p><em>Details coming soon!</em></p>
+<p>The main inputs for Diploidocus genome size prediction are:</p>
+<ul>
+<li><code>seqin=FILE</code> : Input sequence assembly to tidy [Required].</li>
+<li><code>reads=FILELIST</code>: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with <code>bam=FILE</code>. (This will be preferentially used if found, and defaults to <code>$BASEFILE.bam</code>.) Read types (pb/ont) for each file are set with <code>readtype=LIST</code>, which will be cycled if shorter (default=<code>ont</code>). Optionally, the pre-calculated total read length can be provided with <code>readbp=INT</code> and/or the pre-calculated (haploid) genome size can be provided with <code>genomesize=INT</code>.</li>
+<li><code>busco=TSVFILE</code> : BUSCO full table [<code>full_table_$BASEFILE.busco.tsv</code>] used for calculating single copy (“diploid”) read depth. This can be over-ridden by setting <code>scdepth=INT</code>.</li>
+<li><code>quickdepth=T/F</code> : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [Default: <code>False</code>]</li>
+</ul>
+<p>This works on the principle that <code>Complete</code> BUSCO genes should represent predominantly single copy (diploid read depth) regions along with some ooor quality and/or repeat regions. Assembly artefacts and collapsed repeats etc. are predicted to deviate from diploid read depth in an inconsistent manner. Therefore, even if less than half the region is actually diploid coverage, the <strong>modal</strong> read depth is expected to represent the actual single copy read depth.</p>
+<p>Diploidocus uses <code>samtools mpileup</code> (or <code>samtools depth</code> if <code>quickdepth=T</code>) to calculate the per-base read depth and extracts the modal read depth for each BUSCO gene along with the overall modal read depth for all gene regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length. This will be caculated from <code>reads=FILELIST</code> unless provided with <code>readbp=INT</code>.</p>
+<p><strong>NOTE:</strong> There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.</p>
 <hr />
 </div>
 <div id="running-purge_haplotigs-using-busco-guided-cutoffs-runmodepurgehap" class="section level2">
 <h2><span class="header-section-number">3.4</span> Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap]</h2>
-<p><em>Coming soon! (Currently will run full diploidocus mode)</em></p>
+<p>Diploidocus can automate the running of purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If <code>scdepth=INT</code> is not set, this will be calculated using BUSCO single copy genes (see <strong>Genome size prediction [runmode=gensize]</strong> for details).</p>
+<p>The <code>purge_haplotigs</code> mid cutoff (<code>-m X</code>) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (<code>-l X</code>) and high depth (<code>-h X</code>) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:</p>
+<ul>
+<li><code>phlow=INT</code> : Low depth cutoff for purge_haplotigs (<code>-l X</code>).</li>
+<li><code>phmid=INT</code> : Middle depth for purge_haplotigs (<code>-m X</code>).</li>
+<li><code>phhigh=INT</code> : High depth cutoff for purge_haplotigs (<code>-h X</code>).</li>
+</ul>
+<p>Output from this run is:</p>
+<ul>
+<li><code>*.purge.coverage_stats.csv</code>: purge_haplotigs coverage stats</li>
+<li><code>*.purge.reassignments.tsv</code>: purge_haplotigs best sequence hits and reassignments</li>
+</ul>
+<p>Additional purge_haplotigs files and output will be saved in a subdirectory:</p>
+<ul>
+<li><code>purge_*/</code></li>
+</ul>
+<p>This is to stop multiple purge_haplotigs runs from interfering with each other.</p>
 <hr />
 </div>
 <div id="telomere-finding-runmodetelomere" class="section level2">
@@ -1855,11 +2299,67 @@ See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not
 </div>
 <div id="vectorcontamination-screening-runmodevecscreen" class="section level2">
 <h2><span class="header-section-number">3.6</span> Vector/contamination screening [runmode=vecscreen]</h2>
-<p><em>Details coming soon!</em></p>
+<p>This mode screens scaffolds for possible contaminants, given by <code>screendb=FILE</code>.</p>
+<div id="vecscreen-overview" class="section level3">
+<h3><span class="header-section-number">3.6.1</span> VecScreen overview</h3>
+<p>First, a <code>blastn</code> search of the <code>screendb=FILE</code> sequences is performed, using the NCBI VecScreen search and match strategy (see below). These parameters can be modified using <code>blastopt=X</code> and/or <code>optionfile=FILE</code>, which will be appended to the run command. Alternatively, the <code>$BASEFILE.vecscreen.blast</code> file produced can be pre-made with different parameters (if <code>force=F</code>).</p>
+<p>Results are then parsed into a local hits table and rated according to the strength of a match. This is performed iteratively, re-assigning internal matches as “proximal” if they are withing 25 bases of another match (of any strength) and re-rating the strength of the match, until no ratings changes occur. Two additional fields are added to the local hits table during this process: <code>MatchPos</code> and <code>MatchStr</code>. Once all assignments have been made, segments of the assembly between two matches and/or sequence ends are added to the table as <code>Suspect</code>.</p>
+<p><code>MatchPos</code> will have a value of:</p>
+<ul>
+<li><code>Terminal</code> = within 25 bp of either end of the sequence.</li>
+<li><code>Proximal</code> = within 25 bp of a vecsreen match (<code>Weak</code>, <code>Moderate</code> or <code>Strong</code>).</li>
+<li><code>Internal</code> = over 25 bp of a sequence end or vecsreen match.</li>
+<li><code>Suspect</code> = Segments added as <code>Suspect</code>.</li>
+</ul>
+<p><code>MatchStr</code> will have a value of:</p>
+<ul>
+<li><code>Strong</code> = <code>Terminal</code>/<code>Proximal</code> match with Score &gt;= 24, or <code>Internal</code> match with Score &gt;= 30.</li>
+<li><code>Moderate</code> = <code>Terminal</code>/<code>Proximal</code> match with Score 19 to 23, or <code>Internal</code> match with Score 25 to 29.</li>
+<li><code>Weak</code> = <code>Terminal</code>/<code>Proximal</code> match with Score 16 to 18, or <code>Internal</code> match with Score 23 to 24.</li>
+<li><code>Suspect</code> = Any segment of fewer than 50 bases between two vector matches or between a match and an end.</li>
+</ul>
+<p>These parameters seem to be designed for small (Illumina?) assemblies, and give excessive false positives for larger genomes. Diploidocus therefore features two additional contaminant identification filters:</p>
+<ul>
+<li><code>eFDR</code> = The &quot;Expected False Discovery Rate<code>is calculated for each contaminant sequence. This is simply the</code>Expect<code>value for that hit, divided by the total number of hits with that</code>Expect<code>value (or lower). If</code>efdr=X<code>is set, any hits with an</code>eFDR<code>value exceeding the threshold will be removed. By default, this is set to</code>1.0<code>, i.e. any contaminants with fewer assembly hits than their</code>Expect` value will be dropped.</li>
+<li><code>Minimum hit length</code> = Short hits are inevitable in large assemblies and unlikely to be real for long read assemblies (e.g. without cloning etc.). An additional <code>minvechit=X</code> setting will remove any really short hits. This is set by default to <code>minvechit=50</code>, meaning that a hit of at least 50 bp is required.</li>
+</ul>
+<p>Finally, the percentage coverage per scaffold is calculated from the filtered hits. This is performed first for each contaminant individually, before being collapsed into total contamination coverage per query.</p>
+<p>Results are output into two main delimited results files:</p>
+<ul>
+<li><code>*.vecscreen.tdt</code> = Contaminant local hit table with VecScreen ratings and eFDR calculation. (Unfiltered)</li>
+<li><code>*.screencov.tdt</code> = Query coverage per contaminant
+<ul>
+<li><code>Query</code> = Contaminant name. For total coverage, this will be <code>TOTAL</code>.</li>
+<li><code>Hit</code> = Scaffold name.</li>
+<li><code>HitLen</code> = Length of scaffold (bp).</li>
+<li><code>Coverage</code> = Covered length of scaffold (bp).</li>
+<li><code>CovPC</code> = Percentage coverage of scaffold (0-100).</li>
+</ul></li>
+</ul>
+</div>
+<div id="vecscreen-blast-parameters-from-ncbi-website" class="section level3">
+<h3><span class="header-section-number">3.6.2</span> VecScreen BLAST+ parameters (from NCBI website)</h3>
+<p>The VecScreen BLAST+ parameters are pre-set using blastn options: -task blastn -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust yes -soft_masking true -evalue 700 -searchsp 1750000000000</p>
+<p>VecScreen Match Categories Vector contamination usually occurs at the beginning or end of a sequence; therefore, different criteria are applied for terminal and internal matches. VecScreen considers a match to be terminal if it starts within 25 bases of the beginning of the query sequence or stops within 25 bases of the end of the sequence. Matches that start or stop within 25 bases of another match are also treated like terminal matches. Matches are categorized according to the expected frequency of an alignment with the same score occurring between random sequences.</p>
+<p>Strong Match to Vector (Expect 1 random match in 1,000,000 queries of length 350 kb.) Terminal match with Score &gt;= 24. Internal match with Score &gt;= 30.</p>
+<p>Moderate Match to Vector (Expect 1 random match in 1,000 queries of length 350 kb.) Terminal match with Score 19 to 23. Internal match with Score 25 to 29.</p>
+<p>Weak Match to Vector (Expect 1 random match in 40 queries of length 350 kb.) Terminal match with Score 16 to 18. Internal match with Score 23 to 24.</p>
+<p>Segment of Suspect Origin Any segment of fewer than 50 bases between two vector matches or between a match and an end.</p>
+</div>
+<div id="vector-coverage-checking" class="section level3">
+<h3><span class="header-section-number">3.6.3</span> Vector coverage checking</h3>
+<p>If <code>veccheck=T</code> then long reads given by <code>reads=FILELIST readtype=LIST</code> will be mapped onto the assembly using minimap2 and complete coverage of each hit reported. This will report the number of reads that span the entrie contaminant hit, plus flanking distances each side set by <code>checkflanks=LIST</code> (default: 0,100,1000,5000). If the flanking distance (bp) or the end of the sequence is reached before the end of the read in both directions, that read will be added to the coverage count. Because this can inflate apparent flanking coverage for hits near the end of a sequence, the distance from each end of the sequence is also returned as <code>MaxFlank5</code> and <code>MaxFlank3</code>.</p>
+<hr />
+</div>
+</div>
+<div id="depth-trimming-runmodedeptrim" class="section level2">
+<h2><span class="header-section-number">3.7</span> Depth trimming [runmode=deptrim]</h2>
+<pre><code>deptrim=INT     : Trim termini with &lt;X depth [1]
+mintrim=INT     : Min length of terminal depth trimming [1000]</code></pre>
 <hr />
 </div>
 <div id="sorted-non-redundant-assembly-cleanup-runmodesortnr" class="section level2">
-<h2><span class="header-section-number">3.7</span> Sorted non-redundant assembly cleanup [runmode=sortnr]</h2>
+<h2><span class="header-section-number">3.8</span> Sorted non-redundant assembly cleanup [runmode=sortnr]</h2>
 <p>The sorted non-redundant assembly cleanup mode (<code>runmode=sortnr</code>) screens out any sequences that are 100% gap, then removes any sequences that are 100% redundant with other sequences in the input. This includes full and partial matches, i.e. if sequence X is wholly contained within sequence Y then X will be removed.</p>
 <p>First, sequences are loaded from the file given with <code>seqin=FILE</code> and any <a href="http://rest.slimsuite.unsw.edu.au/seqlist">rje_seqlist</a> filters and sequence sorting are applied to the input. Sequences that are 100% Ns are removed and any gaps exceeding 10 nt are reduced to 10 <code>N</code>s (<code>NNNNNNNNNN</code>) to prevent minimap2 from splitting sequences on long gaps. These gap-reduced sequences are output to <code>$BASEFILE.tmp.fasta</code> and used for an all-by-all minimap2 search.</p>
 <p>By default, minimap2 is run with the options to generate a <code>$BASEFILE.tmp.paf</code> file:</p>
@@ -1876,7 +2376,7 @@ See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not
 <hr />
 </div>
 <div id="pseudodiploid-to-primary-and-alternative-haploptigs-runmodediphapnr" class="section level2">
-<h2><span class="header-section-number">3.8</span> Pseudodiploid to primary and alternative haploptigs [runmode=diphap(nr)]</h2>
+<h2><span class="header-section-number">3.9</span> Pseudodiploid to primary and alternative haploptigs [runmode=diphap(nr)]</h2>
 <p>This protocol is based on 10x assemblies made for multiple organisms with supernova v2.0.0 and supernova v2.1.1. In each case, some redundancy in output was discovered (a) within pseudohap output, and (b) in terms of fully homozygous (identical) scaffolds shared by both haplotigs. It was also not entirely clear on what basis a particular haplotype was assigned to pseudohap1 or pseudohap2.</p>
 <p>The general workflow therefore sought to remove redundancy, generate a set of primary scaffolds based on scaffold length, and generate a non-redundant set of alternative scaffolds where heterozygosity exists. If <code>diphapnr</code> mode is used, the full workflow is implement by first running the <code>sortnr</code> workflow described above. In the reduced <code>diphap</code> mode, redundancy is not removed first.</p>
 <p>Sequences are loaded and matching haplotigs identified based on their names. Sequence names MUST end <code>HAP(\d+)</code>, where <code>(\d+)</code> indicates an integer that matches up haplotigs (as produced by supernova pseudohap2 output, for example). This is <strong>not</strong> a pipeline to identify haplotig pairs, it is purely for splitting identified haplotigs into primary and alternative assemblies.</p>
@@ -1892,7 +2392,7 @@ See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not
 <hr />
 </div>
 <div id="in-silico-diploid-generator-runmodeinsilico" class="section level2">
-<h2><span class="header-section-number">3.9</span> In silico diploid generator [runmode=insilico]</h2>
+<h2><span class="header-section-number">3.10</span> In silico diploid generator [runmode=insilico]</h2>
 <p>This module generates balanced “in silico diploid” PacBio subread data from two sequenced haploid parents. Each parent must first be run through SMRTSCAPE to generate subread summary data. (This will be performed if missing. Each parent needs a <code>*.fofn</code> file of subread file names, <code>*.unique.tdt</code> unique subreads table and <code>*.smrt.tdt</code> SMRT cell identifier table.)</p>
 <p>A new set of subreads is then generated from the combined set of parent subreads. This is done by first ranking the unique subreads from each parent by length. First, the longest subread from each parent are compared and the shortest selected to be the first subread of the diploid. (The shortest is taken to minimise length differences between the two parents.) Next, the longest subread from the next parent that is no longer than the previous subread is added. This cycles, picking a read from the the parent with fewest cumulative bases each cycle. The longest subread that is no longer than the previous subread is selected. This continues until one parent runs out of subreads. Additional subreads will be added from the other parent if they reduce the difference in cumulative output for each parent, or until <code>lenfilter=X</code> is reached.</p>
 <p>Final output will be a <code>*.LXXXRQXX.fasta</code> file in which each parent has a similar total sequence content and for which the subread length distributions should also be similar. This is to overcome biases in resulting diploid assemblies, where one parent has higher quality data than the other.</p>
