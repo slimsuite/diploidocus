@@ -71,6 +71,7 @@ Commandline:
     checkpos=TDTFILE: File of Locus, Start, End positions for read coverage checking [None]
     checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [Locus,Start,End]
     checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
+    spanid=X        : Generate sets of read IDs that span checkpos regions, grouped by values of field X []
     ### ~ Variant mode (dev only) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     snptableout=T/F : Generated output of filtered variants to SNP Table [False]
     qcut=X          : Min. quality score for a mapped read to be included [0]
@@ -118,6 +119,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.8.0 - Added developmental variant calling options.
     # 0.9.0 - Added long-read mapping to BAM option.
     # 0.10.0 - Added longreadMinimapPAF() and checkpos=TDTFILE options.
+    # 0.10.1 - Added spanid=X: Generate sets of read IDs that span checkpos regions, based on values of field X []
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -150,7 +152,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('RJE_PAF', '0.10.0', 'February 2020', '2019')
+    (program, version, last_edit, copy_right) = ('RJE_PAF', '0.10.1', 'February 2020', '2019')
     description = 'Minimap2 PAF parser and converter'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -278,6 +280,7 @@ class PAF(rje_obj.RJE_Object):
     - PAFIn=PAFFILE   : PAF generated from $REFERENCE $ASSEMBLY mapping []
     - Reference=FILE  : Fasta (with accession numbers matching Locus IDs) ($REFERENCE) []
     - SeqIn=FASFILE   : Input genome to identify variants in ($ASSEMBLY) []
+    - SpanID=X        : Generate sets of read IDs that span checkpos regions, based on values of field X []
     - TmpDir=PATH     : Temporary directory to use when forking [./tmp/]
 
     Bool:boolean
@@ -328,7 +331,7 @@ class PAF(rje_obj.RJE_Object):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['CheckPos','Minimap2','PAFIn','SeqIn','Reference','TmpDir']
+        self.strlist = ['CheckPos','Minimap2','PAFIn','SeqIn','SpanID','Reference','TmpDir']
         self.boollist = ['AlnSeq','BiAllelic','IgnoreN','IgnoreRef','Indels','LocalAln','MapSplice','MockBLAST','RID','SNPTableOut','UniqueHit','UniqueOut']
         self.intlist = ['AbsMinCut','EndExtend','MinLocLen','MinQN','QCut']
         self.numlist = ['MinCut','MinLocID']
@@ -364,7 +367,7 @@ class PAF(rje_obj.RJE_Object):
                 self._cmdRead(cmd,type='file',att='SeqIn',arg='assembly')  # No need for arg if arg = att.lower()
                 self._cmdRead(cmd,type='file',att='Reference',arg='searchdb')  # No need for arg if arg = att.lower()
                 self._cmdRead(cmd,type='file',att='Reference',arg='refgenome')  # No need for arg if arg = att.lower()
-                self._cmdReadList(cmd,'str',['Minimap2'])   # Normal strings
+                self._cmdReadList(cmd,'str',['Minimap2','SpanID'])   # Normal strings
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['CheckPos','PAFIn','SeqIn','Reference'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
@@ -2592,8 +2595,10 @@ class PAF(rje_obj.RJE_Object):
             if not len(self.list['CheckFields']) == 3:
                 raise ValueError('checkfields=LIST must have exactly 3 elements: Locus, Start, End. %d found!' % len(self.list['CheckFields']))
             [locusfield,startfield,endfield] = self.list['CheckFields']
-            cdb = db.addTable(self.getStr('CheckPos'),mainkeys=self.list['CheckFields'],name='check',expect=True)
+            #cdb = db.addTable(self.getStr('CheckPos'),mainkeys=self.list['CheckFields'],name='check',expect=True)
+            cdb = db.addTable(self.getStr('CheckPos'),mainkeys='auto',name='check',expect=True)
             cdb.dataFormat({startfield:'int',endfield:'int'})
+            cdb.compress(self.list['CheckFields'],rules={self.getStr('SpanID'):'list'})
             cdb.setStr({'Delimit':'\t'})
             cdb.addField('MaxFlank5',evalue=-1)
             cdb.addField('MaxFlank3',evalue=-1)
@@ -2601,6 +2606,11 @@ class PAF(rje_obj.RJE_Object):
             ## ~ [1c] Temp directory for forked depths ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             tmpdir = rje.makePath(self.getStr('TmpDir'),wholepath=False)
             if not rje.exists(tmpdir): rje.mkDir(self,tmpdir)
+            ## ~ [1d] Output directory for SpanID reads ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            iddir = '%s_spanid/' % basefile
+            if self.getStrLC('SpanID'):
+                if not rje.exists(iddir): rje.mkDir(self,iddir)
+
 
             ### ~ [2] ~ Check/Generate PAF file ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             paffile = self.longreadMinimapPAF()
@@ -2642,7 +2652,7 @@ class PAF(rje_obj.RJE_Object):
             # pafhead = string.split('Qry QryLen QryStart QryEnd Strand Hit SbjLen SbjStart SbjEnd Identity Length Quality')
             #!# Need to add read lists for each contaminant #!#
             ## ~ [4a] Load data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            cx = 0.0; ctot = cdb.entryNum()
+            cx = 0.0; ctot = cdb.entryNum(); spanid = {}
             for centry in cdb.entries():
                 self.progLog('\r#CHECK','Processing checkpos coverage: %.2f%%' % (cx/ctot)); cx += 100.0
                 locus = centry[locusfield]
@@ -2662,6 +2672,11 @@ class PAF(rje_obj.RJE_Object):
                         for covx in covflanks:
                             if pentry['SbjStart'] <= max(1,centry[startfield]-covx) and pentry['SbjEnd'] >= min(pentry['SbjLen'],centry[endfield]+covx):
                                 centry['Span%d' % covx] += 1
+                    if self.getStrLC('SpanID'):
+                        idlist = pafdb.dataList(pafdb.entries(),'Qry',sortunique=False,empties=False)
+                        for spanner in centry[self.getStr('SpanID')].split('|'):
+                            if spanner not in spanid: spanid[spanner] = []
+                            spanid[spanner] += idlist
                     db.deleteTable(pafdb)
                 except:
                     self.talk()
@@ -2679,6 +2694,13 @@ class PAF(rje_obj.RJE_Object):
                     tmpfile = '{}{}.{}.{}.{}.tmp'.format(tmpdir,basefile,locus,cstart,cend)
                     os.unlink(tmpfile); tx += 1
                 self.printLog('#TMP','%s temp files deleted' % rje.iStr(tx))
+            ## ~ [4c] Save spanning read IDs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if self.getStrLC('SpanID'):
+                for spanner in rje.sortKeys(spanid):
+                    spout = '%s%s.%s.span.id' % (iddir,basefile,spanner)
+                    spids = rje.sortUnique(spanid[spanner])
+                    open(spout,'w').write('\n'.join(spids+['']))
+                    self.printLog('#SPANID','%s %s spanning read IDs output to %s' % (rje.iLen(spids),spanner,spout))
             return cdb
 
         except: self.errorLog('Problem during %s checkPos().' % self.prog()); return False  # Setup failed

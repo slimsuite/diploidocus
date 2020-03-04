@@ -1,7 +1,7 @@
 Diploidocus: Diploid genome assembly analysis tools.
 
 ```
-Diploidocus v0.9.0
+Diploidocus v0.9.2
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.

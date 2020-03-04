@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.36.1
-Last Edit:    10/02/20
+Version:      1.37.0
+Last Edit:    26/02/20
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -120,6 +120,12 @@ Commandline:
     minlen=X        : Minimum sequence length [0]
     maxlen=X	    : Maximum length of sequences (<=0 = No maximum) [0]
 
+    ### ~ EXTRACT/MASK OPTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    maskseq=TDTFILE : File of Locus, Start, End positions for masking [None]
+    grabseq=TDTFILE : File of Locus, Start, End positions for region extraction [None]
+    posfields=LIST  : Fields in checkpos file to give Locus, Start and End for checking [Locus,Start,End]
+    addflanks=INT   : Length of flanking sequence to also extract/mask [0]
+
     ### ~ OUTPUT OPTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     seqout=FILE     : Whether to output sequences to new file after loading and filtering [None]
     usecase=T/F     : Whether to return sequences in the same case as input (True), or convert to Upper (False) [False]
@@ -209,6 +215,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.35.0 - Added initial extraction of sequences from BLASTDB from rje_seq.
     # 1.36.0 - Added bpFromStr(seqlen)
     # 1.36.1 - Changed default duplicate suffix to X2.
+    # 1.37.0 - Added masking and extraction from loaded table of positions.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -231,7 +238,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.36.1', 'February 2020', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.37.0', 'February 2020', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -295,6 +302,8 @@ class SeqList(rje_obj.RJE_Object):
 
     Str:str
     - Edit = Option edit file for sequence editing [None]
+    - GrabSeq=TDTFILE : File of Locus, Start, End positions for region extraction [None]
+    - MaskSeq=TDTFILE    : File of Locus, Start, End positions for masking [None]
     - Name = Sequence file name - specifies output. [None]
     - NewAcc = New base for sequence accession numbers - will rename sequences [None]
     - NewDesc=FILE    : File of new names for sequences (over-rules other naming). First word should match input [None]
@@ -337,6 +346,7 @@ class SeqList(rje_obj.RJE_Object):
     - UseCase = Whether to return sequences in the same case as input (True), or convert to Upper (False) [False]
 
     Int:integer
+    - AddFlanks=INT   : Length of flanking sequence to also extract/mask [0]
     - MinLen = Minimum sequence length [0]
     - MaxLen = Maximum length of sequences (<=0 = No maximum) [0]
     - MinORF = Min. ORF length for translated sequences output. -1 for single translation inc stop codons [-1]
@@ -348,6 +358,7 @@ class SeqList(rje_obj.RJE_Object):
 
     List:list
     - Edit = Stores edits made during self.edit() as (Type,AccNum,Details) tuples. (Enables extraction of edits made.)
+    - PosFields=LIST  : Fields in checkpos file to give Locus, Start and End for checking [Locus,Start,End]
     - Sampler = N(,X) = Generate (X) file(s) sampling a random N sequences from input into seqout.N.X.fas [0]
     - Seq = List of sequences - nature depends on SeqMode []
 
@@ -367,15 +378,15 @@ class SeqList(rje_obj.RJE_Object):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['Edit','Name','NameFormat','NewAcc','NewDesc','Region',
+        self.strlist = ['Edit','Name','NameFormat','NewAcc','NewDesc','Region','GrabSeq','MaskSeq',
                         'SeqDB','SeqDictType','SeqFormat','SeqIn','SeqMode','SeqType','SeqOut',
                         'Reformat','SpCode','SeqNR','NewGene','Split','SortSeq','SplitSeq','TmpDir']
         self.boollist = ['AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GeneCounter','GrepNR','Maker',
                          'Mixed','ORFMet','ReName','RevCompNR','SizeSort','TwoPass',
                          'SeqIndex','SeqShuffle','Summarise','UseCase']
-        self.intlist = ['MinLen','MaxLen','MinORF','RFTran','TerMinORF']
+        self.intlist = ['AddFlanks','MinLen','MaxLen','MinORF','RFTran','TerMinORF']
         self.numlist = ['GenomeSize']
-        self.listlist = ['Edit','Sampler','Seq']
+        self.listlist = ['Edit','PosFields','Sampler','Seq']
         self.dictlist = ['Filter','SeqDict']
         self.objlist = ['Current','CurrSeq','DB','SEQFILE','INDEX']
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -383,6 +394,7 @@ class SeqList(rje_obj.RJE_Object):
         self.setStr({'SeqMode':'file','ReFormat':'None','Region':'1,-1','TmpDir':rje.makePath('./tmp/')})
         self.setBool({'AutoFilter':True,'AutoLoad':True,'DupErr':True,'ORFMet':True,'SeqIndex':True,'GrepNR':True,'RevCompNR':True,'TwoPass':True})
         self.setInt({'MinORF':-1,'RFTran':1,'TerMinORF':-1})
+        self.list['PosFields'] = ['Locus','Start','End']
         self.list['Sampler'] = [0,1]
         #self.setInt({})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -402,11 +414,11 @@ class SeqList(rje_obj.RJE_Object):
                 self._cmdRead(cmd,type='file',att='SeqDB',arg='fasdb')  # No need for arg if arg = att.lower()
                 self._cmdRead(cmd,type='str',att='SortSeq',arg='seqsort')  # No need for arg if arg = att.lower()
                 self._cmdReadList(cmd,'str',['NewAcc','NewGene','Region','SeqFormat','SeqMode','ReFormat','SpCode','SeqType','Split','SortSeq','SplitSeq'])
-                self._cmdReadList(cmd,'file',['Edit','NewDesc','SeqDB','SeqIn','SeqOut'])
-                self._cmdReadList(cmd,'file',['Edit','NewDesc','SeqDB','SeqIn','SeqOut'])
+                self._cmdReadList(cmd,'file',['Edit','NewDesc','SeqDB','SeqIn','SeqOut','GrabSeq','MaskSeq'])
                 self._cmdReadList(cmd,'path',['TmpDir'])
-                self._cmdReadList(cmd,'int',['MinLen','MaxLen','MinORF','RFTran','TerMinORF'])
+                self._cmdReadList(cmd,'int',['AddFlanks','MinLen','MaxLen','MinORF','RFTran','TerMinORF'])
                 self._cmdReadList(cmd,'num',['GenomeSize'])
+                self._cmdReadList(cmd,'list',['PosFields'])
                 self._cmdReadList(cmd,'nlist',['Sampler'])
                 self._cmdReadList(cmd,'bool',['Align','AutoFilter','AutoLoad','Concatenate','DNA','DupErr','Edit','GeneCounter','GrepNR','Maker','Mixed','ORFMet','ReName','RevCompNR','SizeSort','SeqIndex','SeqNR','SeqShuffle','Summarise','TwoPass','UseCase'])
             except: self.errorLog('Problem with cmd:%s' % cmd)
@@ -462,6 +474,8 @@ class SeqList(rje_obj.RJE_Object):
             if self.getBool('ReName'): self.rename(genecounter=self.getBool('GeneCounter'))
             self.loadSeq()
             if self.getBool('AutoFilter'): self.filterSeqs(screen=self.v()>0)
+            if self.getStrLC('MaskSeq'): self.grabSeq(mask=True)
+            if self.getStrLC('GrabSeq'): self.grabSeq(mask=False)
             if self.getBool('Edit'):
                 if not self.edit(): return False
             if self.getBool('Summarise'): self.summarise()
@@ -2188,6 +2202,86 @@ class SeqList(rje_obj.RJE_Object):
                 #self.debug(len(self.seqs()))
                 self.obj['Current'] = None
         except: self.errorLog('Major error during filterSeqs()')
+#########################################################################################################################
+    def grabSeq(self,mask=False):  ### Grabs and/or masks certain regions of sequences. Converts to seqmode=list.
+        '''
+        Grabs and/or masks certain regions of sequences. Converts to seqmode=list.
+        >> mask:bool [False] = whether to mask [True] or extract [False] sequences.
+        '''
+        try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            ltype = '#Grab'
+            posfile = self.getStr('GrabSeq')
+            if mask:
+                posfile = self.getStr('MaskSeq')
+                ltype = '#Mask'
+            if not rje.exists(posfile):
+                raise IOError('%sSeq file "%s" not found!' % (ltype[1:],posfile))
+            ## ~ [1a] ~ Setup position table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if not self.obj['DB']: self.obj['DB'] = rje_db.Database(self.log,self.cmd_list+['tuplekeys=T'])
+            db = self.db()
+            covflanks = self.getInt('AddFlanks')    #i# Negative value will shrink regions, not grow them
+            if not len(self.list['PosFields']) == 3:
+                raise ValueError('posfields=LIST must have exactly 3 elements: Locus, Start, End. %d found!' % len(self.list['PosFields']))
+            [locusfield,startfield,endfield] = self.list['PosFields']
+            #cdb = db.addTable(self.getStr('CheckPos'),mainkeys=self.list['CheckFields'],name='check',expect=True)
+            cdb = db.addTable(posfile,mainkeys=self.list['PosFields'],name='pos',expect=True,ignore=[])
+            cdb.dataFormat({startfield:'int',endfield:'int'})
+            if not cdb.entryNum():
+                self.warnLog('No %sSeq positions identified to %s' % (ltype[1:],ltype[1:].lower()))
+                return False
+            ## ~ [1b] Setup new sequence list ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            newseq = []     # List of (seqname, sequence) to replace self.list['Seq']
+            if mask and self.getStr('SeqMode') != 'list':
+                for seq in self.seqs(): newseq.append(self.getSeq(seq))
+                self.list['Seq'] = newseq
+                self.setStr({'SeqMode':'list'})
+                self.printLog(ltype.upper,'%s mode detected: seqmode=list' % ltype[1:])
+            seqdict = self.seqNameDic()     # Will map Locus onto shortname onto sequence using seqdict
+
+            ### ~ [2] Grab/Mask ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            cx = 0.0; ctot = cdb.entryNum(); masked = []; nullx = 0
+            for centry in cdb.entries():
+                self.progLog('\r%s' % ltype,'Processing %sSeq positions: %.2f%%' % (ltype[1:],cx/ctot)); cx += 100.0
+                locus = centry[locusfield]
+                if locus not in seqdict:
+                    nullx += 1
+                    continue
+                (sname, sequence) = self.getSeq(seqdict[locus])
+                cstart = min(centry[startfield],centry[endfield])   # Can accept either direction
+                cend = max(centry[startfield],centry[endfield])   # Can accept either direction
+                cstart = max(1,cstart-covflanks)
+                seqlen = len(sequence)
+                cend = min(seqlen,cend+covflanks)
+                if cend < cstart:
+                    self.warnLog('Region skipped: flanked end position before flanked start position')
+                    continue
+                seqi = self.seqNum()    # This will be replaced will masked sequence
+                if mask:
+                    seqi = self.list['Seq'].index((sname, sequence))
+                    sequence = sequence[:cstart-1] + 'N' * (cend-cstart+1) + sequence[cend:]
+                    if len(sequence) != seqlen: raise ValueError('Masking problem!')
+                    sname = '%s (masked %s-%s)' % (sname,rje.iStr(cstart),rje.iStr(cend))
+                    self.list['Seq'][i] = (seqname, sequence)
+                    masked.append(i)
+                else:
+                    sequence = sequence[cstart-1:cend]
+                    sname = '%s (region %s-%s)' % (sname,rje.iStr(cstart),rje.iStr(cend))
+                    newseq.append((sname, sequence))
+            self.printLog('\r%s' % ltype.upper(),'Processing %sSeq positions complete!' % (ltype[1:]))
+            if nullx: self.warnLog('%s regions did not match known sequence. (Checking naming and filtering.)' % rje.iStr(nullx))
+            if mask:
+                regx = len(masked); maskx = len(rje.sortUnique(masked))
+                self.printLog('\r%s' % ltype.upper(),'%s regions in %s sequences masked.' % (rje.iStr(regx),rje.iStr(maskx)))
+            ## Update for grab ##
+            if not mask:
+                self.list['Seq'] = newseq
+                if self.getStr('SeqMode') != 'list':
+                    self.setStr({'SeqMode':'list'})
+                self.printLog(ltype.upper,'%s regions extracted: seqmode=list' % (rje.iLen(newseq)))
+            return True
+
+        except: self.errorLog('Major error during grabSeq()')
+        return False
 #########################################################################################################################
     def seqFromBlastDBCmd(self,id,dbase=None,expect=True,add=False):  ### Returns sequence object(s) of sequence as obtained with blastdbcmd
         '''

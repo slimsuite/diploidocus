@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.0
-Last Edit:    23/02/20
+Version:      0.9.3
+Last Edit:    02/03/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -289,8 +289,10 @@ Commandline:
     vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
     vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
     vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+    keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
+    spanid=X        : Generate sets of read IDs that span veccheck regions, grouped by values of field X []
     ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
     seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -333,6 +335,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.8.2 - Shifted LOWQUAL to quarantine rather than junk. Fixed eFDR calculation error (inverse ranking).
     #       - Added veccheck=T/F : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     # 0.9.0 - Added pretrim, vecpurge, vecmask and vectrim options. Reduced screenmode to report/purge.
+    # 0.9.1 - Fixed partial vecpurge when setting parameters to zero.
+    # 0.9.2 - Added keepnames=T/F : Whether to keep names unchanged for edited sequences or append 'X' [False]
+    # 0.9.3 - Fixed termination of program when BUSCO gene mpileup goes wrong (unless debug=T).
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -368,7 +373,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.0', 'February 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.2', 'February 2020', '2017')
     description = 'Diploid genome assembly analysis tools.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -453,6 +458,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - DocHTML=T/F     : Generate HTML BUSCOMP documentation (*.info.html) instead of main run [False]
     - Diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
+    - KeepNames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     - PreTrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
@@ -506,7 +512,7 @@ class Diploidocus(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['Diploidify','DocHTML','IncludeGaps','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim']
+        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
         self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc','VecPurge']
         self.filelist = []
@@ -516,7 +522,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
+        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -540,7 +546,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
                 self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
@@ -2204,7 +2210,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 for (starti,endi) in suspects:
                     if (endi - starti) < suspectbp:
                         vecdb.addEntry({'Query':'Suspect','Hit':sname,'AlnID':0,'SbjStart':starti,'SbjEnd':endi,
-                                        'Score':0,'Identity':0,'Length':endi - starti + 1,
+                                        'Score':0,'Identity':0,'Length':endi - starti + 1,'Strand':'+',
                                         'MatchPos':'Suspect','MatchStr':'Suspect'})
                         suspectx += 1
             self.printLog('\r#REGION','Identifying suspect regions complete: %s regions' % rje.iStr(suspectx))
@@ -2328,7 +2334,7 @@ class Diploidocus(rje_obj.RJE_Object):
             #i# 1. First, any scaffolds meeting the vecpurge=PERC total coverage threshold are removed completely.
             purgelist = []
             for entry in covdb.indexEntries('Query','TOTAL'):
-                if entry['CovPC'] >= self.getNum('VecPurge'):
+                if self.getNum('VecPurge') > 0 and entry['CovPC'] >= self.getNum('VecPurge'):
                     seqname = entry['Hit']
                     seqlen = entry['HitLen']
                     trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':1, 'End':seqlen, 'Edit':'purge'})
@@ -2345,7 +2351,7 @@ class Diploidocus(rje_obj.RJE_Object):
             #i# 2. Next, any hits within `vectrim=INT` bp of either sequence end are trimmed off. This will continue until no hits
             #i# (meeting `minvechit=INT efdr=NUM`) are within `vectrim=INT` bp.
                 trim5 = 1; trim3 = seqlen
-                if trimpos[0][0] <= self.getInt('VecTrim'): trim5 = trimpos[0][1]   # 5' trim
+                if self.getInt('VecTrim') > 0 and trimpos[0][0] <= self.getInt('VecTrim'): trim5 = trimpos[0][1]   # 5' trim
                 if (seqlen-trimpos[-1][1]+1) <= self.getInt('VecTrim'): trim3 = trimpos[-1][0]   # 3' trim
                 if trim5 > trim3:
                     trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':1, 'End':seqlen, 'Edit':'fulltrim'})
@@ -2357,6 +2363,7 @@ class Diploidocus(rje_obj.RJE_Object):
                     trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':trim3, 'End':seqlen, 'Edit':'trim'})
             ## ~ [2d] ~ Identify regions to mask ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #i# 3. Finally, any remaining hits meeting the `vecmask=INT` length cutoff are masked by replacing with Ns.
+                if self.getInt('VecMask') <= 0: continue
                 for (mask5,mask3) in vecpos:
                     masklen = mask3-mask5+1
                     if masklen < self.getInt('VecMask'): continue
@@ -2395,7 +2402,7 @@ class Diploidocus(rje_obj.RJE_Object):
                         masked = True
                     elif entry['Edit'] == 'trim':
                         sequence = sequence[:entry['Start']-1] + '-' * (entry['End']-entry['Start']+1) + sequence[entry['End']:]
-                        if len(sequence) != seqlen: raise ValueError('Masking problem!')
+                        if len(sequence) != seqlen: raise ValueError('Trimming problem!')
                         trimmed = True
                 #i# Trim
                 sequence = sequence.replace('-','')
@@ -2405,8 +2412,8 @@ class Diploidocus(rje_obj.RJE_Object):
                     trimx += 1
                 if masked:
                     seqdesc += ' (Vecscreen:masked)'
-                    trimx += 1
-                if trimmed or masked: seqname = seqname+'X'
+                    maskx += 1
+                if (trimmed or masked) and not self.getBool('KeepNames'): seqname = seqname+'X'
                 #i# Save
                 FASOUT.write('>%s %s\n%s\n' % (seqname,seqdesc,sequence)); seqx += 1
             FASOUT.close()
@@ -2630,7 +2637,7 @@ class Diploidocus(rje_obj.RJE_Object):
                         if X not in depcounts: depcounts[X] = 0
                         depcounts[X] += n
                 except:
-                    self.errorLog('Samtools depth result processing error',quitchoice=True)
+                    self.errorLog('Samtools depth result processing error',quitchoice=self.debugging())
                     continue
             ## ~ [3b] Generate mode and mode of modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             modelist = []
