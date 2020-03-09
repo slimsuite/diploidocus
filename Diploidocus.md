@@ -1,7 +1,7 @@
-Diploidocus: Diploid genome assembly analysis tools.
+Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.9.2
+Diploidocus v0.9.4
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -154,6 +154,18 @@ Final outputs from the final cycle will then be compiled under the original `$BA
 log files in the `dipcycle_$BASEFILE` directory.
 
 See `runmode=diploidocus` documentation for more details.
+
+### Re-starting aborted runs
+
+If Diploidocus is killed before completion, files will not have been moved to the `dipcycle_$BASEFILE` directory.
+Any cycles that have generated a `*.diploidocus.fasta` file will be skipped until an incomplete cycle is found.
+In the rare case that Diploidocus was killed whilst generating fasta output, and `*.diploidocus.fasta` is thus
+incomplete, further cycles will be messed up. In this case, deleted the relevant `*.diploidocus.fasta` file
+before re-running.
+
+If Diploidocus is run with `runmode=dipcycle` and the `dipcycle_$BASEFILE` directory is found, it will abort.
+Rename or delete the directory to re-run Diploidocus with the same `$BASEFILE` setting, or change `basefile=X`.
+
 
 ---
 

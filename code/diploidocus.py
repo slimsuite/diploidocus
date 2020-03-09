@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.3
-Last Edit:    02/03/20
+Version:      0.9.4
+Last Edit:    08/03/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -273,6 +273,7 @@ Commandline:
     purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
     diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+    maxcycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
     ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     deptrim=INT     : Trim termini with <X depth [1]
     mintrim=INT     : Min length of terminal depth trimming [1000]
@@ -338,6 +339,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.9.1 - Fixed partial vecpurge when setting parameters to zero.
     # 0.9.2 - Added keepnames=T/F : Whether to keep names unchanged for edited sequences or append 'X' [False]
     # 0.9.3 - Fixed termination of program when BUSCO gene mpileup goes wrong (unless debug=T).
+    # 0.9.4 - Added capacity to pick up an aborted dipcycle run. Added maxcycle=INT setting to limit run times.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -369,12 +371,15 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Add vectrim=INT cutoff to trim contamination within INT bp of sequence ends
     # [N] : Replace screenmode=X with vecpurge, vectrim, vecmask hierarchy.
     # [Y] : Add optional and pretrim=T/F for dipcycle to run vecscreen and/or depthtrim
+    # [ ] : Add rDNA finding with barrnap.
+    # [ ] : Add (optional?) re-use of the first vecscreen search if purgemode=dipcycle and no additional trimming.
+    # [ ] : Add maxcycle=INT to terminate dipcycle after INT cycles.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.2', 'February 2020', '2017')
-    description = 'Diploid genome assembly analysis tools.'
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.4', 'March 2020', '2017')
+    description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
                 'This program is still in development and has not been published.',rje_obj.zen()]
@@ -470,6 +475,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - DepTrim=INT     : Trim termini with <X depth [1]
     - GenomeSize=INT  : Haploid genome size (bp) [0]
     - LenFilter=X     : Min read length for filtered subreads [500]
+    - MaxCycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
     - MinGap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
     - MinLength=INT   : Minimum scaffold lenght to avoid low quality filter [500]
     - MinMedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
@@ -513,7 +519,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','TeloFwd','TeloRev','TmpDir']
         self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim']
-        self.intlist = ['DepTrim','GenomeSize','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
+        self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
         self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc','VecPurge']
         self.filelist = []
         self.listlist = ['KmerReads','Reads','ReadType']
@@ -523,7 +529,7 @@ class Diploidocus(rje_obj.RJE_Object):
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
         self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
-        self.setInt({'DepTrim':0,'LenFilter':500,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
+        self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.list['ReadType'] = ['ont']
@@ -547,7 +553,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
                 self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
@@ -715,6 +721,18 @@ class Diploidocus(rje_obj.RJE_Object):
         log files in the `dipcycle_$BASEFILE` directory.
 
         See `runmode=diploidocus` documentation for more details.
+
+        ### Re-starting aborted runs
+
+        If Diploidocus is killed before completion, files will not have been moved to the `dipcycle_$BASEFILE` directory.
+        Any cycles that have generated a `*.diploidocus.fasta` file will be skipped until an incomplete cycle is found.
+        In the rare case that Diploidocus was killed whilst generating fasta output, and `*.diploidocus.fasta` is thus
+        incomplete, further cycles will be messed up. In this case, deleted the relevant `*.diploidocus.fasta` file
+        before re-running.
+
+        If Diploidocus is run with `runmode=dipcycle` and the `dipcycle_$BASEFILE` directory is found, it will abort.
+        Rename or delete the directory to re-run Diploidocus with the same `$BASEFILE` setting, or change `basefile=X`.
+
 
         ---
 
@@ -1405,10 +1423,16 @@ class Diploidocus(rje_obj.RJE_Object):
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             basefile = self.baseFile(strip_path=True)
             newbase = cycbase = basefile #'dipcycle_{}/{}'.format(basefile,basefile)
+            cycdir = 'dipcycle_{}/'.format(basefile)
+            if rje.exists(cycdir):
+                self.printLog('#CYCLE','Completed dipcycle directory found: {}'.format(cycdir))
+                self.printLog('#ABORT','Aborting run - delete or rename existing dipcycle directory to re-run.')
+                return False
             cycle = 0
             prevseqx = 0
             seqin = self.getStr('SeqIn')
             seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
+            db = self.db()
             dipdb = None
             ## ~ [1a] ~ Special pretim trimming ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #i# When cycling, this is done once before the cycling
@@ -1416,33 +1440,49 @@ class Diploidocus(rje_obj.RJE_Object):
                 seqin = self.preTrim()  ### Performs vecscreen and deptrim trimming, updates self.seqinObj() and returns trimmed fasta file
 
             ### ~ [2] ~ Cycle ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            maxstop = False
             while seqlist.seqNum() != prevseqx:
+                # Check maxcyle
+                if self.getInt('MaxCycle') > 0 and cycle >= self.getInt('MaxCycle'):
+                    self.printLog('#CYCLE','Max cycle reached (maxcycle={}). Finishing run.'.format(self.getInt('MaxCycle')))
+                    maxstop = True
+                    break
                 # Increment cycle and make new basefile
                 prevseqx = seqlist.seqNum()
                 cycle += 1
                 oldbase = newbase
                 newbase = '{}.{}'.format(cycbase,cycle)
                 seqout = '{}.diploidocus.fasta'.format(newbase)
-                self.printLog('#SEQIN','Using {} as input for Diploidocus cycle {}.'.format(seqin,cycle))
-                self.printLog('#CYCLE','Cycle {}: running as {}.*'.format(cycle,newbase))
-                # Run Diploidocus
-                info = makeInfo()
-                cyccmd = ['i=-1']+self.cmd_list+['basefile={}'.format(newbase),'runmode=diploidocus','seqin=%s' % seqin]
-                if self.debugging(): cyccmd.append('i=1')
-                cmd_list = rje.getCmdList(cyccmd,info=info)   # Reads arguments and load defaults from program.ini
-                out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
-                out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2
-                out.printIntro(info)                                # Prints intro text using details from Info object
-                log = rje.setLog(info,out,cmd_list)                 # Sets up Log object for controlling log file output
-                if self.debugging():
-                    cycdb = Diploidocus(log,['dna=T']+cmd_list+['i=1']).run()
+                if rje.exists(seqout) and self.force():
+                    self.printLog('#ABORT','{} found and force=T: delete/move aborted previous run files and try again.'.format(seqout))
+                    return False
+                if rje.exists(seqout):
+                    self.printLog('#CYCLE','Cycle {} skipped: {} found (force=F)'.format(cycle,seqout))
+                    if dipdb:
+                        cycdb = db.addTable('{}.diploidocus.tdt'.format(newbase),mainkeys=['SeqName'],expect=True,name='diploidocus.{}'.format(cycle))
+                    else:
+                        cycdb = db.addTable('{}.diploidocus.tdt'.format(newbase),mainkeys=['SeqName'],expect=True,name='diploidocus')
                 else:
-                    cycdb = Diploidocus(log,['dna=T','i=-1']+cmd_list).run()
+                    self.printLog('#SEQIN','Using {} as input for Diploidocus cycle {}.'.format(seqin,cycle))
+                    self.printLog('#CYCLE','Cycle {}: running as {}.*'.format(cycle,newbase))
+                    # Run Diploidocus
+                    info = makeInfo()
+                    cyccmd = ['i=-1']+self.cmd_list+['basefile={}'.format(newbase),'runmode=diploidocus','seqin=%s' % seqin]
+                    if self.debugging(): cyccmd.append('i=1')
+                    cmd_list = rje.getCmdList(cyccmd,info=info)   # Reads arguments and load defaults from program.ini
+                    out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
+                    out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2
+                    out.printIntro(info)                                # Prints intro text using details from Info object
+                    log = rje.setLog(info,out,cmd_list)                 # Sets up Log object for controlling log file output
+                    if self.debugging():
+                        cycdb = Diploidocus(log,['dna=T']+cmd_list+['i=1']).run()
+                    else:
+                        cycdb = Diploidocus(log,['dna=T','i=-1']+cmd_list).run()
                 if not cycdb:
                     raise IOError('Cycle %s failed! Check %s.log. Aborting run.' % (cycle,newbase))
                 cycdb.addField('Cycle',evalue=cycle)
                 # Update main table
-                if not dipdb:  dipdb = cycdb
+                if not dipdb: dipdb = cycdb
                 else:
                     for cycseq in cycdb.dataKeys(): dipdb.data()[cycseq] = cycdb.data()[cycseq]
                 # Check and process output
@@ -1453,12 +1493,17 @@ class Diploidocus(rje_obj.RJE_Object):
                 seqlist = self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','seqin=%s' % seqin,'autofilter=F'])
 
             ### ~ [3] Tidy up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            cycdir = 'dipcycle_{}/'.format(basefile)
+            if maxstop:
+                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached?'):
+                    self.warnLog('Cycle data not tidied: re-run with higher maxcycle=INT to resume')
+                    return True
+                self.warnLog('#Cycling terminated: re-run on {}.diploidocus.fasta output to resume tidying'.format(basefile))
+            else:
+                self.printLog('#CYCLE','Convergence achieved after cycle {}'.format(cycle))
             rje.mkDir(self,cycdir,log=True)
             ## ~ [3a] Transfer main data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             # The main diploidocus ratings table, and reduced *.ratings.tdt table, are compiled during cycling. These
             # are saved as primary $BASFILE.* output.
-            self.printLog('#CYCLE','Convergence achieved after cycle {}'.format(cycle))
             dipdb.baseFile(basefile)
             dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
             dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Cycle'])
@@ -1505,18 +1550,28 @@ class Diploidocus(rje_obj.RJE_Object):
             basefile = self.baseFile(strip_path=True)
 
             #i# Run VecScreen if appropriate
-            trimdb = self.vecPurge()
+            vecout = '{}.vecscreen.fasta'.format(basefile)
+            trimdb = None
+            if not self.force() and rje.exists(vecout):
+                seqin = vecout
+                self.printLog('#PURGE','{} found (force=F): skipping VecPurge'.format(vecout))
+            else:
+                trimdb = self.vecPurge()
             if trimdb:
-                seqin = '{}.vecscreen.fasta'.format(basefile)
+                seqin = vecout
                 self.setStr({'SeqIn':seqin})
                 purged = trimdb.indexDataList('Edit','mask','SeqName')
                 if purged:
                     self.warnLog('%s purged sequences will not be in main Diploidocus output: %s' % (rje.iLen(purged),', '.join(purged)))
             #i# Run DepTrim if appropriate
             depdb = None
-            if self.getInt('DepTrim'): depdb = self.depthTrim()
+            depout = '{}.trim.fasta'.format(basefile)
+            if not self.force() and rje.exists(depout):
+                seqin = depout
+                self.printLog('#TRIM','{} found (force=F): skipping DepTrim'.format(depout))
+            elif self.getInt('DepTrim'): depdb = self.depthTrim()
             if depdb:
-                seqin = '{}.trim.fasta'.format(basefile)
+                seqin = depout
                 self.setStr({'SeqIn':seqin})
                 purged = depdb.indexDataList('DepTrim','dump','SeqName')
                 if purged:
@@ -2417,7 +2472,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 #i# Save
                 FASOUT.write('>%s %s\n%s\n' % (seqname,seqdesc,sequence)); seqx += 1
             FASOUT.close()
-            self.printLog('\r#SAVE','{} sequences output to {}: {} trimmed; {} masked; {} dumped.'.format(rje.iStr(stot),fasout,rje.iStr(trimx),rje.iStr(maskx),rje.iStr(dumpx)))
+            self.printLog('\r#SAVE','{} sequences processed; {} output to {}: {} trimmed; {} masked; {} dumped.'.format(rje.iStr(stot),rje.iStr(stot-dumpx),fasout,rje.iStr(trimx),rje.iStr(maskx),rje.iStr(dumpx)))
             ## ~ [3c] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if seqlist.getBool('Summarise'):
                 seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % fasout,'autofilter=F']
@@ -2751,7 +2806,10 @@ class Diploidocus(rje_obj.RJE_Object):
                 prefix = '{}.{}'.format(rje.baseFile(self.getStr('SeqIn'),strip_path=True),rje.baseFile(readfile,strip_path=True))
                 maplog = '{}.log'.format(prefix)
                 ## ~ [2a] Make SAM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-                maprun = '{} -t {} --secondary=no -o {}.sam -L -ax map-{} {} {}'.format(paf.getStr('Minimap2'),self.threads(),prefix,rtype,self.getStr('SeqIn'),readfile)
+                imax = 4
+                seqinsize = os.path.getsize(self.getStr('SeqIn')) / 1e9
+                while seqinsize > imax: imax += 1
+                maprun = '{} -t {} -I {}G --secondary=no -o {}.sam -L -ax map-{} {} {}'.format(paf.getStr('Minimap2'),self.threads(),imax,prefix,rtype,self.getStr('SeqIn'),readfile)
                 # self.printLog('#SYS',maprun)
                 # if self.v() < 1:
                 #     mapsys = subprocess.Popen(maprun, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
