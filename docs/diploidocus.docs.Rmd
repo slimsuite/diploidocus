@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.9.4 Documentation"
+title: "Diploidocus V0.9.5 Documentation"
 author: "Richard J. Edwards"
-date: "2020-03-09"
+date: "2020-03-11"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -131,6 +131,12 @@ lenfilter=X     : Min read length for filtered subreads [500]
 parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
 parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
 See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
+### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
+useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
+qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
+modules=LIST    : List of modules that needs to be loaded for running with qsub []
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 ```
 

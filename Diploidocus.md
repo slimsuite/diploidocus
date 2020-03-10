@@ -1,7 +1,7 @@
 Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.9.4
+Diploidocus v0.9.5
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -117,6 +117,12 @@ lenfilter=X     : Min read length for filtered subreads [500]
 parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
 parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
 See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
+### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
+useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
+qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
+modules=LIST    : List of modules that needs to be loaded for running with qsub []
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 ```
 

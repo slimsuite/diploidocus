@@ -1056,7 +1056,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         except KeyboardInterrupt: raise
         except: self.errorLog('Problem locating %s source data file' % str,quitchoice=self.getBool('Integrity')); return ''
 #########################################################################################################################
-    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None):    ### Makes a system call, catching output in log file
+    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None,threaded=True):    ### Makes a system call, catching output in log file
         '''
         Makes a system call, catching output in log file.
         :param cmd:str = System call command to catch
@@ -1089,8 +1089,36 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
                 if self.v() >= verbosity: cmd = '{} | tee {}'.format(cmd,syslog)
                 else: cmd = '{} > {}'.format(cmd,syslog)
             ### ~ [2] ~ Process System Call ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            self.printLog('#SYS',cmd)
-            os.system(cmd)
+            if self.dev() and self.getBool('UseQSub'):
+                if not rje.exists('tmp_qsub'): rje.mkDir(self,'tmp_qsub/',log=True)
+                qbase = rje.baseFile(syslog)
+                ppn = self.threads()
+                vmem = self.getInt('QSubVMem')
+                if not threaded: ppn = 1; vmem = 16
+                farmcmd = ['farm={}'.format(cmd),'jobwait=T','qsub=T','basefile={}'.format(qbase),'slimsuite=F',
+                           'qpath={}'.format(mydir),'monitor=F',
+                           'ppn={}'.format(ppn),'vmem={}'.format(vmem),'walltime={}'.format(self.getInt('QSubWall'))]
+                self.printLog('#DEV','Using SLiMFarmer to farm system call in tmp_qsub/')
+                farmer = slimfarmer.SLiMFarmer(self.log,self.cmd_list+farmcmd)
+                self.printLog('#DEV','SLiMFarmer commands: {}'.format(' '.join(farmer.cmd_list)))
+                if not farmer.list['Modules']:
+                    for mod in os.popen('module list 2>&1').read().split():
+                        if '/' in mod: farmer.list['Modules'].append(mod)
+                    if farmer.list['Modules']:
+                        modlist = ','.join(farmer.list['Modules'])
+                        self.printLog('#MOD','Read modules for qsub from environment: {}'.format(modlist))
+                        self.cmd_list.append('modules={}'.format(modlist))
+                        farmer = slimfarmer.SLiMFarmer(self.log,self.cmd_list+farmcmd)
+                        self.printLog('#DEV','SLiMFarmer commands: {}'.format(' '.join(farmer.cmd_list)))
+                    else:
+                        raise ValueError('Trying to run with useqsub=T but modules=LIST not set!')
+                os.chdir('tmp_qsub/')
+                excode = farmer.run()
+                os.chdir(mydir)
+            else:
+                self.printLog('#SYS',cmd)
+                excode = os.system(cmd)
+            if excode > 0: raise ValueError('Non-zero exit status for: {}'.format(cmd))
             logline = nologline
             if not logline:
                 logline = 'WARNING: No run log output!'

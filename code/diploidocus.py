@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.4
-Last Edit:    08/03/20
+Version:      0.9.5
+Last Edit:    10/03/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -303,6 +303,12 @@ Commandline:
     parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
     parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
     See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
+    ### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
+    useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+    qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
+    qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
+    modules=LIST    : List of modules that needs to be loaded for running with qsub []
     ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 
 """
@@ -317,6 +323,7 @@ sys.path.append(os.path.join(slimsuitepath,'tools/'))
 import rje, rje_db, rje_forker, rje_obj, rje_rmd, rje_seqlist, rje_sequence, rje_paf #, rje_genomics
 import rje_blast_V2 as rje_blast
 import smrtscape
+import slimfarmer
 #########################################################################################################################
 def history():  ### Program History - only a method for PythonWin collapsing! ###
     '''
@@ -340,6 +347,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.9.2 - Added keepnames=T/F : Whether to keep names unchanged for edited sequences or append 'X' [False]
     # 0.9.3 - Fixed termination of program when BUSCO gene mpileup goes wrong (unless debug=T).
     # 0.9.4 - Added capacity to pick up an aborted dipcycle run. Added maxcycle=INT setting to limit run times.
+    # 0.9.5 - Added use of qsub for system calls and memperthread=INT to control max memory.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -373,12 +381,12 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Add optional and pretrim=T/F for dipcycle to run vecscreen and/or depthtrim
     # [ ] : Add rDNA finding with barrnap.
     # [ ] : Add (optional?) re-use of the first vecscreen search if purgemode=dipcycle and no additional trimming.
-    # [ ] : Add maxcycle=INT to terminate dipcycle after INT cycles.
+    # [Y] : Add maxcycle=INT to terminate dipcycle after INT cycles.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.4', 'March 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.5', 'March 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -468,6 +476,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     - VecCheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+    - UseQSub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
     - ZeroAdjust=T/F  : Add zero coverage bases to purge_haplotigs LowPerc and adjust total [True]
     - 10xTrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer reads data [False]
 
@@ -476,6 +485,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - GenomeSize=INT  : Haploid genome size (bp) [0]
     - LenFilter=X     : Min read length for filtered subreads [500]
     - MaxCycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
+    - MemPerThread=INT: Number of Gb per thread to allocate to samtools etc. [6]
     - MinGap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
     - MinLength=INT   : Minimum scaffold lenght to avoid low quality filter [500]
     - MinMedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
@@ -484,6 +494,9 @@ class Diploidocus(rje_obj.RJE_Object):
     - PHLow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
     - PHMid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
     - PHHigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
+    - QSubPPN=INT     : Number of CPU to use when queuing with qsub [16]
+    - QSubVMem=INT    : Memory setting (Gb) when queuing with qsub [126]
+    - QSubWall=INT    : Walltime setting (hours) when queuing with qsub [12]
     - ReadBP=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     - SCDepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     - TeloSize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
@@ -518,8 +531,10 @@ class Diploidocus(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim']
-        self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
+        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
+        self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit',
+                        'QSubPPN','QSubVMem','QSubWall','MemPerThread',
+                        'PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
         self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc','VecPurge']
         self.filelist = []
         self.listlist = ['KmerReads','Reads','ReadType']
@@ -528,8 +543,10 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'ZeroAdjust':True,'10xTrim':False})
-        self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
+        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
+        self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
+                     'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,
+                     'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.list['ReadType'] = ['ont']
@@ -552,8 +569,8 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
+                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
@@ -684,6 +701,12 @@ class Diploidocus(rje_obj.RJE_Object):
         parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
         parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
         See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
+        ### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
+        useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+        qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
+        qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
+        modules=LIST    : List of modules that needs to be loaded for running with qsub []
         ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         ```
 
@@ -1469,6 +1492,11 @@ class Diploidocus(rje_obj.RJE_Object):
                     info = makeInfo()
                     cyccmd = ['i=-1']+self.cmd_list+['basefile={}'.format(newbase),'runmode=diploidocus','seqin=%s' % seqin]
                     if self.debugging(): cyccmd.append('i=1')
+                    #i# Do not perform veccheck if already been performed! (Potentially, some
+                    if self.getBool('PreTrim') or cycle > 1:
+                        if self.getBool('VecCheck'):
+                            cyccmd.append('veccheck=F')
+                            self.printLog('#CHECK','NOTE: setting veccheck=F for cycle {} (previously performed)'.format(cycle))
                     cmd_list = rje.getCmdList(cyccmd,info=info)   # Reads arguments and load defaults from program.ini
                     out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
                     out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2
@@ -1620,7 +1648,7 @@ class Diploidocus(rje_obj.RJE_Object):
             self.errorLog(self.zen())
             raise   # Delete this if method error not terrible
 #########################################################################################################################
-    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None):    ### Makes a system call, catching output in log file
+    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None,threaded=True):    ### Makes a system call, catching output in log file
         '''
         Makes a system call, catching output in log file.
         :param cmd:str = System call command to catch
@@ -1629,9 +1657,11 @@ class Diploidocus(rje_obj.RJE_Object):
         :param append:bool [False] = Whether to append the log if it exists
         :param verbosity:int [1] = Verbosity level at which output also goes to screen (tee, not redirect)
         :param nologline:str [None] = Default logline returned if nothing is in the log
+        :param threaded:bool [True] = Whether to use multiple PPN when using dev qsub mode.
         :return: last line of syslog output
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            mydir = os.path.abspath(os.curdir)
             #i# System log filename
             if not syslog: syslog = '{}.sys.log'.format(self.baseFile())
             #i# Setup log with command and identify position to capture extra content
@@ -1653,7 +1683,33 @@ class Diploidocus(rje_obj.RJE_Object):
                 if self.v() >= verbosity: cmd = '{} | tee {}'.format(cmd,syslog)
                 else: cmd = '{} > {}'.format(cmd,syslog)
             ### ~ [2] ~ Process System Call ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            if self.dev():
+            if self.getBool('UseQSub'):
+                if not rje.exists('tmp_qsub'): rje.mkDir(self,'tmp_qsub/',log=True)
+                qbase = rje.baseFile(syslog)
+                ppn = self.threads()
+                vmem = self.getInt('QSubVMem')
+                if not threaded: ppn = 1; vmem = 16
+                farmcmd = ['farm={}'.format(cmd),'jobwait=T','qsub=T','basefile={}'.format(qbase),'slimsuite=F',
+                           'qpath={}'.format(mydir),'monitor=F',
+                           'ppn={}'.format(ppn),'vmem={}'.format(vmem),'walltime={}'.format(self.getInt('QSubWall'))]
+                self.printLog('#DEV','Using SLiMFarmer to farm system call in tmp_qsub/')
+                farmer = slimfarmer.SLiMFarmer(self.log,self.cmd_list+farmcmd)
+                self.printLog('#DEV','SLiMFarmer commands: {}'.format(' '.join(farmer.cmd_list)))
+                if not farmer.list['Modules']:
+                    for mod in os.popen('module list 2>&1').read().split():
+                        if '/' in mod: farmer.list['Modules'].append(mod)
+                    if farmer.list['Modules']:
+                        modlist = ','.join(farmer.list['Modules'])
+                        self.printLog('#MOD','Read modules for qsub from environment: {}'.format(modlist))
+                        self.cmd_list.append('modules={}'.format(modlist))
+                        farmer = slimfarmer.SLiMFarmer(self.log,self.cmd_list+farmcmd)
+                        self.printLog('#DEV','SLiMFarmer commands: {}'.format(' '.join(farmer.cmd_list)))
+                    else:
+                        raise ValueError('Trying to run with useqsub=T but modules=LIST not set!')
+                os.chdir('tmp_qsub/')
+                excode = farmer.run()
+                os.chdir(mydir)
+            elif self.dev():
                 self.printLog('#CALL',cmd)
                 excode = subprocess.call(cmd)
             else:
@@ -1672,6 +1728,7 @@ class Diploidocus(rje_obj.RJE_Object):
             return logline
         except:
             self.errorLog('Diploidocus.loggedSysCall() error')
+            os.chdir(mydir)
             return None
 #########################################################################################################################
     ### <3> ### In silico hybrid run method                                                                             #
@@ -1860,6 +1917,7 @@ class Diploidocus(rje_obj.RJE_Object):
             paf.setup()
             if not rje.exists(pafin) or self.force():
                 rje.backup(self,pafin)
+                #!# Add use of qsub #!#
                 paf.minimap2()
             # Parse PAF with initial minloclen and minlocid filtering
             pafdb = paf.parsePAF(debugstr=debugstr)
@@ -2120,8 +2178,9 @@ class Diploidocus(rje_obj.RJE_Object):
                 if rje.exists(blast.getStr('OptionFile')):
                     for line in open(blast.getStr('OptionFile'),'r').readlines(): command = '%s %s' % (command,rje.chomp(line))
                 blast.str['BLASTCmd'] = command
-                self.printLog('\r#SYS',command)
-                os.system(command)
+                #self.printLog('\r#SYS',command)
+                self.loggedSysCall(command,syslog='{}.blastn.log'.format(self.baseFile()))
+                #os.system(command)
                 if not blast.checkBLAST(): raise IOError('Problem with VecSreen BLAST results file "%s"' % bfile)
             ## ~ [2a] Read Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             vecdb = None
@@ -2832,12 +2891,17 @@ class Diploidocus(rje_obj.RJE_Object):
                 #sam2bam = 'samtools view -bo {}.tmp.bam -@ {} -S {}.sam'.format(prefix,self.threads()-1,prefix)
                 self.printLog('#BAM','Converting SAM to BAM. Using a single thread due to past issues of missing data.')
                 sam2bam = 'samtools view -bo {}.tmp.bam -S {}.sam'.format(prefix,prefix)
-                logline = self.loggedSysCall(sam2bam,maplog,append=True,nologline='No stdout from sam2bam')
+                logline = self.loggedSysCall(sam2bam,maplog,append=True,nologline='No stdout from sam2bam',threaded=False)
                 #!# Add check that run has finished #!#
                 ## ~ [2c] Sorting BAM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
                 self.printLog('#BAM','Sorting BAM file.')
                 sortbam = '{}.bam'.format(prefix)
-                bamsort = 'samtools sort -@ {} -o {}.bam -m 6G {}.tmp.bam'.format(self.threads()-1,prefix,prefix)
+                mgb = self.getInt('MemPerThread')
+                if self.getBool('UseQSub'):
+                    ppn = self.threads()
+                    vmem = self.getInt('QSubVMem')
+                    mgb = min(mgb,int(vmem/float(ppn)))
+                bamsort = 'samtools sort -@ {} -o {}.bam -m {}G {}.tmp.bam'.format(self.threads()-1,prefix,mgb,prefix)
                 logline = self.loggedSysCall(bamsort,maplog,append=True)
                 #!# Add check that run has finished #!#
                 if not rje.exists(sortbam): raise IOError('Sorted BAM file "%s" not generated' % sortbam)
@@ -2891,7 +2955,7 @@ class Diploidocus(rje_obj.RJE_Object):
             rje.checkForFiles(filelist=[bamfile,baifile],basename='',log=self.log,cutshort=False,ioerror=False)
             if self.needToRemake(baifile,bamfile):
                 makebai = 'samtools index -b {} {}.bai'.format(bamfile,bamfile)
-                logline = self.loggedSysCall(makebai,append=True)
+                logline = self.loggedSysCall(makebai,append=True,threaded=False)
             return bamfile
         except:
             self.errorLog('Diploidocus.bamFile() error'); raise
@@ -3056,7 +3120,7 @@ class Diploidocus(rje_obj.RJE_Object):
             rje.checkForFiles(filelist=[depfile,depstat],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.')
             bbmap = 'samtools view -h {} | pileup.sh in=stdin out={}.depth.tdt 2>&1 | tee {}.depth.stats'.format(bamfile,basefile,basefile)
             if self.force() or not (rje.exists(depfile) and rje.exists(depstat)):
-                logline = self.loggedSysCall(bbmap,append=True)
+                logline = self.loggedSysCall(bbmap,append=True,threaded=False)
             #bblines = os.popen('samtools view -h {} | pileup.sh in=stdin out={}.depth.tdt 2>&1 | tee {}.depth.stats'.format(bamfile,basefile,basefile)).readlines()
 
             ### ~ [5] ~ Add VecScreen, Telomere and BUSCO Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -3764,11 +3828,11 @@ class Diploidocus(rje_obj.RJE_Object):
             self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
             phcmd2 = 'purge_haplotigs cov -i {} -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(gencov,phlow,phmid,phhigh,basefile)
             if self.needToRemake(covstats,gencov):
-                logline = self.loggedSysCall(phcmd2,append=True)
+                logline = self.loggedSysCall(phcmd2,append=True,threaded=False)
             else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
             phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
             if self.needToRemake(purge,covstats):
-                logline = self.loggedSysCall(phcmd3,append=True)
+                logline = self.loggedSysCall(phcmd3,append=True,threaded=False)
             os.chdir(mydir)
             ## ~ [2a] ~ Link output files back to main directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             for ofile in (gencov,covstats,purge):
