@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.9.5 Documentation"
+title: "Diploidocus V0.9.6 Documentation"
 author: "Richard J. Edwards"
-date: "2020-03-11"
+date: "2020-03-20"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -76,7 +76,7 @@ use commandline options, including setting default values with **INI files**.
 ```
 ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 seqin=FILE      : Input sequence assembly [None]
-runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize]
+runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim) [diploidocus]
 basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
 summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
 genomesize=INT  : Haploid genome size (bp) [0]
@@ -104,6 +104,7 @@ mingap=INT      : Minimum length of a stretch of N bases to count as a gap for e
 purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
 diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
 pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+maxcycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
 ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 deptrim=INT     : Trim termini with <X depth [1]
 mintrim=INT     : Min length of terminal depth trimming [1000]
@@ -119,9 +120,11 @@ minvechit=INT   : Minimum length for a screendb match [50]
 efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
 vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
 vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
-vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
+keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
 veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
 checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
+spanid=X        : Generate sets of read IDs that span veccheck regions, grouped by values of field X []
 ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
 seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -133,7 +136,7 @@ parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
 See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
 ### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
-useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+useqsub=T/F     : Whether to use qsub to queue up system calls [False]
 qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
 qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
 modules=LIST    : List of modules that needs to be loaded for running with qsub []

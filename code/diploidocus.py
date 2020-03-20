@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.5
-Last Edit:    10/03/20
+Version:      0.9.6
+Last Edit:    19/03/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -245,7 +245,7 @@ Run Modes:
 Commandline:
     ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     seqin=FILE      : Input sequence assembly [None]
-    runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim]
+    runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim) [diploidocus]
     basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
     summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     genomesize=INT  : Haploid genome size (bp) [0]
@@ -289,7 +289,7 @@ Commandline:
     efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
     vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
     vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
-    vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+    vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
     keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
@@ -305,7 +305,7 @@ Commandline:
     See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
     ### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
-    useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+    useqsub=T/F     : Whether to use qsub to queue up system calls [False]
     qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
     qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
     modules=LIST    : List of modules that needs to be loaded for running with qsub []
@@ -348,6 +348,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.9.3 - Fixed termination of program when BUSCO gene mpileup goes wrong (unless debug=T).
     # 0.9.4 - Added capacity to pick up an aborted dipcycle run. Added maxcycle=INT setting to limit run times.
     # 0.9.5 - Added use of qsub for system calls and memperthread=INT to control max memory.
+    # 0.9.6 - Dropped default vecmask to 900bp as 1kb length matches picked up by NCBI are sometimes shorter on scaffold.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -386,7 +387,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.5', 'March 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.6', 'March 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -500,7 +501,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - ReadBP=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     - SCDepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     - TeloSize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
-    - VecMask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+    - VecMask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [900]
     - VecTrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
 
     Num:float
@@ -546,7 +547,7 @@ class Diploidocus(rje_obj.RJE_Object):
         self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,
-                     'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':1000,'VecTrim':1000})
+                     'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.list['ReadType'] = ['ont']
@@ -570,7 +571,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
                 self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize'])   # Integers
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
@@ -646,7 +647,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ```
         ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         seqin=FILE      : Input sequence assembly [None]
-        runmode=X       : Diploidocus run mode [sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize]
+        runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim) [diploidocus]
         basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
         summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
         genomesize=INT  : Haploid genome size (bp) [0]
@@ -674,6 +675,7 @@ class Diploidocus(rje_obj.RJE_Object):
         purgemode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
         diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
         pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+        maxcycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
         ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         deptrim=INT     : Trim termini with <X depth [1]
         mintrim=INT     : Min length of terminal depth trimming [1000]
@@ -689,9 +691,11 @@ class Diploidocus(rje_obj.RJE_Object):
         efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
         vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
         vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
-        vecmask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [1000]
+        vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
+        keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
         veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
         checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
+        spanid=X        : Generate sets of read IDs that span veccheck regions, grouped by values of field X []
         ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
         seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -703,7 +707,7 @@ class Diploidocus(rje_obj.RJE_Object):
         See also SMRTSCAPE `summarise=T` options if `*.unique.tdt`/`*.smrt.tdt` have not been pre-generated with SMRTSCAPE.
         ### ~ Advanced/Developmental options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         memperthread=INT: Number of Gb per thread to allocate to samtools etc. [6]
-        useqsub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
+        useqsub=T/F     : Whether to use qsub to queue up system calls [False]
         qsubvmem=INT    : Memory setting (Gb) when queuing with qsub [126]
         qsubwall=INT    : Walltime setting (hours) when queuing with qsub [12]
         modules=LIST    : List of modules that needs to be loaded for running with qsub []
@@ -2480,6 +2484,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 if self.getInt('VecMask') <= 0: continue
                 for (mask5,mask3) in vecpos:
                     masklen = mask3-mask5+1
+                    #self.bugPrint('{}: ({},{})={} >= {}? (Trim <{}|{}<)'.format(seqname,mask5,mask3,masklen,self.getInt('VecMask'),trim5,trim3))
                     if masklen < self.getInt('VecMask'): continue
                     if mask3 <= trim5 or mask5 >= trim3: continue
                     trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':mask5, 'End':mask3, 'Edit':'mask'})
