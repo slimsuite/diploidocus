@@ -19,8 +19,8 @@
 """
 Module:       SLiMFarmer
 Description:  SLiMSuite HPC job farming control program
-Version:      1.10.0
-Last Edit:    30/10/18
+Version:      1.10.1
+Last Edit:    28/05/20
 Copyright (C) 2014  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -162,6 +162,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.8.0 - jobforks=X : Number of forks to pass to farmed out run if >0 [0]
     # 1.9.0 - daisychain=X : Chain together a set of qsub runs of the same call that depend on the previous job.
     # 1.10.0 - Added appending contents of jobini file to slimsuite=F farm commands.
+    # 1.10.1 - Added job resource summary to job stdout.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -184,7 +185,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SLiMFarmer', '1.10.0', 'October 2018', '2014')
+    (program, version, last_edit, copy_right) = ('SLiMFarmer', '1.10.1', 'May 2020', '2014')
     description = 'SLiMSuite HPC job farming control program'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]

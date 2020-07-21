@@ -19,8 +19,8 @@
 """
 Module:       rje_qsub
 Description:  QSub Generating module
-Version:      1.10.2
-Last Edit:    10/03/20
+Version:      1.11.1
+Last Edit:    28/05/20
 Copyright (C) 2006  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -88,6 +88,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.10.0 - Added jobwait to wait until the job has finished.
     # 1.10.1 - New default dependhpc=X  ['kman.restech.unsw.edu.au']
     # 1.10.2 - Added notification that job is running when jobwait=T.
+    # 1.11.0 - Added output of date and time at end of job script too. (Gives a record of total time running.)
+    # 1.11.1 - Added job run summary output to end of stdout.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -99,7 +101,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, copy_right) = ('RJE_QSUB', '1.10.2', 'March 2020', '2006')
+    (program, version, last_edit, copy_right) = ('RJE_QSUB', '1.11.1', 'May 2020', '2006')
     description = 'QSub Generating module'
     author = 'Dr Richard J. Edwards.'
     comments = [rje_zen.Zen().wisdom()]
@@ -294,9 +296,10 @@ class QSub(rje.RJE_Object):
             if self.opt['RjePy']: pcall = 'python ' + self.info['PyPath'] + pcall
             jlist.append(pcall)
             ### Completion message
-            jlist += ['','echo','echo Job complete']
+            jlist += ['','echo ---','qstat -f $PBS_JOBID','echo ---']
+            jlist += ['','echo','echo Time is `date`','echo Job complete']
             ### Output and call ###
-            job = '{}.job'.format(jobstr) #string.replace('%s.job' % self.info['Job'],'.job.job','.job')
+            job = '{0}.job'.format(jobstr) #string.replace('%s.job' % self.info['Job'],'.job.job','.job')
             open(job,'w').write(string.join(jlist,'\n'))
             self.printLog('#DIR',self.info['QPath'])
             self.printLog('#RUN',pcall)
@@ -330,20 +333,20 @@ class QSub(rje.RJE_Object):
             ### Wait for job to be completed
             if self.getBool('JobWait'):
                 if self.getBool('Monitor'): raise ValueError('Cannot run with wait=T and monitor=T')
-                self.printLog('#WAIT','Waiting for job {} to finish'.format(qid))
-                ofile = '{}.o{}'.format(string.replace('%s.job' % self.info['Job'],'.job',''),qid)
+                self.printLog('#WAIT','Waiting for job {0} to finish'.format(qid))
+                ofile = '{0}.o{1}'.format(string.replace('%s.job' % self.info['Job'],'.job',''),qid)
                 running = False
                 while not rje.exists(ofile):
-                    qstat = string.atoi( os.popen("qstat | grep '^{}' -c".format(qid)).read().split()[0] )
+                    qstat = string.atoi( os.popen("qstat | grep '^{0}' -c".format(qid)).read().split()[0] )
                     if not qstat:
-                        self.printLog('#QSTAT','Job {} disappeared from qstat'.format(qid))
+                        self.printLog('#QSTAT','Job {0} disappeared from qstat'.format(qid))
                         break
                     elif not running:
                         try:
-                            qstat = string.split( os.popen("qstat | grep '^{}'".format(qid)).read().split()[4] )
+                            qstat = string.split( os.popen("qstat | grep '^{0}'".format(qid)).read().split()[4] )
                             if qstat == 'R':
                                 running = True
-                                self.printLog('#QSTAT','Job {} running...'.format(qid))
+                                self.printLog('#QSTAT','Job {0} running...'.format(qid))
                         except: pass
                     time.sleep( max(1,self.getInt('Pause')) )
                 owait = 300
@@ -351,14 +354,14 @@ class QSub(rje.RJE_Object):
                     owait -= 1
                     time.sleep(1)
                 if rje.exists(ofile):
-                    if 'Job complete' in os.popen('tail -n 1 {}'.format(ofile)).read():
-                        self.printLog('#DONE','{} job ({}) complete.'.format(jobstr, qid))
+                    if 'Job complete' in os.popen('tail -n 1 {0}'.format(ofile)).read():
+                        self.printLog('#DONE','{0} job ({1}) complete.'.format(jobstr, qid))
                         return 0
                     else:
-                        self.printLog('#FAIL','{} job ({}) failed to finish.'.format(jobstr, qid))
+                        self.printLog('#FAIL','{0} job ({1}) failed to finish.'.format(jobstr, qid))
                         return qid
                 else:
-                    self.printLog('#FAIL','{} job ({}) failed to generate {}.'.format(jobstr, qid, ofile))
+                    self.printLog('#FAIL','{0} job ({1}) failed to generate {2}.'.format(jobstr, qid, ofile))
 
             return qid
         except: self.errorLog('Error in qsub()'); return False

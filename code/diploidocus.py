@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.6
-Last Edit:    19/03/20
+Version:      0.9.8
+Last Edit:    21/07/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -349,6 +349,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.9.4 - Added capacity to pick up an aborted dipcycle run. Added maxcycle=INT setting to limit run times.
     # 0.9.5 - Added use of qsub for system calls and memperthread=INT to control max memory.
     # 0.9.6 - Dropped default vecmask to 900bp as 1kb length matches picked up by NCBI are sometimes shorter on scaffold.
+    # 0.9.7 - Check for | characters in the input sequences. (Will break the program.)
+    # 0.9.8 - Added additional Mode of Modes genomes size prediction to log.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -387,7 +389,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.6', 'March 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.8', 'July 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -425,9 +427,9 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
     '''
     try:### ~ [1] ~ Initial Command Setup & Info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         info = makeInfo()                                   # Sets up Info object with program details
-        if len(sys.argv) == 2 and sys.argv[1] in ['version','-version','--version']: print(info.version); sys.exit(0)
-        if len(sys.argv) == 2 and sys.argv[1] in ['details','-details','--details']: print('%s v%s' % (info.program,info.version)); sys.exit(0)
-        if len(sys.argv) == 2 and sys.argv[1] in ['description','-description','--description']: print('%s: %s' % (info.program,info.description)); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['version','-version','--version']: rje.printf(info.version); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['details','-details','--details']: rje.printf('%s v%s' % (info.program,info.version)); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['description','-description','--description']: rje.printf('%s: %s' % (info.program,info.description)); sys.exit(0)
         cmd_list = rje.getCmdList(sys.argv[1:],info=info)   # Reads arguments and load defaults from program.ini
         out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
         out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2 
@@ -1630,6 +1632,15 @@ class Diploidocus(rje_obj.RJE_Object):
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if not self.obj['SeqIn']:
                 self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','autofilter=F'])
+                sx = 0.0; stot = self.obj['SeqIn'].seqNum()
+                for seq in self.obj['SeqIn'].seqs():
+                    self.progLog('\r#CHECK','Checking sequences names: %.1f%%' % (sx/stot)); sx += 100.0
+                    if '|' in self.obj['SeqIn'].shortName(seq):
+                        raise ValueError('Pipe "|" characters found in seqin=FILE names: will break program. Please rename and try again.')
+                self.printLog('\r#CHECK','Checking sequences names complete.')
+        except ValueError:
+            self.printLog('\r#CHECK','Checking sequences names aborted.')
+            self.errorLog('Diploidocus input sequence error'); raise
         except:
             self.errorLog('Diploidocus.seqinObj() error')
         return self.obj['SeqIn']
@@ -2608,6 +2619,8 @@ class Diploidocus(rje_obj.RJE_Object):
             self.setInt({'EstGenomeSize':estgensize})
             if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
             self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+            estgensize2 = int(0.5+(float(readbp) / self.getInt('ModeOfModes')))
+            self.printLog('#GSIZE','Mode of Modes Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('ModeOfModes'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
             return self.getInt('BUSCOMode')
         except:
             self.errorLog('Diploidocus.genomeSizeFromModeFile() error')
@@ -3034,6 +3047,7 @@ class Diploidocus(rje_obj.RJE_Object):
             covstats = '{}.purge.coverage_stats.csv'.format(basefile)
             purge = '{}.purge.reassignments.tsv'.format(basefile)
             if not rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
+                phdir = 'purge_{}/'.format(basefile)
                 raise IOError('Cannot find purge_haplotigs output. Check {}'.format(phdir))
 
             # ## ~ [2a] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
@@ -3082,6 +3096,8 @@ class Diploidocus(rje_obj.RJE_Object):
                 return True
 
             ### ~ [3] ~ Run KAT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            #!# Make a simple python wrapper for kat to enable qsubbing? #!#
+            if self.getBool('UseQSub'): self.printLog('#KAT','kat currently cannot be qsubbed due to problem with hanging runs.')
             ## ~ [3a] KmerReads data versus Assembly KAT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #?# Add --5ptrim 16,0 setting, or additional kat options on commandline?
             katfile = '{}.kat-stats.tsv'.format(basefile)
@@ -3837,7 +3853,7 @@ class Diploidocus(rje_obj.RJE_Object):
             else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
             phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
             if self.needToRemake(purge,covstats):
-                logline = self.loggedSysCall(phcmd3,append=True,threaded=False)
+                logline = self.loggedSysCall(phcmd3,append=True,threaded=True)
             os.chdir(mydir)
             ## ~ [2a] ~ Link output files back to main directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             for ofile in (gencov,covstats,purge):
