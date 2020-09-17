@@ -19,8 +19,8 @@
 """
 Module:       rje_blast
 Description:  BLAST+ Control Module
-Version:      2.25.0
-Last Edit:    24/10/19
+Version:      2.26.0
+Last Edit:    21/08/20
 Copyright (C) 2013  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -140,6 +140,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 2.24.0 - Added checkblast=T/F  : Whether to check BLAST paths etc. on inititiaion [True]
     # 2.24.1 - Fixed GFF output for atypical local tables.
     # 2.25.0 - Added bitscore=T/F toggle to switch between BitScore (True) and regular Score (False) [True]
+    # 2.26.0 - Initial Python3 code conversion.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -174,10 +175,10 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, cyear) = ('RJE_BLAST', '2.25.0', 'October 2019', '2013')
+    (program, version, last_edit, cyear) = ('RJE_BLAST', '2.26.0', 'August 2020', '2013')
     description = 'BLAST+ Control Module'
     author = 'Dr Richard J. Edwards.'
-    comments = ['This program is still in development and has not been published.']
+    comments = ['Please report any unexpected behaviour.']
     return rje.Info(program,version,last_edit,description,author,time.time(),cyear,comments)
 #########################################################################################################################
 def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for more sys.argv commands
@@ -188,7 +189,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         ### ~ [2] ~ Look for help commands and print options if found ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         helpx = cmd_list.count('help') + cmd_list.count('-help') + cmd_list.count('-h')
         if helpx > 0:
-            print '\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time)))
+            print('\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time))))
             out.verbose(-1,4,text=__doc__)
             if rje.yesNo('Show general commandline options?',default='N'): out.verbose(-1,4,text=rje.__doc__)
             if rje.yesNo('Quit?'): sys.exit()           # Option to quit after help
@@ -198,7 +199,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         return cmd_list
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print 'Major Problem with cmdHelp()'
+    except: print('Major Problem with cmdHelp()')
 #########################################################################################################################
 def setupProgram(): ### Basic Setup of Program when called from commandline.
     '''
@@ -218,7 +219,7 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
         return (info,out,log,cmd_list)                      # Returns objects for use in program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print 'Problem during initial setup.'; raise
+    except: print('Problem during initial setup.'); raise
 #########################################################################################################################
 formats = {'Complexity Filter':'bool','Composition Statistics':'bool','GappedBLAST':'bool','Rank':'int',
            'OneLine':'int','HitAln':'int','DBLen':'int','DBNum':'int','Length':'int','Hits':'int','FragMerge':'int',
@@ -1310,8 +1311,8 @@ class BLASTRun(rje_obj.RJE_Object):
                         dres = ((qres - aln['QryStart']) * 3) + aln['QryStart'] + 2
                         if dres != aln['QryEnd']:
                             self.errorLog('Hit %s: Query end position should be %d but reached %d (or %d) in Aln process!' % (hit['Hit'],aln['QryEnd'],qres,dres),False,False)
-                            print aln
-                            print gablam
+                            print(aln)
+                            print(gablam)
                             raw_input('Continue?')
                             for aln in ['Qry','Hit','QryO','HitO']:  # O = ordered
                                 gablam[aln] = ['X'] * qrylen    #!# Hit!! #!#
@@ -2968,10 +2969,10 @@ def formatDB(fasfile,blastpath,protein=True,log=None,oldblast=False,details=Fals
         if log: log.printLog('#DB ',command,screen=log.v()>0)
         for oline in os.popen(command):  #?# Use os.popen() and catch/output STDOUT to log #?#
             if rje.chomp(oline) and log: log.printLog('#NCBI',oline,log=details,screen=details and log.v()>0)
-            elif rje.chomp(oline) and details: print oline
+            elif rje.chomp(oline) and details: print(oline)
     except:
         if log: log.errorLog('Major Problem during rje_blast.formatDB(%s).' % fasfile)
-        else: print 'Major Problem during rje_blast.formatDB(%s).' % fasfile
+        else: print('Major Problem during rje_blast.formatDB(%s).' % fasfile)
         raise
 #########################################################################################################################
 def checkForDB(dbfile=None,checkage=True,log=None,protein=True,oldblast=False):     ### Checks for BLASTDB files and returns True or False as appropriate
@@ -3007,7 +3008,7 @@ def checkForDB(dbfile=None,checkage=True,log=None,protein=True,oldblast=False): 
         return True
     except:
         if log: log.errorLog('Major Problem during rje_blast.checkForDB().')
-        else: print 'Major Problem during rje_blast.checkForDB().'
+        else: print('Major Problem during rje_blast.checkForDB().')
         raise
 #########################################################################################################################
 def cleanupDB(callobj=None,dbfile=None,deletesource=False):     ### Deletes files created by formatdb
@@ -3026,7 +3027,7 @@ def cleanupDB(callobj=None,dbfile=None,deletesource=False):     ### Deletes file
         if deletesource and os.path.exists(dbfile): os.unlink(dbfile)
     except:
         if callobj: callobj.log.errorLog('Major Problem during rje_blast.cleanupDB().')
-        else: print 'Major Problem during rje_blast.cleanupDB().'
+        else: print('Major Problem during rje_blast.cleanupDB().')
         raise
 #########################################################################################################################
 def expectString(_expect): return rje.expectString(_expect)
@@ -3073,7 +3074,7 @@ def runMain():
     ### ~ [1] ~ Basic Setup of Program  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try: (info,out,mainlog,cmd_list) = setupProgram()
     except SystemExit: return  
-    except: print 'Unexpected error during program setup:', sys.exc_info()[0]; return
+    except: print('Unexpected error during program setup:', sys.exc_info()[0]); return
     
     ### ~ [2] ~ Rest of Functionality... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try: BLASTRun(mainlog,['tuplekeys=T']+cmd_list).run()
@@ -3086,7 +3087,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print 'Cataclysmic run error:', sys.exc_info()[0]
+    except: print('Cataclysmic run error: {0}'.format(sys.exc_info()[0]))
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION IV                                                                                                   #

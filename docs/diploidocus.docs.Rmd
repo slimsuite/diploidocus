@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.9.8 Documentation"
+title: "Diploidocus V0.10.3 Documentation"
 author: "Richard J. Edwards"
-date: "2020-07-21"
+date: "2020-09-17"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -80,7 +80,7 @@ runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/dipha
 basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
 summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
 genomesize=INT  : Haploid genome size (bp) [0]
-scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
 bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
 reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
 readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
@@ -229,7 +229,7 @@ The main inputs for Diploidocus rating and filtering are:
 * `seqin=FILE` : Input sequence assembly to tidy [Required].
 * `screendb=FILE` : File of vectors/contaminants to screen out using blastn and VecScreen rules [Optional].
 * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
-* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=NUM`.
 * `kmerreads=FILELIST` : File of high quality (_i.e._ short or error-corrected) reads for KAT kmer analysis [Optional]
 
 If a BAM file is not provided/found, Diploidocus will use minimap2 to generate a BAM file of `reads=FILELIST` data mapped onto the `seqin=FILE` assembly. Each read file is mapped separately (`--secondary=no -L -ax map-ont` or `--secondary=no -L -ax map-pb`) and converted into a sorted BAM files, before merging the BAM files with `samtools` and indexing the combined file.
@@ -239,7 +239,7 @@ Diploidocus will re-use files where they already exist, providing the downstream
 
 #### Purge Haplotigs
 
-Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
+Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=NUM` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
 
 * `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
 * `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
@@ -560,7 +560,7 @@ The main inputs for Diploidocus genome size prediction are:
 
 * `seqin=FILE` : Input sequence assembly to tidy [Required].
 * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
-* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+* `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=NUM`.
 * `quickdepth=T/F`  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [Default: `False`]
 
 This works on the principle that `Complete` BUSCO genes should represent predominantly single copy (diploid read
@@ -574,6 +574,11 @@ and extracts the modal read depth for each BUSCO gene along with the overall mod
 regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
 This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
 
+BUSCO single-copy genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+`full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with `Status` = `Complete`
+and the `Contig`, `Start` and `End` fields are used to define the regions that should be predominantly single copy.
+
 **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
 ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
 
@@ -582,7 +587,7 @@ ratios etc. As a consequence, the current genome size prediction appears to be a
 ## Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap]
 
 Diploidocus can automate the running of purge_haplotigs is automated, using the single copy (diploid) read depth
-to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single
+to set the purge_haplotigs thresholds. If `scdepth=NUM` is not set, this will be calculated using BUSCO single
 copy genes (see **Genome size prediction [runmode=gensize]** for details).
 
 The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth)
@@ -710,6 +715,65 @@ end of a sequence, the distance from each end of the sequence is also returned a
 
     deptrim=INT     : Trim termini with <X depth [1]
     mintrim=INT     : Min length of terminal depth trimming [1000]
+
+_Details coming soon. Please ask._
+
+
+---
+
+### ~ Region checking [runmode=regcheck] ~ ###
+
+Region checking, whether for read spanning analysis (`runmode=regcheck`) or copy number analysis
+(`runmode=regcnv` or `runmode=regcheck regcnv=T`), analyses regions extracted from a delimited file given by:
+`regcheck=FILE`. This can be a GFF file, in which case `gfftype=LIST` will restrict analysis to specific feature
+types, or regions can be defined by `checkfields=LIST`, which defines the locus, start and end positions. These
+fields default to `SeqName`, `Start` and `End` fields. If these fields cannot be found, the first three fields
+of the `regcheck=FILE` file will be used.
+
+Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+(`seqin=FILE`) using minimap2 to generate a PAF file. This is then parsed and reads spanning each feature based
+on their positions and the target start and end positions in the PAF file. In addition to absolute spanning of
+regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+due to sequence length constraints.
+
+If `regcnv=T` then the region copy number analysis (below) will also be performed.
+
+**NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+parallel calculations is set by `forks=INT`.
+
+---
+
+### ~ Region copy number analysis [runmode=regcnv] ~ ###
+
+Copy number analysis uses the same single copy depth profile analysis as the `runmode=gensize` genome size
+prediction. In short, the modal read depth of BUSCO single copy `Complete` genes is calculated using samtools
+`mpileup` (or samtools `depth` if `quickdepth=T`) and used to defined "single copy read depth". BUSCO single-copy
+genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+`full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with
+`Status` = `Complete` and the `Contig`, `Start` and `End` fields are used to define the regions that should be
+predominantly single copy.
+
+Single-copy read depth can also be set using `scdepth=NUM` to re-used or over-ride previously calculated values.
+
+Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+(`seqin=FILE`) using minimap2. This can be skipped by providing a BAM file with `bam=FILE`. For each regcheck
+feature, the same samtools depth calculation is performed as for the BUSCO data. The mean depth across the region
+is then divided by the single copy depth to estimate total copy number across the region. Note that unlike the
+single copy depth estimation itself, this might be biased by repeat sequences etc. that have a different depth
+profile to the main region. One way to control for this might be to restrict analysis to a subset of reads that
+meet a certain minimum length cutoff, e.g. 10kb.
+
+**Query-based CNV analysis.** If the `regcheck=FILE` file has additional `Qry`, `QryLen`, `QryStart` and `QryEnd`
+fields, the copy number analysi will have an additional query-focus. In this case, each region mapping onto a
+specific query is summed up, adjusted for the proportion of the query covered by that region. For example, 3.5X
+mean depth of a 100% length copy and 3.0X coverage of a 50% length copy would sum to (3.5x1.0 + 3x0.5 = 5 total
+copies). If these fields are not present, each region will be analysed independently.
+
+**NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+parallel calculations is set by `forks=INT`.
 
 ---
 

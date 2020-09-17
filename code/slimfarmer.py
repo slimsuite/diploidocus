@@ -19,8 +19,8 @@
 """
 Module:       SLiMFarmer
 Description:  SLiMSuite HPC job farming control program
-Version:      1.10.1
-Last Edit:    28/05/20
+Version:      1.10.2
+Last Edit:    30/07/20
 Copyright (C) 2014  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -163,6 +163,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.9.0 - daisychain=X : Chain together a set of qsub runs of the same call that depend on the previous job.
     # 1.10.0 - Added appending contents of jobini file to slimsuite=F farm commands.
     # 1.10.1 - Added job resource summary to job stdout.
+    # 1.10.2 - Fixed bug when SLiMFarmer batch run being called from another program, e.g. MultiHAQ
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -185,7 +186,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SLiMFarmer', '1.10.1', 'May 2020', '2014')
+    (program, version, last_edit, copy_right) = ('SLiMFarmer', '1.10.2', 'July 2020', '2014')
     description = 'SLiMSuite HPC job farming control program'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -381,17 +382,18 @@ class SLiMFarmer(rje_hpc.JobFarmer):
         '''
         try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             self.printLog('#JOB',self.getStr('Job'))
+            sfcmd = string.join(self.cmd_list)  #!# Was sys.argv[1:] so look out for odd behaviour in v1.10.2+
             qcmd = ['nodes=1','ppn=16','walltime=12','vmem=126','job=slimfarmer'] + self.cmd_list + ['rjepy=F','job=%s' % self.getStr('Job')]
             qsub = rje_qsub.QSub(self.log,qcmd)
             farm = string.split(self.getStr('Farm'))[0]
             if self.getBool('SLiMSuite') or farm == 'batch':
                 if farm == 'batch':
-                    program = 'python %stools/slimfarmer.py %s' % (self.getStr('PyPath'),string.join(sys.argv[1:]))
+                    program = 'python %stools/slimfarmer.py %s' % (self.getStr('PyPath'),sfcmd)
                     self.setBool({'SLiMSuite':True})
                 elif self.getStrLC('HPCMode').startswith('fork') and farm not in ['slimfinder','qslimfinder','slimprob','slimcore']:
                     if farm.endswith('.py'): farm = farm[:-3]
                     if '/' in farm:
-                        program = 'python %s%s.py %s' % (self.getStr('PyPath'),farm,string.join(sys.argv[1:]))
+                        program = 'python %s%s.py %s' % (self.getStr('PyPath'),farm,sfcmd)
                         progpath = '%s%s.py' % (self.getStr('PyPath'),farm)
                         if not os.path.exists(progpath):
                             if self.i() < 0 or rje.yesNo('Cannot find "%s". Switching SLiMSuite=False?' % progpath):
@@ -399,14 +401,14 @@ class SLiMFarmer(rje_hpc.JobFarmer):
                                 self.setBool({'SLiMSuite':False})
                                 program = self.getStr('Farm')
                     else:
-                        program = 'python %stools/%s.py %s' % (self.getStr('PyPath'),farm,string.join(sys.argv[1:]))
+                        program = 'python %stools/%s.py %s' % (self.getStr('PyPath'),farm,sfcmd)
                         progpath = '%stools/%s.py' % (self.getStr('PyPath'),farm)
                         if not os.path.exists(progpath):
                             if self.i() < 0 or rje.yesNo('Cannot find "%s". Switching SLiMSuite=False?' % progpath):
                                 self.warnLog('Cannot find "%s". Switching SLiMSuite=False.' % progpath)
                                 self.setBool({'SLiMSuite':False})
                                 program = self.getStr('Farm')
-                else: program = 'python %stools/slimfarmer.py %s' % (self.getStr('PyPath'),string.join(sys.argv[1:]))
+                else: program = 'python %stools/slimfarmer.py %s' % (self.getStr('PyPath'),sfcmd)
                 if self.getBool('SLiMSuite'):
                     if self.getInt('JobForks'): program += ' forks=%d qsub=F i=-1 v=-1 newlog=F' % self.getInt('JobForks')
                     else: program += ' forks=%d qsub=F i=-1 v=-1 newlog=F' % qsub.getInt('PPN')
@@ -740,6 +742,7 @@ class SLiMFarmer(rje_hpc.JobFarmer):
             except: self.errorLog('Log problem. Aborting %s job.' % host_id); return self.endSLiMJob(host_id)
             #x#initial_cmds = 'cd ' + self.str['RunPath'] + ' ; echo %s as %s on `hostname` ; setenv IUPred_PATH /home/re1u06/Bioware/iupred/ ;' % (next,jran)
             initial_cmds = 'cd ' + self.str['RunPath'] + ' ; echo %s as %s on `hostname` ;' % (next,jran)  # bash: setenv: command not found
+            sfcmd = string.join(self.cmd_list)  #!# Was sys.argv[1:] so look out for odd behaviour in v1.10.2+
             if next[-3:] == 'acc':
                 jdict['DAT'] = '%sdat' % next[:-3]
                 while os.path.exists(jdict['DAT']):   # No need to run - skip onto the next one
@@ -751,8 +754,8 @@ class SLiMFarmer(rje_hpc.JobFarmer):
                 #initial_cmds = '%s python %srje_uniprot.py extract=%s datout=%s i=-1 v=-1 log=%s ; ' % (initial_cmds,self.info['PyPath'],next,jdict['DAT'],jdict['Log'])
                 #next = jdict['DAT']
             else:
-                if self.getBool('SLiMCore'): job = 'python %slibraries/rje_slimcore.py %s' % (self.str['PyPath'],string.join(sys.argv[1:]))
-                else: job = 'python %stools/%s.py %s' % (self.str['PyPath'],self.str['Farm'],string.join(sys.argv[1:]))
+                if self.getBool('SLiMCore'): job = 'python %slibraries/rje_slimcore.py %s' % (self.str['PyPath'],sfcmd)
+                else: job = 'python %stools/%s.py %s' % (self.str['PyPath'],self.str['Farm'],sfcmd)
                 if self.str['JobINI']: job = '%s ini=%s' % (job,self.str['JobINI'])
                 job = '%s pickup=F batch= basefile= seqin=%s i=-1 v=-1 runid=%s' % (job,next,self.getStr('RunID'))
                 if self.getStrLC('ResDir'): job = '%s resdir=%s' % (job,self.getStr('ResDir'))

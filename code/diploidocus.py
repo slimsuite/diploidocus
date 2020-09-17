@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.9.8
-Last Edit:    21/07/20
+Version:      0.10.3
+Last Edit:    17/09/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -41,6 +41,8 @@ Function:
     * `purgehap` filters scaffolds based on post-processing of purge_haplotigs
     * `telomeres` performs a regex telomere search based on method of https://github.com/JanaSperschneider/FindTelomeres
     * `vecscreen` searches for contaminants and flags/masks/removes identified scaffolds
+    * `regcheck` checks reads spanning given regions and also calculates mean depth and estimated copy number (if regcnv=T)
+    * `regcnv` calculates mean depth and estimated copy number for regcheck regions from BAM file (no read spanning analysis)
     * `sortnr` performs an all-by-all mapping with minimap2 and then removes redundancy
     * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
     * `diphapnr` runs `sortnr` followed by `diphap`
@@ -105,6 +107,11 @@ Run Modes:
     regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
     This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
 
+    BUSCO single-copy genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+    `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+    ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with `Status` = `Complete`
+    and the `Contig`, `Start` and `End` fields are used to define the regions that should be predominantly single copy.
+
     **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
     ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
 
@@ -126,6 +133,60 @@ Run Modes:
         deptrim=INT     : Trim termini with <X depth [1]
         mintrim=INT     : Min length of terminal depth trimming [1000]
 
+
+    ---
+    ### ~ Region checking [runmode=regcheck] ~ ###
+
+    Region checking, whether for read spanning analysis (`runmode=regcheck`) or copy number analysis
+    (`runmode=regcnv` or `runmode=regcheck regcnv=T`), analyses regions extracted from a delimited file given by:
+    `regcheck=FILE`. This can be a GFF file, in which case `gfftype=LIST` will restrict analysis to a specific feature
+    type, or regions can be defined by `checkfields=LIST`, which defines the locus, start and end positions. These
+    fields default to `SeqName`, `Start` and `End` fields. If these fields cannot be found, the first three fields
+    of the `regcheck=FILE` file will be used.
+
+    Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+    (`seqin=FILE`) using minimap2 to generate a PAF file. This is then parsed and reads spanning each feature based
+    on their positions and the target start and end positions in the PAF file. In addition to absolute spanning of
+    regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+    sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+    using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+    due to sequence length constraints.
+
+    If `regcnv=T` then the region copy number analysis (below) will also be performed.
+
+    **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+    parallel calculations is set by `forks=INT`.
+
+    ---
+    ### ~ Region copy number analysis [runmode=regcnv] ~ ###
+
+    Copy number analysis uses the same single copy depth profile analysis as the `runmode=gensize` genome size
+    prediction. In short, the modal read depth of BUSCO single copy `Complete` genes is calculated using samtools
+    `mpileup` (or samtools `depth` if `quickdepth=T`) and used to defined "single copy read depth". BUSCO single-copy
+    genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+    `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+    ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with
+    `Status` = `Complete` and the `Contig`, `Start` and `End` fields are used to define the regions that should be
+    predominantly single copy.
+
+    Single-copy read depth can also be set using `scdepth=NUM` to re-used or over-ride previously calculated values.
+
+    Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+    (`seqin=FILE`) using minimap2. This can be skipped by providing a BAM file with `bam=FILE`. For each regcheck
+    feature, the same samtools depth calculation is performed as for the BUSCO data. The mean depth across the region
+    is then divided by the single copy depth to estimate total copy number across the region. Note that unlike the
+    single copy depth estimation itself, this might be biased by repeat sequences etc. that have a different depth
+    profile to the main region. One way to control for this might be to restrict analysis to a subset of reads that
+    meet a certain minimum length cutoff, e.g. 10kb.
+
+    **Query-based CNV analysis.** If the `regcheck=FILE` file has additional `Qry`, `QryLen`, `QryStart` and `QryEnd`
+    fields, the copy number analysi will have an additional query-focus. In this case, each region mapping onto a
+    specific query is summed up, adjusted for the proportion of the query covered by that region. For example, 3.5X
+    mean depth of a 100% length copy and 3.0X coverage of a 50% length copy would sum to (3.5x1.0 + 3x0.5 = 5 total
+    copies). If these fields are not present, each region will be analysed independently.
+
+    **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+    parallel calculations is set by `forks=INT`.
 
     ---
     ### ~ Sorted non-redundant assembly cleanup [runmode=sortnr] ~ ###
@@ -245,11 +306,11 @@ Run Modes:
 Commandline:
     ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     seqin=FILE      : Input sequence assembly [None]
-    runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim) [diploidocus]
+    runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/regcheck/regcnv/insilico/gensize/deptrim) [diploidocus]
     basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
     summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     genomesize=INT  : Haploid genome size (bp) [0]
-    scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+    scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
     reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
     readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
@@ -287,13 +348,18 @@ Commandline:
     screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
     minvechit=INT   : Minimum length for a screendb match [50]
     efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
-    vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
+    vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
     vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
     vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
     keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+    ### ~ Region checking options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    regcheck=FILE   : File of SeqName, Start, End positions for read coverage checking [None]
+    checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [Hit,SbjStart,SbjEnd]
     checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
-    spanid=X        : Generate sets of read IDs that span veccheck regions, grouped by values of field X []
+    spanid=X        : Generate sets of read IDs that span veccheck/regcheck regions, grouped by values of field X []
+    regcnv=T/F      : Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
+    gfftype=LIST    : Optional feature types to use if performing regcheck on GFF file (e.g. gene) ['gene']
     ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
     seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
@@ -351,6 +417,10 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.9.6 - Dropped default vecmask to 900bp as 1kb length matches picked up by NCBI are sometimes shorter on scaffold.
     # 0.9.7 - Check for | characters in the input sequences. (Will break the program.)
     # 0.9.8 - Added additional Mode of Modes genomes size prediction to log.
+    # 0.10.0 - Added regcheck=TDTFILE and regcnv=T/F functions (runmode=regcheck)
+    # 0.10.1 - Added gfftype=X optional feature type to use if performing regcheck on GFF file (e.g. gene) []
+    # 0.10.2 - Fixed GFF regcheck bug. Add some documentation. Made gfftype=LIST not X.
+    # 0.10.3 - Added BUSCO Complete Copy Number calculation and CI estimate to GenomeSize (and RegCNV). Made default gfftype=gene
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -382,14 +452,16 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Add vectrim=INT cutoff to trim contamination within INT bp of sequence ends
     # [N] : Replace screenmode=X with vecpurge, vectrim, vecmask hierarchy.
     # [Y] : Add optional and pretrim=T/F for dipcycle to run vecscreen and/or depthtrim
-    # [ ] : Add rDNA finding with barrnap.
+    # [ ] : Add rDNA finding with barrnap. -> Feed into regcheck
     # [ ] : Add (optional?) re-use of the first vecscreen search if purgemode=dipcycle and no additional trimming.
     # [Y] : Add maxcycle=INT to terminate dipcycle after INT cycles.
+    # [ ] : Document regcheck process.
+    # [ ] : Test regcheck GFF mode
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.9.8', 'July 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.10.3', 'September 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -461,11 +533,13 @@ class Diploidocus(rje_obj.RJE_Object):
     - Parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
     - Parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
     - PurgeMode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
+    - RegCheck=TDTFILE: File of SeqName, Start, End positions for read coverage checking [None]
     - RunMode=X       : Diploidocus run mode [insilico/sortnr/diphap/vecscreen]
     - ScreenDB=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
     - ScreenMode=X    : Action to take following vecscreen searching (report/purge) [report]
     - SeqIn=FILE      : Input sequence assembly (sortnr/diphap modes) []
     - SeqOut=FILE     : Output sequence assembly [$BASEFILE.fasta]
+    - SpanID=X        : Generate sets of read IDs that span veccheck/regcheck regions, grouped by values of field X []
     - TeloFwd=X      : Basic telomere sequence for search [C{2,4}T{1,2}A{1,3}]
     - TeloRev=X      : Basic telomere sequence for search [TTAGGG]
     - TmpDir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
@@ -476,6 +550,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
     - KeepNames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     - PreTrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+    - RegCNV=T/F      ; Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     - VecCheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
@@ -501,7 +576,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - QSubVMem=INT    : Memory setting (Gb) when queuing with qsub [126]
     - QSubWall=INT    : Walltime setting (hours) when queuing with qsub [12]
     - ReadBP=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
-    - SCDepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+    - RegCNV=T/F      : Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - TeloSize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
     - VecMask=INT     : Mask any vectore hits of INT bp or greater (after vecpurge and vecmerge) [900]
     - VecTrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
@@ -510,12 +585,16 @@ class Diploidocus(rje_obj.RJE_Object):
     - CheckCov=PERC   : Percentage coverage for double-checking partial exact matches [95]
     - eFDR=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
     - RQFilter=X      : Minimum RQ for output subreads [0]
+    - SCDepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     - TeloPerc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
     - VecPurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
 
     File:file handles with matching str filenames
     
     List:list
+    - CheckFields=LIST: Fields in checkpos file to give Locus, Start and End for checking [Hit,SbjStart,SbjEnd]
+    - CheckFlanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
+    - GFFType=LIST    : Optional feature types to use if performing regcheck on GFF file (e.g. gene) ['gene']
     - KmerReads=FILELIST   : File of reads for KAT kmer analysis []
     - Reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
     - ReadType=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
@@ -533,26 +612,29 @@ class Diploidocus(rje_obj.RJE_Object):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
+        self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
+        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit',
                         'QSubPPN','QSubVMem','QSubWall','MemPerThread',
-                        'PHLow','PHMid','PHHigh','SCDepth','ReadBP','TeloSize','VecMask','VecTrim']
-        self.numlist = ['CheckCov','eFDR','RQFilter','TeloPerc','VecPurge']
+                        'PHLow','PHMid','PHHigh','ReadBP','TeloSize','VecMask','VecTrim']
+        self.numlist = ['CheckCov','eFDR','RQFilter','SCDepth','TeloPerc','VecPurge']
         self.filelist = []
-        self.listlist = ['KmerReads','Reads','ReadType']
+        self.listlist = ['CheckFields','CheckFlanks','GFFType','KmerReads','Reads','ReadType']
         self.dictlist = []
         self.objlist = ['Forker','SeqIn']
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
+        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,
                      'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})
-        self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'TeloPerc':50.0,'VecPurge':50.0})
+        self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'SCDepth':0,'TeloPerc':50.0,'VecPurge':50.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        self.list['CheckFields'] = ['Hit','SbjStart','SbjEnd']
+        self.list['CheckFlanks'] = [0,100,1000,5000]
         self.list['ReadType'] = ['ont']
+        self.list['GFFType'] = ['gene']
         self.obj['SeqIn'] = None
         self.obj['Forker']  = rje_forker.Forker(self.log,['logfork=F']+self.cmd_list)
         self._setForkAttributes()   # Delete if no forking
@@ -568,17 +650,18 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._forkCmd(cmd)  # Delete if no forking
                 ### Class Options (No need for arg if arg = att.lower()) ### 
                 #self._cmdRead(cmd,type='str',att='Att',arg='Cmd')  # No need for arg if arg = att.lower()
-                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','PurgeMode','RunMode','ScreenMode','TeloFwd','TeloRev'])   # Normal strings
+                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','PurgeMode','RunMode','ScreenMode','SpanID','TeloFwd','TeloRev'])   # Normal strings
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
-                self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
+                self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SCDepth','TeloSize','VecMask','VecTrim'])   # Integers
-                self._cmdReadList(cmd,'float',['eFDR','RQFilter']) # Floats
+                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','TeloSize','VecMask','VecTrim'])   # Integers
+                self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
                 #self._cmdReadList(cmd,'max',['Att'])   # Integer value part of min,max command
-                self._cmdReadList(cmd,'list',['ReadType'])  # List of strings (split on commas or file lines)
+                self._cmdReadList(cmd,'list',['CheckFields','GFFType','ReadType'])  # List of strings (split on commas or file lines)
+                self._cmdReadList(cmd,'ilist',['CheckFlanks'])  # List of strings (split on commas or file lines)
                 #self._cmdReadList(cmd,'clist',['Att']) # Comma separated list as a *string* (self.str)
                 self._cmdReadList(cmd,'glist',['KmerReads','Reads']) # List of files using wildcards and glob
                 #self._cmdReadList(cmd,'cdict',['Att']) # Splits comma separated X:Y pairs into dictionary
@@ -653,7 +736,7 @@ class Diploidocus(rje_obj.RJE_Object):
         basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
         summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
         genomesize=INT  : Haploid genome size (bp) [0]
-        scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+        scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
         bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
         reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
         readtype=LIST   : List of ont/pb file types matching reads for minimap2 mapping [ont]
@@ -802,7 +885,7 @@ class Diploidocus(rje_obj.RJE_Object):
         * `seqin=FILE` : Input sequence assembly to tidy [Required].
         * `screendb=FILE` : File of vectors/contaminants to screen out using blastn and VecScreen rules [Optional].
         * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
-        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=NUM`.
         * `kmerreads=FILELIST` : File of high quality (_i.e._ short or error-corrected) reads for KAT kmer analysis [Optional]
 
         If a BAM file is not provided/found, Diploidocus will use minimap2 to generate a BAM file of `reads=FILELIST` data mapped onto the `seqin=FILE` assembly. Each read file is mapped separately (`--secondary=no -L -ax map-ont` or `--secondary=no -L -ax map-pb`) and converted into a sorted BAM files, before merging the BAM files with `samtools` and indexing the combined file.
@@ -812,7 +895,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         #### Purge Haplotigs
 
-        Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
+        Diploidocus uses output from purge_haplotigs as on of the core components for its classification system. Running purge_haplotigs is automated, using the single copy (diploid) read depth to set the purge_haplotigs thresholds. If `scdepth=NUM` is not set, this will be calculated using BUSCO single copy genes (see **Genome size prediction [runmode=gensize]** for details). The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth) and the haploid depth (SCDepth/2). The low depth (`-l X`) and high depth (`-h X`) cutoffs will then be set to SCDepth/4 and SCDepth*2. This can be over-ridden with:
 
         * `phlow=INT` : Low depth cutoff for purge_haplotigs (`-l X`).
         * `phmid=INT` : Middle depth for purge_haplotigs (`-m X`).
@@ -1133,7 +1216,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         * `seqin=FILE` : Input sequence assembly to tidy [Required].
         * `reads=FILELIST`: List of fasta/fastq files containing long reads. Wildcard allowed. Can be gzipped. For a single run (not cycling), a BAM file can be supplied instead with `bam=FILE`. (This will be preferentially used if found, and defaults to `$BASEFILE.bam`.) Read types (pb/ont) for each file are set with `readtype=LIST`, which will be cycled if shorter (default=`ont`). Optionally, the pre-calculated total read length can be provided with `readbp=INT` and/or the pre-calculated (haploid) genome size can be provided with `genomesize=INT`.
-        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=INT`.
+        * `busco=TSVFILE` : BUSCO full table [`full_table_$BASEFILE.busco.tsv`] used for calculating single copy ("diploid") read depth. This can be over-ridden by setting `scdepth=NUM`.
         * `quickdepth=T/F`  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [Default: `False`]
 
         This works on the principle that `Complete` BUSCO genes should represent predominantly single copy (diploid read
@@ -1147,6 +1230,11 @@ class Diploidocus(rje_obj.RJE_Object):
         regions. Genome size is then estimated based on a crude calculation using the total combined sequencing length.
         This will be caculated from `reads=FILELIST` unless provided with `readbp=INT`.
 
+        BUSCO single-copy genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+        `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+        ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with `Status` = `Complete`
+        and the `Contig`, `Start` and `End` fields are used to define the regions that should be predominantly single copy.
+
         **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
         ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
 
@@ -1155,7 +1243,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ## Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap]
 
         Diploidocus can automate the running of purge_haplotigs is automated, using the single copy (diploid) read depth
-        to set the purge_haplotigs thresholds. If `scdepth=INT` is not set, this will be calculated using BUSCO single
+        to set the purge_haplotigs thresholds. If `scdepth=NUM` is not set, this will be calculated using BUSCO single
         copy genes (see **Genome size prediction [runmode=gensize]** for details).
 
         The `purge_haplotigs` mid cutoff (`-m X`) will be set at the halfway point between the diploid depth (SCDepth)
@@ -1283,6 +1371,65 @@ class Diploidocus(rje_obj.RJE_Object):
 
             deptrim=INT     : Trim termini with <X depth [1]
             mintrim=INT     : Min length of terminal depth trimming [1000]
+
+        _Details coming soon. Please ask._
+
+
+        ---
+
+        ### ~ Region checking [runmode=regcheck] ~ ###
+
+        Region checking, whether for read spanning analysis (`runmode=regcheck`) or copy number analysis
+        (`runmode=regcnv` or `runmode=regcheck regcnv=T`), analyses regions extracted from a delimited file given by:
+        `regcheck=FILE`. This can be a GFF file, in which case `gfftype=LIST` will restrict analysis to specific feature
+        types, or regions can be defined by `checkfields=LIST`, which defines the locus, start and end positions. These
+        fields default to `SeqName`, `Start` and `End` fields. If these fields cannot be found, the first three fields
+        of the `regcheck=FILE` file will be used.
+
+        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+        (`seqin=FILE`) using minimap2 to generate a PAF file. This is then parsed and reads spanning each feature based
+        on their positions and the target start and end positions in the PAF file. In addition to absolute spanning of
+        regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+        sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+        using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+        due to sequence length constraints.
+
+        If `regcnv=T` then the region copy number analysis (below) will also be performed.
+
+        **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+        parallel calculations is set by `forks=INT`.
+
+        ---
+
+        ### ~ Region copy number analysis [runmode=regcnv] ~ ###
+
+        Copy number analysis uses the same single copy depth profile analysis as the `runmode=gensize` genome size
+        prediction. In short, the modal read depth of BUSCO single copy `Complete` genes is calculated using samtools
+        `mpileup` (or samtools `depth` if `quickdepth=T`) and used to defined "single copy read depth". BUSCO single-copy
+        genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+        `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+        ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with
+        `Status` = `Complete` and the `Contig`, `Start` and `End` fields are used to define the regions that should be
+        predominantly single copy.
+
+        Single-copy read depth can also be set using `scdepth=NUM` to re-used or over-ride previously calculated values.
+
+        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+        (`seqin=FILE`) using minimap2. This can be skipped by providing a BAM file with `bam=FILE`. For each regcheck
+        feature, the same samtools depth calculation is performed as for the BUSCO data. The mean depth across the region
+        is then divided by the single copy depth to estimate total copy number across the region. Note that unlike the
+        single copy depth estimation itself, this might be biased by repeat sequences etc. that have a different depth
+        profile to the main region. One way to control for this might be to restrict analysis to a subset of reads that
+        meet a certain minimum length cutoff, e.g. 10kb.
+
+        **Query-based CNV analysis.** If the `regcheck=FILE` file has additional `Qry`, `QryLen`, `QryStart` and `QryEnd`
+        fields, the copy number analysi will have an additional query-focus. In this case, each region mapping onto a
+        specific query is summed up, adjusted for the proportion of the query covered by that region. For example, 3.5X
+        mean depth of a 100% length copy and 3.0X coverage of a 50% length copy would sum to (3.5x1.0 + 3x0.5 = 5 total
+        copies). If these fields are not present, each region will be analysed independently.
+
+        **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+        parallel calculations is set by `forks=INT`.
 
         ---
 
@@ -1419,6 +1566,7 @@ class Diploidocus(rje_obj.RJE_Object):
             elif self.getStrLC('RunMode') in ['gensize','genomesize']: return self.genomeSize(makebam=True)
             elif self.getStrLC('RunMode') in ['dipcycle','purgecycle']: return self.purgeCycle()
             elif self.getStrLC('RunMode') in ['deptrim']: return self.depthTrim()
+            elif self.getStrLC('RunMode') in ['regcheck','regcnv']: return self.regCheck()
             else: raise ValueError('RunMode="%s" not recognised!' % self.getStrLC('RunMode'))
         except:
             self.errorLog(self.zen())
@@ -2400,7 +2548,7 @@ class Diploidocus(rje_obj.RJE_Object):
             return screencov
 
         except IOError:
-            self.errorLog('Diploidocus.vecSreen() error')
+            self.errorLog('Diploidocus.vecSreen() error'); raise
         except:
             self.errorLog(self.zen())
         return False
@@ -2554,8 +2702,249 @@ class Diploidocus(rje_obj.RJE_Object):
                 rje_seqlist.SeqList(self.log,seqcmd)
             return trimdb
         except:
-            self.errorLog('Diploidocus.vecPurge() error')
+            self.errorLog('Diploidocus.vecPurge() error'); raise
         return None
+#########################################################################################################################
+    def regCheck(self): ### Performs read check and/or CNV analysis of supplied region
+        '''
+        Performs read check and/or CNV analysis of supplied region. Based on VecCheck and SCDepth methods.
+
+        ### ~ Region checking [runmode=regcheck] ~ ###
+
+        Region checking, whether for read spanning analysis (`runmode=regcheck`) or copy number analysis
+        (`runmode=regcnv` or `runmode=regcheck regcnv=T`), analyses regions extracted from a delimited file given by:
+        `regcheck=FILE`. This can be a GFF file, in which case `gfftype=LIST` will restrict analysis to specific feature
+        types, or regions can be defined by `checkfields=LIST`, which defines the locus, start and end positions. These
+        fields default to `SeqName`, `Start` and `End` fields. If these fields cannot be found, the first three fields
+        of the `regcheck=FILE` file will be used.
+
+        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+        (`seqin=FILE`) using minimap2 to generate a PAF file. This is then parsed and reads spanning each feature based
+        on their positions and the target start and end positions in the PAF file. In addition to absolute spanning of
+        regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+        sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+        using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+        due to sequence length constraints.
+
+        If `regcnv=T` then the region copy number analysis (below) will also be performed.
+
+        **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+        parallel calculations is set by `forks=INT`.
+
+        ---
+
+        ### ~ Region copy number analysis [runmode=regcnv] ~ ###
+
+        Copy number analysis uses the same single copy depth profile analysis as the `runmode=gensize` genome size
+        prediction. In short, the modal read depth of BUSCO single copy `Complete` genes is calculated using samtools
+        `mpileup` (or samtools `depth` if `quickdepth=T`) and used to defined "single copy read depth". BUSCO single-copy
+        genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
+        `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
+        ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with
+        `Status` = `Complete` and the `Contig`, `Start` and `End` fields are used to define the regions that should be
+        predominantly single copy.
+
+        Single-copy read depth can also be set using `scdepth=NUM` to re-used or over-ride previously calculated values.
+
+        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+        (`seqin=FILE`) using minimap2. This can be skipped by providing a BAM file with `bam=FILE`. For each regcheck
+        feature, the same samtools depth calculation is performed as for the BUSCO data. The mean depth across the region
+        is then divided by the single copy depth to estimate total copy number across the region. Note that unlike the
+        single copy depth estimation itself, this might be biased by repeat sequences etc. that have a different depth
+        profile to the main region. One way to control for this might be to restrict analysis to a subset of reads that
+        meet a certain minimum length cutoff, e.g. 10kb.
+
+        **Query-based CNV analysis.** If the `regcheck=FILE` file has additional `Qry`, `QryLen`, `QryStart` and `QryEnd`
+        fields, the copy number analysi will have an additional query-focus. In this case, each region mapping onto a
+        specific query is summed up, adjusted for the proportion of the query covered by that region. For example, 3.5X
+        mean depth of a 100% length copy and 3.0X coverage of a 50% length copy would sum to (3.5x1.0 + 3x0.5 = 5 total
+        copies). If these fields are not present, each region will be analysed independently.
+
+        **NOTE:** Depth calculations are performed in parallel in the directory set with `tmpdir=PATH`. The number of
+        parallel calculations is set by `forks=INT`.
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            db = self.db()
+            basefile = self.baseFile(strip_path=True)
+            depmethod = 'mpileup'
+            if self.getBool('QuickDepth'): depmethod = 'depth'
+            ## ~ [1a] ~ Check input ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #!# Add feature to recognise and change first field if not given #!#
+            if not len(self.list['CheckFields']) == 3:
+                raise ValueError('checkfields=LIST must have exactly 3 elements: SeqName, Start, End. %d found!' % len(self.list['CheckFields']))
+            [locusfield,startfield,endfield] = self.list['CheckFields']
+            cdb = None
+            #i# Check for GFF file and parse differently
+            if self.getStrLC('RegCheck').endswith('.gff') or self.getStrLC('RegCheck').endswith('.gff3'):
+                self.printLog('#GFF','GFF file recognised for RegCheck')
+                if self.list['GFFType']:
+                    self.printLog('#GFF','Parsing "{0}" features only'.format(','.join(self.list['GFFType'])))
+                else: self.printLog('#GFF','Parsing all features types (no gfftype=LIST set)')
+                gffhead = string.split('seqid source type start end score strand phase attributes')
+                cdb = db.addTable(self.getStr('RegCheck'),mainkeys='auto',datakeys='All',delimit='\t',headers=gffhead,ignore=['#'],lists=False,name='check',expect=True)
+                cdb.addField('Query')
+                if self.list['GFFType']:
+                    #?# Change this to a list of types? #?#
+                    cdb.dropEntriesDirect('type',self.list['GFFType'],inverse=True)
+                for entry in cdb.entries():
+                    if rje.matchExp('Parent=([^;$]+)[;$]',entry['attributes']): entry['Query'] = rje.matchExp('Parent=([^;$]+)[;$]',entry['attributes'])[0]
+                    elif rje.matchExp('ID=([^;$]+)[;$]',entry['attributes']): entry['Query'] = rje.matchExp('ID=([^;$]+)[;$]',entry['attributes'])[0]
+                    elif rje.matchExp('Name=([^;$]+)[;$]',entry['attributes']): entry['Query'] = rje.matchExp('Name=([^;$]+)[;$]',entry['attributes'])[0]
+                    entry['Query'] = '%s.%s' % (entry['Query'],entry['type'])
+                    #i# Might want to add an ability to parse these from the feature description?
+                    entry['QryLen'] = 100
+                    entry['QryStart'] = 1
+                    entry['QryEnd'] = 100
+                cdb.renameField('seqid',locusfield)
+                cdb.renameField('start',startfield)
+                cdb.renameField('end',endfield)
+            #i# Otherwise, load table as normal
+            else:
+                cdb = db.addTable(self.getStr('RegCheck'),mainkeys='auto',name='check',expect=True)
+            if not cdb: raise IOError('Cannot find checkpos file "%s"' % self.getStr('CheckPos'))
+            if locusfield not in cdb.fields():
+                self.warnLog('Field "%s" not found in checkpos file: will use "%s for sequence name' % (locusfield,cdb.fields()[0]))
+                locusfield = cdb.fields()
+            if startfield not in cdb.fields():
+                newstart = cdb.fields()[2]
+                if 'Start' in cdb.fields(): newstart = 'Start'
+                self.warnLog('Field "%s" not found in checkpos file: will use "%s for start position' % (startfield,newstart))
+                startfield = newstart
+            if endfield not in cdb.fields():
+                newfield = cdb.fields()[2]
+                if 'End' in cdb.fields(): newfield = 'End'
+                self.warnLog('Field "%s" not found in checkpos file: will use "%s for end position' % (endfield,newfield))
+                endfield = newfield
+            self.list['CheckFields'] = [locusfield,startfield,endfield]
+            checkcmd = ['checkfields=%s,%s,%s' % (locusfield,startfield,endfield)]
+            cdb.dataFormat({startfield:'int',endfield:'int'})
+            ## ~ [1b] ~ Check for query data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            qrycnv = self.getStrLC('RunMode') in ['regcnv'] or self.getBool('RegCNV')
+            for qfield in ['Qry','QryLen','QryStart','QryEnd']:
+                if qfield not in cdb.fields(): qrycnv = False
+            ## ~ [1c] ~ Update checkfields ~
+            compfields = self.list['CheckFields'][0:]
+            if qrycnv:
+                cdb.dataFormat({'QryLen':'int','QryStart':'int','QryEnd':'int'})
+                compfields = ['Qry','QryStart','QryEnd'] + compfields
+            cdb.compress(compfields,rules={self.getStr('SpanID'):'list'})
+
+            ### ~ [2] Simple PAF-based method ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            #i# This is the same as used by veccheck
+            if self.getStrLC('RunMode') in ['regcheck']:
+                vfile = self.getStr('RegCheck')
+                pfile = self.baseFile() + 'checkpos.paf'
+                pafcmd = self.cmd_list + ['checkpos={}'.format(vfile),'pafin={}'.format(pfile)] + checkcmd
+                paf = rje_paf.PAF(self.log, pafcmd)
+                cdb = paf.checkPos(save=False)
+                cdb.setStr({'Name':'checkpos'})
+                if not self.getBool('RegCNV'):
+                    cdb.saveToFile(backup=False)
+                    return True
+
+            ### ~ [3] Complex BAM-based method for CNV calculation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if self.getStrLC('RunMode') in ['regcnv']: cdb.setStr({'Name':'checkcnv'})
+            cdb.addFields(['SeqBP','ReadBP','MeanX','ModeX','CN'])
+            ## ~ [3a] Check Files ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            bamfile = self.getBamFile()
+            if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
+            self.printLog('#BAM',bamfile)
+            ## ~ [3b] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
+            scdepth = self.getNum('SCDepth')
+            if self.getNum('SCDepth'):
+                self.printLog('#SCDEP','Using loaded single copy read depth = {0:.2f}X'.format(scdepth))
+            else:
+                scdepth = self.genomeSize(scdepth=True)
+                self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {0}X'.format(scdepth))
+                if not scdepth: raise ValueError('Failed to establish SC read depth')
+                self.setNum({'SCDepth':scdepth})
+            ## ~ [3c] Setup forking ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            tmpdir = rje.makePath(self.getStr('TmpDir'),wholepath=False)
+            if not rje.exists(tmpdir): rje.mkDir(self,tmpdir)
+            forker = self.obj['Forker']
+            cleanup = 0; skipped = 0
+            forker.list['ToFork'] = []
+            for bentry in cdb.entries():
+                if bentry[endfield] < bentry[startfield]: (bentry[endfield],bentry[startfield]) = (bentry[startfield],bentry[endfield])
+                if qrycnv:
+                    tmpfile = '{}{}.{}-{}-{}-{}.{}.tmp'.format(tmpdir,basefile,bentry['Qry'],bentry[locusfield],bentry[startfield],bentry[endfield],depmethod)
+                else:
+                    tmpfile = '{}{}.{}-{}-{}.{}.tmp'.format(tmpdir,basefile,bentry[locusfield],bentry[startfield],bentry[endfield],depmethod)
+                if rje.exists(tmpfile):
+                    if not self.force() and len(open(tmpfile,'r').readline().split()) == 2: skipped += 1; continue
+                    else: os.unlink(tmpfile); cleanup += 1
+                if depmethod == 'mpileup':
+                    forker.list['ToFork'].append("samtools view -b -h -F 0x100 %s %s:%s-%s | samtools mpileup -BQ0 - 2> /dev/null | awk -v pos=\"%s\" '$2 >= pos' | awk -v pos=\"%s\" '$2 <= pos' | awk '{print $4;}' | sort | uniq -c | sort -nr > %s" % (bamfile,bentry[locusfield],bentry[startfield],bentry[endfield],bentry[startfield],bentry[endfield],tmpfile))
+                else:
+                    forker.list['ToFork'].append("samtools view -h -F 0x100 %s %s:%s-%s | samtools depth - | awk -v pos=\"%s\" '$2 >= pos' | awk -v pos=\"%s\" '$2 <= pos' | awk '{print $3;}' | sort | uniq -c | sort -nr > %s" % (bamfile,bentry[locusfield],bentry[startfield],bentry[endfield],bentry[startfield],bentry[endfield],tmpfile))
+            self.printLog('#REGION','{} check regions queued for forking ({} existing files deleted); {} existing results skipped'.format(rje.iLen(forker.list['ToFork']),rje.iStr(cleanup),rje.iStr(skipped)))
+            ## ~ [3d] Fork out depth analysis ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if forker.list['ToFork']:
+                if self.getNum('Forks') < 1:
+                    #i# Warn lack of forking
+                    self.printLog('#FORK','Note: program can be accelerated using forks=INT.')
+                    for forkcmd in forker.list['ToFork']:
+                        self.printLog('#SYS',forkcmd)
+                        os.system(forkcmd)
+                elif forker.run():
+                    self.printLog('#FORK','Forking of region depth analysis completed.')
+                else:
+                    try:
+                        self.errorLog('Samtools forking did not complete',printerror=False,quitchoice=True)
+                    except:
+                        raise RuntimeError('Samtools forking did not complete')
+            ## ~ [3e] Load in data and calculate CNV ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            for bentry in cdb.entries():
+                if qrycnv:
+                    tmpfile = '{}{}.{}-{}-{}-{}.{}.tmp'.format(tmpdir,basefile,bentry['Qry'],bentry[locusfield],bentry[startfield],bentry[endfield],depmethod)
+                else:
+                    tmpfile = '{}{}.{}-{}-{}.{}.tmp'.format(tmpdir,basefile,bentry[locusfield],bentry[startfield],bentry[endfield],depmethod)
+                try:
+                    if not rje.exists(tmpfile):
+                        raise IOError('Cannot find {}'.format(tmpfile))
+                    try:
+                        bentry['ModeX'] = int(open(tmpfile,'r').readline().split()[1])
+                    except:
+                        self.errorLog('Something has gone wrong with "%s"' % tmpfile)
+                        raise
+                    seqbp = 0
+                    readbp = 0
+                    for dline in open(tmpfile,'r').readlines():
+                        data = rje.chomp(dline).split()
+                        n = int(data[0])
+                        X = int(data[1])
+                        seqbp += n
+                        readbp += (n * X)
+                    bentry['SeqBP'] = seqbp
+                    bentry['ReadBP'] = readbp
+                    bentry['MeanX'] = (1.0 * readbp) / (bentry[endfield] - bentry[startfield] + 1)
+                    bentry['CN'] = bentry['MeanX']/self.getNum('SCDepth')
+                    #bentry['MeanX'] = rje.dp(bentry['MeanX'],1)
+                    self.printLog('#REGCNV','%s %s..%s = %.1fX -> %.2fN (1N=%dX)' % (bentry[locusfield],bentry[startfield],bentry[endfield],bentry['MeanX'],bentry['CN'],self.getNum('SCDepth')))
+                except:
+                    self.errorLog('Samtools depth result processing error',quitchoice=self.debugging())
+                    continue
+            cdb.saveToFile(backup=False,sfdict={'CN':4,'MeanX':4})
+
+            ### ~ [4] Add QryCNV calculations and save ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if qrycnv:
+                cdb.addField('QryFrac')
+                for bentry in cdb.entries():
+                    bentry['QryFrac'] = (bentry['QryEnd'] - bentry['QryStart'] + 1.0) / bentry['QryLen']
+                    bentry['CN'] = bentry['CN'] * bentry['QryFrac']
+                cdb.setStr({'Name':'qrycnv'})
+                cdb.compress(['Qry'],rules={'QryLen':'max','CN':'sum','QryFrac':'sum','SeqBP':'sum','ReadBP':'sum'})
+                cdb.keepFields(['Qry','QryLen','QryFrac','SeqBP','ReadBP','MeanX','CN'])
+                for bentry in cdb.entries():
+                    bentry['MeanX'] = float(bentry['ReadBP']) / bentry['SeqBP']
+                    self.printLog('#QRYCNV','%s = %.1f%% @ %.1fX (%.2fN) -> %.2fN (1N=%dX)' % (bentry['Qry'],100.0*bentry['QryFrac'],bentry['MeanX'],bentry['MeanX']/self.getNum('SCDepth'),bentry['CN'],self.getNum('SCDepth')))
+                    bentry['QryFrac'] = rje.dp(bentry['QryFrac'],2)
+                cdb.saveToFile(backup=False,sfdict={'CN':4,'MeanX':4})
+
+        except:
+            self.errorLog(self.zen())
+        return False
 #########################################################################################################################
     ### <6> ### Genome Size and Purge Haplotigs methods                                                                 #
 #########################################################################################################################
@@ -2605,14 +2994,14 @@ class Diploidocus(rje_obj.RJE_Object):
                 modelist.append((n,X))
             modelist.sort(reverse=True)
             self.setInt({'ModeOfModes':modelist[0][1]})
-            self.printLog('#MODE','BUSCO SC mode of samtools {} modal read depth: {}X'.format(depmethod,self.getInt('ModeOfModes')))
+            self.printLog('#SCDEP','BUSCO SC mode of samtools {} modal read depth: {}X'.format(depmethod,self.getInt('ModeOfModes')))
             for entry in mdb.indexEntries('Method',depmethod):
                 n = entry['n']
                 X = entry['X']
                 modelist.append((n,X))
             modelist.sort(reverse=True)
             self.setInt({'BUSCOMode':modelist[0][1]})
-            self.printLog('#MODE','BUSCO SC combined samtools {} modal read depth: {}X'.format(depmethod,self.getInt('BUSCOMode')))
+            self.printLog('#SCDEP','BUSCO SC combined samtools {} modal read depth: {}X'.format(depmethod,self.getInt('BUSCOMode')))
             if scdepth: return self.getInt('BUSCOMode')
             ### ~ [3] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             estgensize = int(0.5+(float(readbp) / self.getInt('BUSCOMode')))
@@ -2748,6 +3137,7 @@ class Diploidocus(rje_obj.RJE_Object):
             depcounts = {}  # Dictionary of depth counts
             ## ~ [3a] Load data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             bdb.addField('Mode')
+            bdb.addField('MeanX')
             for bentry in bdb.entries():
                 tmpfile = '{}{}.{}.{}.tmp'.format(tmpdir,basefile,bentry['BuscoID'],depmethod)
                 try:
@@ -2761,13 +3151,18 @@ class Diploidocus(rje_obj.RJE_Object):
                         raise
                     if bentry['Mode'] not in depmodes: depmodes[bentry['Mode']] = 0
                     depmodes[bentry['Mode']] += 1
+                    seqbp = 0
+                    bambp = 0
                     for dline in open(tmpfile,'r').readlines():
                         data = rje.chomp(dline).split()
                         n = int(data[0])
                         X = int(data[1])
+                        seqbp += n
+                        bambp += (n * X)
                         depdb.addEntry({'Method':depmethod,'BuscoID':bentry['BuscoID'],'n':n,'X':X})
                         if X not in depcounts: depcounts[X] = 0
                         depcounts[X] += n
+                    bentry['MeanX'] = (1.0 * bambp) / seqbp
                 except:
                     self.errorLog('Samtools depth result processing error',quitchoice=self.debugging())
                     continue
@@ -2783,7 +3178,16 @@ class Diploidocus(rje_obj.RJE_Object):
             self.setInt({'BUSCOMode':modelist[0][1]})
             self.printLog('#MODE','BUSCO SC combined samtools {} modal read depth: {}X'.format(depmethod,self.getInt('BUSCOMode')))
             ## ~ [3c] Save data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            bdb.addField('CN')
+            bdb.addField('CN-MoM')
+            for bentry in bdb.entries():
+                bentry['CN'] = bentry['MeanX']/self.getInt('BUSCOMode')
+                bentry['CN-MoM'] = bentry['MeanX']/self.getInt('ModeOfModes')
             bdb.saveToFile()
+            (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN-MoM',sortunique=False,empties=False))
+            self.printLog('#CNV','BUSCO Complete Mode of Modes CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
+            (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN',sortunique=False,empties=False))
+            self.printLog('#CNV','BUSCO Complete CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
             #!# Use the depdb table to make a box plot of the normalised depth counts?
             depdb.saveToFile()
             ## ~ [3d] Table of total and mode counts ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
@@ -3041,7 +3445,7 @@ class Diploidocus(rje_obj.RJE_Object):
             ### ~ [2] ~ Run PurgeHapolotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             #i# This establishes SC read depth using samtools prior to running purge_haplotigs
             self.purgeHaplotigs()
-            #scdepth = self.getInt('SCDepth')
+            #scdepth = self.getNum('SCDepth')
             bamstrip = os.path.basename(bamfile)
             gencov = '{}.gencov'.format(bamstrip)
             covstats = '{}.purge.coverage_stats.csv'.format(basefile)
@@ -3052,8 +3456,8 @@ class Diploidocus(rje_obj.RJE_Object):
 
             # ## ~ [2a] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             # # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
-            # scdepth = self.getInt('SCDepth')
-            # if self.getInt('SCDepth'):
+            # scdepth = self.getNum('SCDepth')
+            # if self.getNum('SCDepth'):
             #     self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
             # else:
             #     scdepth = self.genomeSize(scdepth=True)
@@ -3812,14 +4216,14 @@ class Diploidocus(rje_obj.RJE_Object):
                 return True
             ## ~ [1b] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
-            scdepth = self.getInt('SCDepth')
-            if self.getInt('SCDepth'):
-                self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
+            scdepth = self.getNum('SCDepth')
+            if self.getNum('SCDepth'):
+                self.printLog('#SCDEP','Using loaded single copy read depth = {0.2f}X'.format(scdepth))
             else:
                 scdepth = self.genomeSize(scdepth=True)
-                self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {}X'.format(scdepth))
+                self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {0}X'.format(scdepth))
                 if not scdepth: raise ValueError('Failed to establish SC read depth')
-                self.setInt({'SCDepth':scdepth})
+                self.setNum({'SCDepth':scdepth})
             ## ~ [1c] ~ Setup purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             # phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
             if self.getInt('PHLow') <= 0: self.setInt({'PHLow': int(float(scdepth)/4.0) })
@@ -3831,7 +4235,7 @@ class Diploidocus(rje_obj.RJE_Object):
             phmid = self.getInt('PHMid')
             # phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
             if self.getInt('PHHigh') <= 0:
-                self.setInt({'PHHigh': scdepth * 2 })
+                self.setInt({'PHHigh': int(scdepth * 2+0.5) })
             phhigh = self.getInt('PHHigh')
             #?# Add checks and warnings of cutoff conflicts
             ## ~ [1d] ~ Make and enter new directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
