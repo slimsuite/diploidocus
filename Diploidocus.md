@@ -26,6 +26,8 @@ The different run modes are set using `runmode=X`:
 * `purgehap` filters scaffolds based on post-processing of purge_haplotigs
 * `telomeres` performs a regex telomere search based on method of https://github.com/JanaSperschneider/FindTelomeres
 * `vecscreen` searches for contaminants and flags/masks/removes identified scaffolds
+* `regcheck` checks reads spanning given regions and also calculates mean depth and estimated copy number (if regcnv=T)
+* `regcnv` calculates mean depth and estimated copy number for regcheck regions from BAM file (no read spanning analysis)
 * `sortnr` performs an all-by-all mapping with minimap2 and then removes redundancy
 * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
 * `diphapnr` runs `sortnr` followed by `diphap`
@@ -62,7 +64,7 @@ use commandline options, including setting default values with **INI files**.
 ```
 ### ~ Main Diploidocus run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 seqin=FILE      : Input sequence assembly [None]
-runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/insilico/gensize/deptrim) [diploidocus]
+runmode=X       : Diploidocus run mode (diploidocus/dipcycle/sortnr/diphap/diphapnr/purgehap/telomere/vecscreen/regcheck/regcnv/insilico/gensize/deptrim) [diploidocus]
 basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
 summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
 genomesize=INT  : Haploid genome size (bp) [0]
@@ -104,13 +106,18 @@ screendb=FILE   : File of vectors/contaminants to screen out using blastn and Ve
 screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
 minvechit=INT   : Minimum length for a screendb match [50]
 efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
-vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [0]
+vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
 vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
 vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
 keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
 veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
+### ~ Region checking options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+regcheck=FILE   : File of SeqName, Start, End positions for read coverage checking [None]
+checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [Hit,SbjStart,SbjEnd]
 checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
-spanid=X        : Generate sets of read IDs that span veccheck regions, grouped by values of field X []
+spanid=X        : Generate sets of read IDs that span veccheck/regcheck regions, grouped by values of field X []
+regcnv=T/F      : Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
+gfftype=LIST    : Optional feature types to use if performing regcheck on GFF file (e.g. gene) ['gene']
 ### ~ SortNR filtering/output options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 checkcov=PERC   : Percentage coverage for double-checking partial exact matches [95]
 seqout=FILE     : Output sequence assembly [$BASEFILE.nr.fasta]
