@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.10.3
-Last Edit:    17/09/20
+Version:      0.10.6
+Last Edit:    30/09/20
 Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -320,6 +320,7 @@ Commandline:
     busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
     readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+    depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [False]
     ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
     10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
@@ -381,7 +382,7 @@ Commandline:
 #########################################################################################################################
 ### SECTION I: GENERAL SETUP & PROGRAM DETAILS                                                                          #
 #########################################################################################################################
-import glob, os, re, string, subprocess, sys, time, shutil
+import glob, math, os, re, string, subprocess, sys, time, shutil
 slimsuitepath = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../')) + os.path.sep
 sys.path.append(os.path.join(slimsuitepath,'libraries/'))
 sys.path.append(os.path.join(slimsuitepath,'tools/'))
@@ -421,6 +422,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.10.1 - Added gfftype=X optional feature type to use if performing regcheck on GFF file (e.g. gene) []
     # 0.10.2 - Fixed GFF regcheck bug. Add some documentation. Made gfftype=LIST not X.
     # 0.10.3 - Added BUSCO Complete Copy Number calculation and CI estimate to GenomeSize (and RegCNV). Made default gfftype=gene
+    # 0.10.4 - Added improved SCdepth calculation option using BUSCO depth density profile.
+    # 0.10.5 - Added 95% CI estimates to CNV calculations if BUSCO depth profiles are present.
+    # 0.10.6 - Fixed GenomeSize bug with zero coverage BUSCO genes (e.g. using different long reads from assembly)
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -461,7 +465,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.10.3', 'September 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.10.6', 'September 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -545,6 +549,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - TmpDir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
 
     Bool:boolean
+    - DepDensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [False]
     - DocHTML=T/F     : Generate HTML BUSCOMP documentation (*.info.html) instead of main run [False]
     - Diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
@@ -613,7 +618,7 @@ class Diploidocus(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
+        self.boollist = ['DepDensity','Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinLen','MinMedian','MinTrim','MinVecHit',
                         'QSubPPN','QSubVMem','QSubWall','MemPerThread',
                         'PHLow','PHMid','PHHigh','ReadBP','TeloSize','VecMask','VecTrim']
@@ -625,7 +630,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
+        self.setBool({'DepDensity':False,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,
                      'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})
@@ -654,7 +659,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
                 self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','TeloPerc','VecPurge']) # Percentage
@@ -687,7 +692,8 @@ class Diploidocus(rje_obj.RJE_Object):
         and secondary scaffolds from 10x pseudohap output, and creating an in silico diploid set of long reads from two
         haploid parents (for testing phasing etc.).
 
-        Please note that Diploidocus is still in development and documentation is currently a bit sparse.
+        Please note that Diploidocus is still in development and documentation is currently a bit sparse in places.
+        Please contact the author or post issues on GitHub if you have usage questions.
 
         The different run modes are set using `runmode=X`:
 
@@ -1800,8 +1806,8 @@ class Diploidocus(rje_obj.RJE_Object):
             self.errorLog('Diploidocus.seqinObj() error')
         return self.obj['SeqIn']
 #########################################################################################################################
-    def docHTML(self):  ### Generate the PAFScaff Rmd and HTML documents.                                        # v0.1.0
-        '''Generate the PAFScaff Rmd and HTML documents.'''
+    def docHTML(self):  ### Generate the Diploidocus Rmd and HTML documents.                                        # v0.1.0
+        '''Generate the Diploidocus Rmd and HTML documents.'''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             info = self.log.obj['Info']
             prog = '%s V%s' % (info.program,info.version)
@@ -2866,6 +2872,20 @@ class Diploidocus(rje_obj.RJE_Object):
                 self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {0}X'.format(scdepth))
                 if not scdepth: raise ValueError('Failed to establish SC read depth')
                 self.setNum({'SCDepth':scdepth})
+            busdep = 'busco{}'.format(depmethod)
+            bdb = self.db(busdep)
+            if not bdb:
+                busco = '{0}.{1}.tdt'.format(self.baseFile(),busdep)
+                bdb = self.db().addTable(busco,mainkeys=['#'],expect=False,name=busco)
+                if bdb: bdb.dataFormat({'MeanX':'num'})
+            if bdb:
+                (buscX,buscSD) = rje.meansd(bdb.dataList(bdb.entries(),'MeanX',sortunique=False,empties=False))
+                #i# CI of RegCNV estimate given RegX:
+                regX = scdepth
+                #i# 1. Systematic sequencing bias
+                regCIN1 = 1.96 * buscSD * math.sqrt(regX / (buscX ** 3))
+                regCIN2 = 1.96 * buscSD * regX / (buscX ** 2)
+                cdb.addFields(['CIsyst','CIrand'])
             ## ~ [3c] Setup forking ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             tmpdir = rje.makePath(self.getStr('TmpDir'),wholepath=False)
             if not rje.exists(tmpdir): rje.mkDir(self,tmpdir)
@@ -2912,6 +2932,14 @@ class Diploidocus(rje_obj.RJE_Object):
                         raise IOError('Cannot find {}'.format(tmpfile))
                     try:
                         bentry['ModeX'] = int(open(tmpfile,'r').readline().split()[1])
+                    except IndexError:
+                        self.warnLog('Possible lack of primary read mapping to %s %s-%s (%s -> "%s")' % (bentry[locusfield],bentry[startfield],bentry[endfield],depmethod,tmpfile))
+                        bentry['SeqBP'] = 0
+                        bentry['ReadBP'] = 0
+                        bentry['MeanX'] = 0.0
+                        bentry['CN'] = 0.0
+                        self.printLog('#REGCNV','%s %s..%s = %.1fX -> %.2fN (1N=%dX)' % (bentry[locusfield],bentry[startfield],bentry[endfield],bentry['MeanX'],bentry['CN'],self.getNum('SCDepth')))
+                        continue
                     except:
                         self.errorLog('Something has gone wrong with "%s"' % tmpfile)
                         raise
@@ -2927,8 +2955,14 @@ class Diploidocus(rje_obj.RJE_Object):
                     bentry['ReadBP'] = readbp
                     bentry['MeanX'] = (1.0 * readbp) / (bentry[endfield] - bentry[startfield] + 1)
                     bentry['CN'] = bentry['MeanX']/self.getNum('SCDepth')
-                    #bentry['MeanX'] = rje.dp(bentry['MeanX'],1)
-                    self.printLog('#REGCNV','%s %s..%s = %.1fX -> %.2fN (1N=%dX)' % (bentry[locusfield],bentry[startfield],bentry[endfield],bentry['MeanX'],bentry['CN'],self.getNum('SCDepth')))
+                    if bdb:
+                        regX = bentry['MeanX']
+                        bentry['CIsyst'] = 1.96 * buscSD * math.sqrt(regX / (buscX ** 3))
+                        bentry['CIrand'] = 1.96 * buscSD * regX / (buscX ** 2)
+
+                        self.printLog('#REGCNV','%s %s..%s = %.1fX -> %.2fN +/- %.3fN (95%% CI) (1N=%.2fX)' % (bentry[locusfield],bentry[startfield],bentry[endfield],bentry['MeanX'],bentry['CN'],bentry['CIrand'],self.getNum('SCDepth')))
+                    else:
+                        self.printLog('#REGCNV','%s %s..%s = %.1fX -> %.2fN (1N=%.2fX)' % (bentry[locusfield],bentry[startfield],bentry[endfield],bentry['MeanX'],bentry['CN'],self.getNum('SCDepth')))
                 except:
                     self.errorLog('Samtools depth result processing error',quitchoice=self.debugging())
                     continue
@@ -2945,7 +2979,13 @@ class Diploidocus(rje_obj.RJE_Object):
                 cdb.keepFields(['Qry','QryLen','QryFrac','SeqBP','ReadBP','MeanX','CN'])
                 for bentry in cdb.entries():
                     bentry['MeanX'] = float(bentry['ReadBP']) / bentry['SeqBP']
-                    self.printLog('#QRYCNV','%s = %.1f%% @ %.1fX (%.2fN) -> %.2fN (1N=%dX)' % (bentry['Qry'],100.0*bentry['QryFrac'],bentry['MeanX'],bentry['MeanX']/self.getNum('SCDepth'),bentry['CN'],self.getNum('SCDepth')))
+                    if bdb:
+                        regX = bentry['MeanX']
+                        bentry['CIsyst'] = 1.96 * buscSD * math.sqrt(regX / (buscX ** 3))
+                        bentry['CIrand'] = 1.96 * buscSD * regX / (buscX ** 2)
+                        self.printLog('#QRYCNV','%s = %.1f%% @ %.1fX (%.2fN) -> %.2fN +/- %.3fN (95%% CI) (1N=%.2fX)' % (bentry['Qry'],100.0*bentry['QryFrac'],bentry['MeanX'],bentry['MeanX']/self.getNum('SCDepth'),bentry['CN'],bentry['CIrand'],self.getNum('SCDepth')))
+                    else:
+                        self.printLog('#QRYCNV','%s = %.1f%% @ %.1fX (%.2fN) -> %.2fN (1N=%.2fX)' % (bentry['Qry'],100.0*bentry['QryFrac'],bentry['MeanX'],bentry['MeanX']/self.getNum('SCDepth'),bentry['CN'],self.getNum('SCDepth')))
                     bentry['QryFrac'] = rje.dp(bentry['QryFrac'],2)
                 cdb.saveToFile(backup=False,sfdict={'CN':4,'MeanX':4})
 
@@ -3009,15 +3049,30 @@ class Diploidocus(rje_obj.RJE_Object):
             modelist.sort(reverse=True)
             self.setInt({'BUSCOMode':modelist[0][1]})
             self.printLog('#SCDEP','BUSCO SC combined samtools {} modal read depth: {}X'.format(depmethod,self.getInt('BUSCOMode')))
-            if scdepth: return self.getInt('BUSCOMode')
+            ## ~ [2b] Generate density modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if self.getBool('DepDensity'):
+                #!# Add check of Rscript #!#
+                depfile = '{0}.dephist.tdt'.format(self.baseFile())
+                rdir = '%slibraries/r/' % slimsuitepath
+                try:
+                    rcmd = 'Rscript {0}depmode.R {1} {2}'.format(rdir, depfile, depmethod)
+                    self.printLog('#RCMD',rcmd)
+                    depmode = float(rje.chomp(os.popen(rcmd).readlines()[0]))
+                    self.setNum({'DensityMode':depmode})
+                    self.printLog('#SCDEP','BUSCO SC combined samtools {} modal density read depth: {}X'.format(depmethod,depmode))
+                    if scdepth: return self.getNum('DensityMode')
+                except:
+                    raise ValueError('Problem calling Rscript depmode.R')
+            elif scdepth: return self.getInt('BUSCOMode')
             ### ~ [3] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            estgensize = int(0.5+(float(readbp) / self.getInt('BUSCOMode')))
-            self.setInt({'EstGenomeSize':estgensize})
-            if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
-            self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
-            estgensize2 = int(0.5+(float(readbp) / self.getInt('ModeOfModes')))
-            self.printLog('#GSIZE','Mode of Modes Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('ModeOfModes'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
-            return self.getInt('BUSCOMode')
+            return self.calculateGenomeSize(readbp)
+            # estgensize = int(0.5+(float(readbp) / self.getInt('BUSCOMode')))
+            # self.setInt({'EstGenomeSize':estgensize})
+            # if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
+            # self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+            # estgensize2 = int(0.5+(float(readbp) / self.getInt('ModeOfModes')))
+            # self.printLog('#GSIZE','Mode of Modes Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('ModeOfModes'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+            # return self.getInt('BUSCOMode')
         except:
             self.errorLog('Diploidocus.genomeSizeFromModeFile() error')
             return False
@@ -3140,7 +3195,7 @@ class Diploidocus(rje_obj.RJE_Object):
                         raise RuntimeError('Samtools forking did not complete')
 
             ### ~ [3] Read in and process depth calculations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            depmodes = {}   # Dictionary of depth modes
+            depmodes = {0:0}   # Dictionary of depth modes
             depcounts = {}  # Dictionary of depth counts
             ## ~ [3a] Load data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             bdb.addField('Mode')
@@ -3153,6 +3208,12 @@ class Diploidocus(rje_obj.RJE_Object):
                     #?# Add full processing and calculation of mean coverage?
                     try:
                         bentry['Mode'] = int(open(tmpfile,'r').readline().split()[1])
+                    except IndexError:
+                        self.warnLog('Possible lack of primary read mapping to %s (%s -> "%s")' % (bentry['BuscoID'],depmethod,tmpfile))
+                        bentry['MeanX'] = 0.0
+                        bentry['Mode'] = 0
+                        depdb.addEntry({'Method':depmethod,'BuscoID':bentry['BuscoID'],'n':0,'X':0})
+                        continue
                     except:
                         self.errorLog('Something has gone wrong with "%s"' % tmpfile)
                         raise
@@ -3173,9 +3234,25 @@ class Diploidocus(rje_obj.RJE_Object):
                 except:
                     self.errorLog('Samtools depth result processing error',quitchoice=self.debugging())
                     continue
-            ## ~ [3b] Generate mode and mode of modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            #!# Use the depdb table to make a box plot of the normalised depth counts?
+            depdb.saveToFile()
+            ## ~ [3b] Table of total and mode counts ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            depdb.compress(['Method','X'],rules={'n':'sum'})
+            depdb.dropField('BuscoID')
+            depdb.addField('Modes',evalue=0)
+            for X, n in depmodes.items():
+                dentry = depdb.data((depmethod,X))
+                if dentry:
+                    dentry['Modes'] = n
+                else:
+                    self.warnLog('Cannot find {0} {1}X in dephist table.'.format(depmethod,X))
+            depdb.rename('dephist')
+            depdb.saveToFile()
+            ## ~ [3c] Generate mode and mode of modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             modelist = []
-            for X, n in depmodes.items(): modelist.append((n,X))
+            for X, n in depmodes.items():
+                if X:
+                    modelist.append((n,X))
             modelist.sort(reverse=True)
             self.setInt({'ModeOfModes':modelist[0][1]})
             self.printLog('#MODE','BUSCO SC mode of samtools {} modal read depth: {}X'.format(depmethod,self.getInt('ModeOfModes')))
@@ -3184,39 +3261,76 @@ class Diploidocus(rje_obj.RJE_Object):
             modelist.sort(reverse=True)
             self.setInt({'BUSCOMode':modelist[0][1]})
             self.printLog('#MODE','BUSCO SC combined samtools {} modal read depth: {}X'.format(depmethod,self.getInt('BUSCOMode')))
-            ## ~ [3c] Save data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            ## ~ [3d] Generate density modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if self.getBool('DepDensity'):
+                #!# Add check of Rscript #!#
+                depfile = '{0}.dephist.tdt'.format(self.baseFile())
+                rdir = '%slibraries/r/' % slimsuitepath
+                try:
+                    rcmd = 'Rscript {0}depmode.R {1} {2}'.format(rdir, depfile, depmethod)
+                    self.printLog('#RCMD',rcmd)
+                    depmode = float(rje.chomp(os.popen(rcmd).readlines()[0]))
+                    self.setNum({'DensityMode':depmode})
+                    self.printLog('#MODE','BUSCO SC combined samtools {} modal density read depth: {}X'.format(depmethod,depmode))
+                except:
+                    raise ValueError('Problem calling Rscript depmode.R')
+            ## ~ [3e] Save data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             bdb.addField('CN')
             bdb.addField('CN-MoM')
             for bentry in bdb.entries():
                 bentry['CN'] = bentry['MeanX']/self.getInt('BUSCOMode')
                 bentry['CN-MoM'] = bentry['MeanX']/self.getInt('ModeOfModes')
-            bdb.saveToFile()
             (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN-MoM',sortunique=False,empties=False))
             self.printLog('#CNV','BUSCO Complete Mode of Modes CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
             (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN',sortunique=False,empties=False))
             self.printLog('#CNV','BUSCO Complete CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
-            #!# Use the depdb table to make a box plot of the normalised depth counts?
-            depdb.saveToFile()
-            ## ~ [3d] Table of total and mode counts ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            depdb.compress(['Method','X'],rules={'n':'sum'})
-            depdb.dropField('BuscoID')
-            depdb.addField('Modes',evalue=0)
-            for X, n in depmodes.items(): depdb.data((depmethod,X))['Modes'] = n
-            depdb.rename('dephist')
-            depdb.saveToFile()
-            if scdepth: return self.getInt('BUSCOMode')
+            if self.getBool('DepDensity'):
+                bdb.addField('CN-Density')
+                for bentry in bdb.entries():
+                    bentry['CN-Density'] = bentry['MeanX']/self.getNum('DensityMode')
+                (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN-Density',sortunique=False,empties=False))
+                self.printLog('#CNV','BUSCO Complete Density Mode CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
+            bdb.saveToFile()
+            ## ~ [3f] Generate density modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if self.getBool('DepDensity') and scdepth: return self.getNum('DensityMode')
+            elif scdepth: return self.getInt('BUSCOMode')
 
             ### ~ [4] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            estgensize = int(0.5+(float(readbp) / self.getInt('BUSCOMode')))
-            self.setInt({'EstGenomeSize':estgensize})
-            if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
-            self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
-
-            return self.getInt('BUSCOMode')
+            #estgensize = int(0.5+(float(readbp) / self.getInt('BUSCOMode')))
+            #self.setInt({'EstGenomeSize':estgensize})
+            #if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
+            #self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+            # return self.getInt('BUSCOMode')
+            return self.calculateGenomeSize(readbp)
         except SystemExit: raise    # Child
         except:
             self.errorLog('Diploidocus.genomeSize() error')
             return False
+#########################################################################################################################
+    def calculateGenomeSize(self,readbp):  ### Calculates genome size from stored values and reports
+        '''
+        Calculates genome size from stored values and reports
+        :param readbp: Total number of bp in read data
+        :return: scdepth used for Genome Size estimate
+        '''
+        try:### ~ [0] Set up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            sizemethods = [('ModeOfModes','Mode of Modes'),('BUSCOMode','BUSCO Modes'),('DensityMode','BUSCO density mode')]
+            depmethod = 'mpileup'
+            if self.getBool('QuickDepth'): depmethod = 'depth'
+            ### ~ [1] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            for (nkey, desc) in sizemethods:
+                if self.getNum(nkey):
+                    scdepth = self.getNum(nkey)
+                    estgensize = int(0.5+(float(readbp) / scdepth))
+                    scprint = scdepth
+                    if nkey in ['DensityMode']: scprint = rje.dp(scdepth,3)
+                    self.printLog('#GSIZE','{0} ({1}) Estimated genome size ({2} at {3}X): {4}'.format(desc,depmethod,rje_seqlist.dnaLen(readbp,dp=0,sf=3),scprint,rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+            self.setInt({'EstGenomeSize':estgensize})
+            if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
+            return scdepth
+        except:
+            self.errorLog('Diploidocus.calculateGenomeSize() error')
+            raise
 #########################################################################################################################
     def assemblyMinimap(self):  ### Performs assembly versus self minimap2 search
         '''

@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.10.3 Documentation"
+title: "Diploidocus V0.10.6 Documentation"
 author: "Richard J. Edwards"
-date: "2020-09-17"
+date: "2020-10-13"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -31,7 +31,8 @@ Diploidocus has functions for removing redundancy, generating a non-redundant ps
 and secondary scaffolds from 10x pseudohap output, and creating an in silico diploid set of long reads from two
 haploid parents (for testing phasing etc.).
 
-Please note that Diploidocus is still in development and documentation is currently a bit sparse.
+Please note that Diploidocus is still in development and documentation is currently a bit sparse in places.
+Please contact the author or post issues on GitHub if you have usage questions.
 
 The different run modes are set using `runmode=X`:
 

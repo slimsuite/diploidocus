@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.45.0
-Last Edit:    08/09/20
+Version:      1.45.1
+Last Edit:    13/10/20
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -242,6 +242,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.43.1 - Added sequence reversal (not complemented) to reformat and edit
     # 1.44.0 - Added some additional parsing of common sequence formats from rje_sequence: need to expand.
     # 1.45.0 - Modified the newDesc() method for updating descriptions.
+    # 1.45.1 - Added CtgNum to output stats.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -265,7 +266,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.45.0', 'September 2020', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.45.1', 'October 2020', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -1119,6 +1120,7 @@ class SeqList(rje_obj.RJE_Object):
             sumlen = sum(seqlen)
             self.printLog('#SUM','Total length of sequences: %s' % rje.iStr(sumlen))
             seqdata['SeqNum'] = len(seqlen)
+            seqdata['CtgNum'] = seqdata['SeqNum'] + seqdata['GapCount']
             seqdata['TotLength'] = sumlen
             # Min, Max
             seqlen.sort()
@@ -1152,6 +1154,8 @@ class SeqList(rje_obj.RJE_Object):
                 #self.printLog('#SUM','N50 length of sequences: %s' % rje.iStr(seqlen[-1]))
                 #seqdata['N50Length'] = seqlen[-1]
             ## Contig N50 calculation
+            if self.dna():
+                self.printLog('#SUM','Total number of contigs: %s' % rje.iStr(seqdata['CtgNum']))
             if self.dna() and seqdata['GapCount'] > 0:
                 n50len = sumlen / 2.0
                 n50 = ctglen[0:]
@@ -3698,7 +3702,7 @@ def batchSummarise(callobj,seqfiles,save=True,overwrite=False):   ### Batch run 
                     seqdata['GCPC'] = '%.2f' % seqdata['GCPC']
                 if 'GapLength' in seqdata: seqdata['GapPC'] = '%.2f' % (100.0*seqdata['GapLength']/seqdata['TotLength'])
                 seqdata['MeanLength'] = '%.1f' % seqdata['MeanLength']
-                for field in string.split('SeqNum, TotLength, MinLength, MaxLength, MeanLength, MedLength, N50Length, L50Count, N50Ctg, L50Ctg, NG50Length, LG50Count, GapLength, GapPC, GCPC',', '):
+                for field in string.split('SeqNum, TotLength, MinLength, MaxLength, MeanLength, MedLength, N50Length, L50Count, CtgNum, N50Ctg, L50Ctg, NG50Length, LG50Count, GapLength, GapPC, GCPC',', '):
                     if field in seqdata and field not in sdb.fields(): sdb.addField(field)
                 for field in seqdata.keys():
                     if field not in sdb.fields(): sdb.addField(field)

@@ -19,8 +19,8 @@
 """
 Module:       rje_gff
 Description:  GFF File Parser and Manipulator
-Version:      0.1.3
-Last Edit:    16/09/20
+Version:      0.2.0
+Last Edit:    18/09/20
 Webserver:    http://www.slimsuite.unsw.edu.au/servers/gff.php
 Copyright (C) 2018  Richard J. Edwards - See source code for GNU License Notice
 
@@ -60,7 +60,7 @@ Commandline:
     gfffasta=T/F    : Whether to output parsed GFF sequences to `*.fasta` [False]
     attributes=LIST : List of attributes (X=Y;) to pull out into own fields ("*" or "all" for all) [*]
     attfield=T/F    : Whether to keep the full attribute field as parsed from the GFF file [False]
-    gffout=FILE     : Save updated GFF format to FILE [*Not yet implemented*] [None]
+    gffout=FILE     : Save updated GFF format to FILE [None]
     gffseq=T/F      : Whether to include sequences in updated GFF file [False]
 
     ### ~ GFF Processing Options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -94,6 +94,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.1.1 - Modified for splice isoform handling
     # 0.1.2 - Fixed parsing of GFFs with sequence-region information interspersed with features.
     # 0.1.3 - Added option to parseGFF to switch off the attribute parsing.
+    # 0.2.0 - Added gff output with ability to fix GFF of tab delimit errors
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -111,7 +112,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('RJE_GFF', '0.1.3', 'September 2020', '2018')
+    (program, version, last_edit, copy_right) = ('RJE_GFF', '0.2.0', 'September 2020', '2018')
     description = 'GFF File Parser and Manipulator'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -362,12 +363,13 @@ class GFF(rje_obj.RJE_Object):
 #########################################################################################################################
     ### <3> ### GFF Parsing Methods                                                                                     #
 #########################################################################################################################
-    def parseGFF(self,gfile,parseattributes=True,attfields=None):      ### Generic method
+    def parseGFF(self,gfile,parseattributes=True,attfields=None,fix=True):      ### Generic method
         '''
         Main GFF Parsing method. Parses comments, sequences and features from gfile.
         >> gfile:str = GFF file to parse
         >> parseattributes:bool [True] = Whether to parse attributes
         >> attfields:dict [None] = translation of attributes to field names. Defaults to lower case attribute.
+        >> fix:bool [True] = Whether to try to fix entries without tab separation.
 
         ##gff-version 3
         ##sequence-region fca0000601_BEN4355A1__BEN4355A1F4A.0000601 1 28423
@@ -456,7 +458,18 @@ class GFF(rje_obj.RJE_Object):
                     for col in ['start', 'end']:
                         gentry[col] = int(gentry[col])
                     if gdata: raise ValueError('Too many fields in GFF line!')
-                except: self.errorLog('Problem parsing GFF line: %s' % gtext)
+                except:
+                    try:
+                        if not fix: raise
+                        #i# Add attempt to fix
+                        gdata = gtext.split()
+                        for col in ['locus', 'source', 'ftype', 'start', 'end', 'score', 'strand', 'phase']:
+                            gentry[col] = gdata.pop(0)
+                        for col in ['start', 'end']:
+                            gentry[col] = int(gentry[col])
+                        gentry['attributes'] = ' '.join(data)
+                    except: self.errorLog('Problem parsing GFF line: %s' % gtext)
+
                 if parseattributes:
                     if addatt:
                         attlist = rje.longCmd(string.split(gentry['attributes'],';'))
@@ -772,7 +785,13 @@ class GFF(rje_obj.RJE_Object):
             if self.getBool('GFFFasta'):
                 self.printLog('#DEV','GFFFasta output not yet implemented.')
             if self.getStrLC('GFFOut'):
-                self.printLog('#DEV','GFFOut output not yet implemented.')
+                gffdb = self.db('features')
+                if not gffdb or not gffdb.entryNum():
+                    self.printLog('#OUT','Cannot save to GFFOut: no GFF features parsed.')
+                else:
+                    gfields = ['locus', 'source', 'ftype', 'start', 'end', 'score', 'strand', 'phase']
+                    #i# Save comments first then, table with selected headers, minus the headers!
+                    gffdb.saveToFile(self.getStr('GFFOut'),delimit='\t',backup=True,append=False,savefields=gfields,log=True,headers=False,comments=self.list['Comments'])
 
             return True     # Setup successful
         except: self.errorLog('Problem during %s saveGFFData.' % self.prog()); return False  # Setup failed

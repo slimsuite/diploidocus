@@ -1,7 +1,7 @@
-Diploidocus: Diploid genome assembly analysis toolkit.
+# Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.10.3
+Diploidocus v0.10.6
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -17,7 +17,8 @@ Diploidocus has functions for removing redundancy, generating a non-redundant ps
 and secondary scaffolds from 10x pseudohap output, and creating an in silico diploid set of long reads from two
 haploid parents (for testing phasing etc.).
 
-Please note that Diploidocus is still in development and documentation is currently a bit sparse.
+Please note that Diploidocus is still in development and documentation is currently a bit sparse in places.
+Please contact the author or post issues on GitHub if you have usage questions.
 
 The different run modes are set using `runmode=X`:
 
