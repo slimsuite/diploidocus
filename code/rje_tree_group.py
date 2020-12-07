@@ -403,15 +403,15 @@ def _groupChoice(_tree):    ### Gives manual options for grouping.
         ### <0> ### Summary
         _stage = '<0> Summary'
         _checkGroupNames(_tree)
-        print '\n#*# Grouping Options #*#\n'
-        print '[Bootstrap cut-off: %d (%f)]' % (int(_tree.stat['Bootstraps'] * _tree.stat['BootCut']), _tree.stat['BootCut'])
-        print '[Min Family Size: %d]' % _tree.stat['MinFamSize']
-        print '[Min Family Number: %d]' % _tree.stat['MinFamNum']
-        print '[Group by Query Species: %s (%s)]' % (_tree.opt['QueryGroup'],_tree.info['GroupSpecies'])
-        print '[Allow Sequence Variants: %s]' % _tree.opt['AllowVar']
-        print '[Allow Query species Variants: %s]' % _tree.opt['QryVar']
-        print '[Allow Orphan Sequences: %s]' % _tree.opt['Orphans']
-        print '\n#*# Grouping Summary #*#\n',
+        print('\n#*# Grouping Options #*#\n')
+        print('[Bootstrap cut-off: %d (%f)]' % (int(_tree.stat['Bootstraps'] * _tree.stat['BootCut']), _tree.stat['BootCut']))
+        print('[Min Family Size: %d]' % _tree.stat['MinFamSize'])
+        print('[Min Family Number: %d]' % _tree.stat['MinFamNum'])
+        print('[Group by Query Species: %s (%s)]' % (_tree.opt['QueryGroup'],_tree.info['GroupSpecies']))
+        print('[Allow Sequence Variants: %s]' % _tree.opt['AllowVar'])
+        print('[Allow Query species Variants: %s]' % _tree.opt['QryVar'])
+        print('[Allow Orphan Sequences: %s]' % _tree.opt['Orphans'])
+        rje.printf('\n#*# Grouping Summary #*#\n', newline=False)
         _sumGroups(_tree)
 #        if _tree.stat['MinFamNum'] > 0:
 #            print 'Grouping Needed (Min. %d Families).' % _tree.stat['MinFamNum']
@@ -420,33 +420,33 @@ def _groupChoice(_tree):    ### Gives manual options for grouping.
 
         ### <1> ### Options
         _stage = '<1> Options'
-        print ' <K>eep current grouping. ',
+        rje.printf(' <K>eep current grouping. ', newline=False)
         keepok = _checkGroups(_tree)
         if keepok:
-            print '(Current Grouping OK.)'
+            print('(Current Grouping OK.)')
         else:
-            print '*** WARNING: Current Grouping breaks 1+ rules. ***'
-        print ' --- '
-        print " <O>ptions (Change Grouping 'rules')."
-        print ' --- '
-        print ' <L>oad Grouping.'
-        print ' <D>uplication Grouping. ',
+            print('*** WARNING: Current Grouping breaks 1+ rules. ***')
+        print(' --- ')
+        print(" <O>ptions (Change Grouping 'rules').")
+        print(' --- ')
+        print(' <L>oad Grouping.')
+        rje.printf(' <D>uplication Grouping. ', newline=False)
         if _tree.opt['QueryGroup']:
-            print ' (%s Duplications)' % _tree.info['GroupSpecies']
+            print(' (%s Duplications)' % _tree.info['GroupSpecies'])
         else:
-            print '(All Duplications)'
-        print ' <M>anual Grouping.'
-        print ' <N>o Grouping (MinFamNum=0).'
-        print ' <A>ll sequences in one group.'
+            print('(All Duplications)')
+        print(' <M>anual Grouping.')
+        print(' <N>o Grouping (MinFamNum=0).')
+        print(' <A>ll sequences in one group.')
         if len(_tree.subfam) > 0:
-            print ' <E>dit Grouping (Manual)'
-            print ' --- '
-            print ' <R>eview Groups'
-            print ' <G>roup in SeqList (Reorder)'
-            print ' <P>urge Orphan Sequences (not in a group)'
-            print ' <S>ave Groups'
-        print ' --- \n <F>ull auto mode'
-        print ' --- \n <Q>uit'
+            print(' <E>dit Grouping (Manual)')
+            print(' --- ')
+            print(' <R>eview Groups')
+            print(' <G>roup in SeqList (Reorder)')
+            print(' <P>urge Orphan Sequences (not in a group)')
+            print(' <S>ave Groups')
+        print(' --- \n <F>ull auto mode')
+        print(' --- \n <Q>uit')
         # ! # Line up group options to save vertical space?
         
         ### <2> ### Make Choice
@@ -557,7 +557,7 @@ def _sumGroups(_tree):      ### Prints summary of Groups
 def _groupRules(_tree):     ### Options to change grouping options
     '''Options to change grouping options.'''
     try:
-        print '\nEdit Grouping Rules.\nEnter new values or leave Blank to retain.\n'
+        print('\nEdit Grouping Rules.\nEnter new values or leave Blank to retain.\n')
         for stat in ['BootCut','MinFamSize','MinFamNum']:
             _tree.stat[stat] = _tree._editChoice(stat,_tree.stat[stat],numeric=True)
         for opt in ['QueryGroup','Orphans','AllowVar','QryVar']:
@@ -849,7 +849,7 @@ def _reviewGroups(_tree,interactive=1):    ### Summarise, scan for variants (sam
                 ctext = ''
                 if _tree.stat['Verbose'] > 0 or _tree.stat['Interactive'] >= 0:
                     for m in range(len(masters)):
-                        print '\n<%d> %s' % (m, _groupDisSum(_tree,masters[m],query,qtxt)),
+                        rje.printf('\n<%d> %s' % (m, _groupDisSum(_tree,masters[m],query,qtxt)), newline=False)
                         ctext += '<%d> %s; ' % (m, masters[m].shortName())
                     ctext += '<K> keep variants; <M> Group menu:'
                 if _tree.stat['Interactive'] < 1 and _tree.opt['QryVar'] and query and grpmaster.info['SpecCode'] == query.info['SpecCode']: choice = len(masters)
@@ -921,7 +921,7 @@ def _reviewGroups(_tree,interactive=1):    ### Summarise, scan for variants (sam
                     ctext = ''
                     if _tree.stat['Verbose'] > 0 or _tree.stat['Interactive'] >= 0:
                         for v in range(len(vseq)):
-                            print '<%d> %s' % (v, _groupDisSum(_tree,vseq[v],grpmaster))
+                            print('<%d> %s' % (v, _groupDisSum(_tree,vseq[v],grpmaster)))
                             ctext += '<%d> %s; ' % (v, vseq[v].shortName())
                         ctext += '<K> keep variants; <M> Group menu'
 
@@ -1069,9 +1069,9 @@ def _groupDisSum(_tree,seq1,seq2,text=''):    ### Prints ID, Gaps and Extra Summ
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try:
-        print 'This module is not for standalone running.'
+        print('This module is not for standalone running.')
     except:
-        print 'Cataclysmic run error:', sys.exc_info()[0]
+        print('Cataclysmic run error:', sys.exc_info()[0])
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION III                                                                                                  #

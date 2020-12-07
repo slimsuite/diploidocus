@@ -19,8 +19,8 @@
 """
 Program:      RJE_SEQ
 Description:  DNA/Protein sequence list module
-Version:      3.25.2
-Last Edit:    15/05/19
+Version:      3.26.0
+Last Edit:    21/08/19
 Copyright (C) 2005  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -202,6 +202,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 3.25.0 - 9spec=T/F   : Whether to treat 9XXXX species codes as actual species (generally higher taxa) [False]
     # 3.25.1 - Fixed -long_seqids retrieval bug.
     # 3.25.2 - Fixed 9spec filtering bug.
+    # 3.26.0 - Initial Python3 code conversion.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -250,10 +251,10 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, cyear) = ('RJE_SEQ', '3.25.2', 'May 2019', '2005')
+    (program, version, last_edit, cyear) = ('RJE_SEQ', '3.26.0', 'August 2020', '2005')
     description = 'RJE Sequence Dataset Manipulation Module'
     author = 'Dr Richard J. Edwards.'
-    comments = ['Please report bugs to r.edwards@soton.ac.uk']
+    comments = ['Please report bugs at https://github.com/slimsuite/SLiMSuite']
     return rje.Info(program,version,last_edit,description,author,time.time(),cyear,comments)
 #########################################################################################################################
 def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for more sys.argv commands
@@ -263,7 +264,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         if not out: out = rje.Out()
         helpx = cmd_list.count('help') + cmd_list.count('-help') + cmd_list.count('-h')
         if helpx > 0:
-            print '\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time)))
+            print('\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time))))
             out.verbose(-1,4,text=__doc__)
             if rje.yesNo('Show general commandline options?',default='N'): out.verbose(-1,4,text=rje.__doc__)
             if rje.yesNo('Quit?'): sys.exit()
@@ -272,7 +273,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         return cmd_list
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print 'Major Problem with cmdHelp()'
+    except: print('Major Problem with cmdHelp()')
 #########################################################################################################################
 def setupProgram(): ### Basic Setup of Program
     '''
@@ -297,7 +298,7 @@ def setupProgram(): ### Basic Setup of Program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
     except:
-        print 'Problem during initial setup.'
+        print('Problem during initial setup.')
         raise
 #########################################################################################################################
 ### Regular Expressions for Sequence Details Extraction
@@ -973,10 +974,10 @@ class SeqList(rje.RJE_Object):
                         p += 1
                         physeq = rje.regExp(re_phy,line)
                         if len(physeq[1]) != int(phynum[1]):   # Wrong length!
-                            raise ValueError, "Phylip Format error: %s is not declared length of %s aa." % (physeq[1],phynum[1])
+                            raise ValueError("Phylip Format error: %s is not declared length of %s aa." % (physeq[1],phynum[1]))
                         self._addSeq(name=physeq[0], sequence=physeq[1])
                 if self.seqNum() != int(phynum[0]):   # Wrong sequence number!
-                    raise ValueError, "Phylip Format error: %s seqs declared, %d seqs read." % (physeq[0],self.seqNum())
+                    raise ValueError("Phylip Format error: %s seqs declared, %d seqs read." % (physeq[0],self.seqNum()))
                 self.printLog('\r#SEQ','%s sequences loaded from %s (Format: %s).' % (rje.integerString(self.seqNum()),seqfile,filetype))
             ##  ~ [2c] ~ Aln Format ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             elif filetype == 'aln':
@@ -1500,13 +1501,16 @@ class SeqList(rje.RJE_Object):
             if seqlist.seqNum() == self.seqNum():   # Assume 1 to 1 mapping
                 if mapx == self.seqNum(): allmapped = True
                 else:
-                    print 'No match for:'
+                    nomatchfor = []
                     for mapseq in seqlist.seq:
-                        if map[mapseq]:  print mapseq.shortName(),
-                    print '\n\nNo match to:'
+                        if map[mapseq]: nomatchfor.append(mapseq.shortName())
+                    if nomatchfor:
+                        self.warnLog('No match for: {0}'.format('; '.join(nomatchfor)))
+                    nomatchto = []
                     for seq in self.seqs():
-                        if mapped[seq] == False: print seq.shortName(),
-                    print '\n'                            
+                        if mapped[seq] == False: nomatchto.append(seq.shortName())
+                    if nomatchto:
+                        self.warnLog('No match to: {0}'.format('; '.join(nomatchto)))
                     self.errorLog('Only %d of %d sequences mapped from %s.' % (mapx,seqlist.seqNum(),seqlist.info['Name']),printerror=False,quitchoice=True)
             else:
                 if mapx == self.seqNum(): allmapped = True
@@ -2874,7 +2878,7 @@ class SeqList(rje.RJE_Object):
                     return (seq2,type,seq1.shortName())
             ### <d> ### Manual Choice
             while self.stat['Interactive'] >= 1:
-                print '\n%s and %s seem equally good.' % (seq1.info['Name'],seq2.info['Name'])
+                print('\n%s and %s seem equally good.' % (seq1.info['Name'],seq2.info['Name']))
                 rem = rje.choice('<1> Remove %s, <2> Remove %s, <A>utomatic' % (seq1.shortName(),seq2.shortName()),default='A')
                 if rem == '1':
                     return (seq1, 'Manual Choice',seq2.shortName())
@@ -3445,7 +3449,7 @@ class SeqList(rje.RJE_Object):
             else: errseq = 'None'
             if seq2: errseq += ' v %s' % seq2.shortName()
             else: errseq = ' v None'
-            if command: print 'Align command: %s' % command
+            if command: print('Align command: %s' % command)
             if retry > 0:
                 self.errorLog('Problem during pwAln(%s). Trying again... (%d)' % (errseq,retry))
                 return self.pwAln(seq1,seq2,unlink=unlink,retry=(retry-1))
@@ -3912,12 +3916,12 @@ def pamDis(seqlist,pam):   ### Makes an all-by-all PAM Distance Matrix
     >> pam:rje_pam.PamCtrl Object
     '''
     ### <a> ### Check
-    print 'Calculating',
+    print('Calculating PAM Distance Matrix')
     if seqlist.seqNum() == 0:
-        print 'Must load (aligned) sequences using \'seqin=FILE\' command.'
+        print('Must load (aligned) sequences using \'seqin=FILE\' command.')
         sys.exit()
     elif seqlist.opt['Aligned'] == False:
-        print 'Input sequences must be aligned! Will attempt alignment.'
+        print('Input sequences must be aligned! Will attempt alignment.')
         seqlist = seqlist.align()
     ### <b> ### Make matrix
     matrix = rje_dismatrix.DisMatrix(log=seqlist.log)
@@ -3933,7 +3937,7 @@ def pamDis(seqlist,pam):   ### Makes an all-by-all PAM Distance Matrix
             p = pam.pamML(ancseq=seq1.info['Sequence'],descseq=seq2.info['Sequence'])
             matrix.addDis(seq1,seq2,p)
     seqlist.obj['PAM Dis'] = matrix
-    print '...Saving as %s.pamdis' % seqlist.info['Name']
+    print('...Saving as %s.pamdis' % seqlist.info['Name'])
     matrix.saveMatrix(seqlist.seq,filename='%s.pamdis' % seqlist.info['Name'],delimit=',')
 #########################################################################################################################
 def MWt(sequence=''):   ### Returns Molecular Weight of Sequence
@@ -4227,7 +4231,7 @@ def runMain():
     try: [info,out,mainlog,cmd_list] = setupProgram()
     except SystemExit: return  
     except:
-        print 'Unexpected error during program setup:', sys.exc_info()[0]
+        print('Unexpected error during program setup:', sys.exc_info()[0])
         return 
         
     ### Rest of Functionality... ###
@@ -4316,7 +4320,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print 'Cataclysmic run error:', sys.exc_info()[0]
+    except: print('Cataclysmic run error: {0}'.format(sys.exc_info()[0]))
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION IV

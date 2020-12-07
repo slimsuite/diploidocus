@@ -19,8 +19,8 @@
 """
 Module:       rje_gff
 Description:  GFF File Parser and Manipulator
-Version:      0.2.0
-Last Edit:    18/09/20
+Version:      0.2.1
+Last Edit:    20/11/20
 Webserver:    http://www.slimsuite.unsw.edu.au/servers/gff.php
 Copyright (C) 2018  Richard J. Edwards - See source code for GNU License Notice
 
@@ -95,6 +95,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.1.2 - Fixed parsing of GFFs with sequence-region information interspersed with features.
     # 0.1.3 - Added option to parseGFF to switch off the attribute parsing.
     # 0.2.0 - Added gff output with ability to fix GFF of tab delimit errors
+    # 0.2.1 - Added restricted feature parsing from GFF.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -112,7 +113,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('RJE_GFF', '0.2.0', 'September 2020', '2018')
+    (program, version, last_edit, copy_right) = ('RJE_GFF', '0.2.1', 'November 2020', '2018')
     description = 'GFF File Parser and Manipulator'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -363,13 +364,14 @@ class GFF(rje_obj.RJE_Object):
 #########################################################################################################################
     ### <3> ### GFF Parsing Methods                                                                                     #
 #########################################################################################################################
-    def parseGFF(self,gfile,parseattributes=True,attfields=None,fix=True):      ### Generic method
+    def parseGFF(self,gfile,parseattributes=True,attfields=None,fix=True,ftypes=()):      ### Generic method
         '''
         Main GFF Parsing method. Parses comments, sequences and features from gfile.
         >> gfile:str = GFF file to parse
         >> parseattributes:bool [True] = Whether to parse attributes
         >> attfields:dict [None] = translation of attributes to field names. Defaults to lower case attribute.
         >> fix:bool [True] = Whether to try to fix entries without tab separation.
+        >> ftypes:tuple [()] = Tuple or list of restricted feature types to parse (case sensitive)
 
         ##gff-version 3
         ##sequence-region fca0000601_BEN4355A1__BEN4355A1F4A.0000601 1 28423
@@ -421,6 +423,7 @@ class GFF(rje_obj.RJE_Object):
             gdb = db.addEmptyTable('features',gfields+afields,['#'])
             gffdata = gdb.dict['Data'] = {}   # Entries being parsed
             gx = 0  # Feature counter
+            nx = 0  # Skipped feature counter
             comments = self.list['Comments'] = []
             ### ~ [2] Parse file ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             #i# NOTE: This is not designed to be memory efficient. May want a memsaver version in future.
@@ -435,11 +438,17 @@ class GFF(rje_obj.RJE_Object):
             self.printLog('\r#COMM','%s comments parsed; %s sequence-regions' % (rje.iLen(comments),rje.iStr(sdb.entryNum())))
             sregx = sdb.entryNum()
             ## ~ [2b] Features ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if ftypes:
+                self.debug('%s' % ftypes)
+                ftnr = rje.sortUnique(ftypes)
+                if '' in ftnr: ftnr.remove('')
+                self.printLog('#GFF','Parsing %d feature types: %s' % (len(ftnr),','.join(ftnr)))
+            else: self.printLog('#GFF','Parsing all feature types.')
             self.progLog('#GFF','Parsing GFF features...')
             prand = random.randint(1,200)
             while glines:
                 if self.dev() or not prand:
-                    self.progLog('\r#GFF','Parsing GFF features... %s features; %s sequence-regions' % (rje.iStr(gx),rje.iStr(sregx)))
+                    self.progLog('\r#GFF','Parsing GFF features... %s features; %s sequence-regions; %s features skipped' % (rje.iStr(gx),rje.iStr(sregx),rje.iStr(nx)))
                     prand = random.randint(1,200)
                 else: prand -= 1
                 if glines[0].startswith('##FASTA'): break
@@ -453,6 +462,7 @@ class GFF(rje_obj.RJE_Object):
                 gdata = string.split(gtext,'\t')
                 gentry = {}
                 try:
+                    if ftypes and gdata[2] not in ftypes: nx +=1; continue
                     for col in ['locus', 'source', 'ftype', 'start', 'end', 'score', 'strand', 'phase', 'attributes']:
                         gentry[col] = gdata.pop(0)
                     for col in ['start', 'end']:
@@ -495,7 +505,8 @@ class GFF(rje_obj.RJE_Object):
                 gx += 1
                 gentry['#'] = gx
                 gffdata[gentry['#']] = gentry
-            if self.dev(): self.printLog('\r#GFF','%s features and %s sequence-regions parsed from %s' % (rje.iStr(gx),rje.iStr(sregx),gfile))
+            #if self.dev(): self.printLog('\r#GFF','%s features and %s sequence-regions parsed from %s' % (rje.iStr(gx),rje.iStr(sregx),gfile))
+            self.printLog('\r#GFF','Parsing GFF features complete: %s features; %s sequence-regions; %s features skipped.' % (rje.iStr(gx),rje.iStr(sregx),rje.iStr(nx)))
             self.printLog('\r#GFF','%s features and %s sequence-regions parsed from %s' % (rje.iStr(gdb.entryNum()),rje.iStr(sregx),gfile))
             gdb.indexReport('ftype')
             ## ~ [2c] Sequences ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##

@@ -19,9 +19,11 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.10.6
-Last Edit:    30/09/20
-Copyright (C) 2017  Richard J. Edwards - See source code for GNU License Notice
+Version:      0.11.0
+Last Edit:    04/12/20
+Citation:     Edwards RJ et al. (2020), bioRxiv https://doi.org/10.1101/2020.11.11.379073
+GitHub:       https://github.com/slimsuite/diploidocusg
+Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
     Diploidocus is a sequence analysis toolkit for a number of different analyses related to diploid genome assembly.
@@ -320,7 +322,7 @@ Commandline:
     busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
     readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
-    depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [False]
+    depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
     ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
     10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
@@ -425,6 +427,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.10.4 - Added improved SCdepth calculation option using BUSCO depth density profile.
     # 0.10.5 - Added 95% CI estimates to CNV calculations if BUSCO depth profiles are present.
     # 0.10.6 - Fixed GenomeSize bug with zero coverage BUSCO genes (e.g. using different long reads from assembly)
+    # 0.10.7 - Updated the depmode.R script to limit analysis to one depmethod.
+    # 0.11.0 - Updated defaults to depdensity=T for genome size prediction.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -465,7 +469,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.10.6', 'September 2020', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.11.0', 'December 2020', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -549,7 +553,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - TmpDir=PATH     : Path for temporary output files during forking (not all modes) [./tmpdir/]
 
     Bool:boolean
-    - DepDensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [False]
+    - DepDensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
     - DocHTML=T/F     : Generate HTML BUSCOMP documentation (*.info.html) instead of main run [False]
     - Diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
@@ -630,7 +634,7 @@ class Diploidocus(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
-        self.setBool({'DepDensity':False,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
+        self.setBool({'DepDensity':True,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,
                      'GenomeSize':0,'ReadBP':0,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})

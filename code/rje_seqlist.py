@@ -1010,6 +1010,7 @@ class SeqList(rje_obj.RJE_Object):
             if not raw: lenstats = []
             mingap = max(0,self.getInt('MinGap'))
             if gapstats: mingap = max(1,mingap)
+            if raw: mingap = 0
             gapre = re.compile('N{%d,}' % mingap)
             seqbase = rje.baseFile(self.getStr('SeqIn'),strip_path=True)
             if self.getStrLC('SeqOut'):

@@ -211,7 +211,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         if not out: out = rje.Out()
         helpx = cmd_list.count('help') + cmd_list.count('-help') + cmd_list.count('-h')
         if helpx > 0:
-            print '\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time)))
+            print('\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time))))
             out.verbose(-1,4,text=__doc__)
             if rje.yesNo('Show general commandline options?'): out.verbose(-1,4,text=rje.__doc__)
             if rje.yesNo('Quit?'): sys.exit()
@@ -220,7 +220,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         return cmd_list
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print 'Major Problem with cmdHelp()'
+    except: print('Major Problem with cmdHelp()')
 #########################################################################################################################
 def setupProgram(): ### Basic Setup of Program
     '''
@@ -245,7 +245,7 @@ def setupProgram(): ### Basic Setup of Program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
     except:
-        print 'Problem during initial setup.'
+        print('Problem during initial setup.')
         raise
 #########################################################################################################################
 treeformats = {'nsf':'Newick Standard Format (NSF)','text':'Plain text','r':'table for R PNG maker',
@@ -821,9 +821,9 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
 #########################################################################################################################
     def debugTree(self): # ! # Tmp
         b = 1
-        print
+        print()
         for branch in self.branch:
-            print b, branch.node
+            print(b, branch.node)
             b += 1
         raw_input()
 #########################################################################################################################
@@ -905,8 +905,8 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                 a = len(intorder)
                 b = (self.nodeNum() - self.stat['SeqNum'])
                 self.log.errorLog('Wrong number of internal nodes! (%d not %d-%d = %d)' % (a,self.nodeNum(),self.stat['SeqNum'],b),printerror=False)
-                print self.nodeList(intorder)
-                print self.nodeList(self.node)
+                print(self.nodeList(intorder))
+                print(self.nodeList(self.node))
                 raise ValueError
             else:
                 n = self.nodeNum()
@@ -1294,7 +1294,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                 ancb = mergeb[0]
                 descb = mergeb[1]
                 if ancb.commonNode(descb) != anc:
-                    print 'Problem with ancestral node not linking correct branches!'
+                    print('Problem with ancestral node not linking correct branches!')
                     raise ValueError
                 if anc == self.node[-1]:  # Trichotomy
                     ancn = ancb.link(anc)
@@ -1366,23 +1366,23 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
             if make_seq:
                 seqin = make_seq.info['Name']
             ### Show Settings ###
-            print '\n\n### Tree Making Menu ###'
-            print 'Tree Generation Method: %s' % self.info['MakeTree']
-            print 'Bootstraps: %d' % self.stat['Bootstraps']
-            print 'Sequence File: %s' % seqin
+            print('\n\n### Tree Making Menu ###')
+            print('Tree Generation Method: %s' % self.info['MakeTree'])
+            print('Bootstraps: %d' % self.stat['Bootstraps'])
+            print('Sequence File: %s' % seqin)
             if self.info['MakeTree'] in ['neighbor','upgma','fitch','kitch']:    ### PHYLIP
-                print 'Distance Matrix File: %s' % self.info['DisIn']
+                print('Distance Matrix File: %s' % self.info['DisIn'])
             if self.info['MakeTree'] in ['neighbor','upgma','protpars','proml','fitch','kitch']:    ### PHYLIP
-                print 'Phylip Path: %s' % self.info['Phylip']
-                print 'Phylip Options File: %s' % self.info['PhyOptions']
-                print 'Protdist Options File: %s' % self.info['ProtDist']
+                print('Phylip Path: %s' % self.info['Phylip'])
+                print('Phylip Options File: %s' % self.info['PhyOptions'])
+                print('Protdist Options File: %s' % self.info['ProtDist'])
             if self.info['MakeTree'] in ['clustalw']:
-                print 'ClustalW Path: %s' % self.info['ClustalW']
-                print 'Use Kimura multiple hit correction: %s' % self.opt['Kimura']
+                print('ClustalW Path: %s' % self.info['ClustalW'])
+                print('Use Kimura multiple hit correction: %s' % self.opt['Kimura'])
             if self.info['MakeTree'] in ['fasttree']:
-                print 'FastTree Path: %s' % self.info['FastTree']
+                print('FastTree Path: %s' % self.info['FastTree'])
             if self.info['MakeTree'] in ['iqtree']:
-                print 'IQTree Path: %s' % self.info['IQTree']
+                print('IQTree Path: %s' % self.info['IQTree'])
             ### Options ###
             choicetext = '\n<M>ake Tree, Change <O>ptions'
             choices = ['M','O']
@@ -1953,15 +1953,15 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
             while self.stat['Interactive'] >= 0:
                 self.textTree(filename=None,seqnum=True,seqname=seqname,maxnamelen=maxnamelen,nodename='num',showboot=showboot,showlen=showlen,blen=blen,scale=scale,spacer=spacer,pause=pause,fromnode=fromnode)
                 if groupmode:
-                    print '\nDisplay: <C>ollapse/Group, <E>xpand/Ungroup, ',
+                    rje.printf('\nDisplay: <C>ollapse/Group, <E>xpand/Ungroup, ',newline=False)
                 else:
-                    print '\nDisplay: <C>ollapse, <E>xpand, ',
-                print '<F>lip, <N>ame Clade, <Z>oom, <O>ptions, <D>escriptions [%s], <S>ave to file, <Q>uit' % (showdesc)
-                print 'Edit: <B>ranch, <T>erminal node, <P>rune',
+                    rje.printf('\nDisplay: <C>ollapse, <E>xpand, ',newline=False)
+                rje.printf('<F>lip, <N>ame Clade, <Z>oom, <O>ptions, <D>escriptions [%s], <S>ave to file, <Q>uit' % (showdesc))
+                rje.printf('Edit: <B>ranch, <T>erminal node, <P>rune',newline=False)
                 if reroot:
-                    print ', <R>oot on Branch, <U>nroot, Root <M>enu'
+                    print(', <R>oot on Branch, <U>nroot, Root <M>enu')
                 else:
-                    print
+                    print()
                 choice = rje.choice('Choice?: ',default='Q').upper()
                 while not reroot and choice in ['R','U','M']:
                     choice = rje.choice('Choice?: ',default='Q').upper()
@@ -1984,12 +1984,12 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                     n = rje.getInt('Node: ')
                     node = self._getNode(n)
                     if node == None:
-                        print 'Cannot find Node %d!' % n
+                        print('Cannot find Node %d!' % n)
                 while choice[0] in needbranch and branch == None:   # Choose Branch
                     n = rje.getInt('Descendant Node: ')
                     node = self._getNode(n)
                     if node == None:
-                        print 'Cannot find Node %d!' % n
+                        print('Cannot find Node %d!' % n)
                     else:
                         branch = node.ancBranch()
                 ## <i> ## Collapse/Name node
@@ -2020,7 +2020,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                     else:
                         seqname = 'short'
                 if choice.find('O') == 0:
-                    print self.textTree.__doc__
+                    print(self.textTree.__doc__)
                     seqname = self._editChoice('Sequence name display (num/short/full)',seqname)
                     showdesc = False
                     if seqname == 'long':
@@ -2042,7 +2042,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                     branch.edit()
                 ## <vii> ## Save to file
                 if choice.find('T') == 0: 
-                    print 'Currently Unavailable!'
+                    print('Currently Unavailable!')
                 ## <viii> ## Prune Tree
                 if choice.find('P') == 0:
                     if rje.yesNo('Remove %d and all descendant nodes and branches?' % n):
@@ -2069,7 +2069,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                     else:
                         fromnode = self._getNode(n)
                         if fromnode == None:
-                            print 'Cannot find Node %d!' % n
+                            print('Cannot find Node %d!' % n)
                         elif fromnode == self.node[-1]:
                             fromnode = None
                     
@@ -2908,26 +2908,26 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
         '''
         ### <a> ### Show Choices
         try:
-            print '\n#*# Rooting Options [%s] #*#\n' % self.opt['Rooted']
+            print('\n#*# Rooting Options [%s] #*#\n' % self.opt['Rooted'])
             current = self._getRootNode()
             if current != None:
                 current = current.info['Name']
-            print 'Current rooting: %s\n' % current
+            print('Current rooting: %s\n' % current)
             keepok = True
             if self.info['Rooting'] == 'yes': 
                 keepok = self.opt['Rooted']
             if keepok:
-                print ' <0> Keep current rooting.'
-                print ' --- '
-            print ' <1> Midpoint Root.'
-            print ' <2> Root from Outgroup File.'
-            print ' <3> Make Outgroup File.'
-            print ' <4> Root on Branch.'
-            print ' <5> Manual rooting using text Tree (with editing options).'
-            print ' <6> Random Root.'
-            print ' <7> Random Root (branch-length weighted).'
+                print(' <0> Keep current rooting.')
+                print(' --- ')
+            print(' <1> Midpoint Root.')
+            print(' <2> Root from Outgroup File.')
+            print(' <3> Make Outgroup File.')
+            print(' <4> Root on Branch.')
+            print(' <5> Manual rooting using text Tree (with editing options).')
+            print(' <6> Random Root.')
+            print(' <7> Random Root (branch-length weighted).')
             if self.opt['Rooted']:
-                print ' --- \n <8> Unroot.'
+                print(' --- \n <8> Unroot.')
         except:
             self.log.errorLog('Problem with manRoot() choice display.')
         ### <b> ### Make Choice
@@ -2944,7 +2944,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                     TEST.close()
                     return self.fileRoot(rootfile)
                 except(IOError):    # If file does not exist then give fresh choice
-                    print '%s not found!' % rootfile
+                    print('%s not found!' % rootfile)
             elif choice == 3: # Make outgroup file. Give option afterwards to root from it!
                 return self.makeRootFile()
             elif choice == 4: # Root on Branch.
@@ -2978,10 +2978,10 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
             branch = self.branch[b]
             clades = self.branchClades(branch)
             ### <b> ### Choices
-            print '\nBranch %s:\n%s\n vs\n%s\n' % (branch.show(),self.nodeList(clades[0]),self.nodeList(clades[1]))
-            print '<R>oot, <N>ext, <P>revious, <I>nternal branches, <Q>uit',
+            print('\nBranch %s:\n%s\n vs\n%s\n' % (branch.show(),self.nodeList(clades[0]),self.nodeList(clades[1])))
+            rje.printf('<R>oot, <N>ext, <P>revious, <I>nternal branches, <Q>uit',newline=False)
             choice = rje.choice(': ',default='N').upper()
-            print choice
+            print(choice)
             if choice.find('R') == 0:
                 self.placeRoot('Manual',branch)
                 return True
@@ -3102,9 +3102,9 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
         try:
             ### <a> ### Make file
             while 1:
-                print 'Name of Outgroup file: ',
+                rje.printf('Name of Outgroup file: ',newline=False)
                 outfile = raw_input('')
-                print outfile
+                print(outfile)
                 if outfile != '' and rje.yesNo("Save as '%s'" % outfile):
                     break
             OUT = open(outfile,'w')
@@ -3116,8 +3116,8 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                 if self.node[s] in outgroup:
                     s += 1
                 else:
-                    print '%s: %s' % (rje.preZero((s+1),snum),self.node[s].info['Name'])
-                    print ' <O>utgroup, <N>ext, <P>revious, <Q>uit'
+                    print('%s: %s' % (rje.preZero((s+1),snum),self.node[s].info['Name']))
+                    print(' <O>utgroup, <N>ext, <P>revious, <Q>uit')
                     action = raw_input(': ').lower()
                     if action.find('o') == 0:
                         OUT.write('%s\n' % self.node[s].info['Name'])
@@ -3333,15 +3333,15 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
                 if internal or len(node.branch) == 1:   ### Terminal node
                     if node.stat['ID'] > self.seqNum() and not internal:
                         self.log.errorLog('Terminal node %s not really terminal? ID:%d, %d termini?' % (node.info['Name'],node.stat['ID'],self.seqNum()),True,printerror=False)
-                        print self.obj['SeqList']
-                        print self.node
+                        print(self.obj['SeqList'])
+                        print(self.node)
                     link = self.pathLink(branch.ancNode(),node)
                     if branch in link: ntuple[1].append(node) ### Node is in 'descendant' clade
                     else: ntuple[0].append(node)
             return ntuple
         except:
             self.log.errorLog('Major Problem with branchClades(%s)' % branch)
-            print branch.stat, branch.node
+            print(branch.stat, branch.node)
             raise
 #########################################################################################################################
     def _descClades(self,node,internal=False):     ### Returns tuple of lists of both descendant clades
@@ -3744,7 +3744,7 @@ class Tree(rje.RJE_Object):     ### Class for handling phylogenetic trees.
             if fromnode == None or fromnode == self.node[-1]:
                 basenode = self.node[-1]
                 if len(basenode.branch) == 3:  # Trichotomy
-                    print 'Trichotomy'
+                    print('Trichotomy')
                     tric = True
                 xpos[basenode] = scale + 1
             else:
@@ -4064,8 +4064,8 @@ class Node(rje.RJE_Object):
             return None
         except:
             self.log.errorLog('Major Problem with Node.ancBranch().')
-            print self.branch
-            print self.stat
+            print(self.branch)
+            print(self.stat)
             raise
 #########################################################################################################################
     def ancNode(self):   ### Returns linked node that is 'ancestral' or None if none
@@ -4282,25 +4282,25 @@ def treeMenu(out,mainlog,cmd_list,tree=None):        ### Menu for handling Tree 
     try:
         ### <a> ### Setup parameters etc.
         if tree == None:
-            print 'No Tree!'
+            print('No Tree!')
             return
             #tree = Tree(log=mainlog,cmd_list=cmd_list)
         ### <b> ### Menu
         while out.stat['Interactive'] >= 0:
             ## <i> ## Options
-            print '\n\n *** Tree Menu *** \n'
-            print '<L>oad Tree'
-            print '<M>ake Tree'
+            print('\n\n *** Tree Menu *** \n')
+            print('<L>oad Tree')
+            print('<M>ake Tree')
             if len(tree.node) > 0:
-                print '<S>ave Tree'
-                print '<I>mport Sequence Data'
-                print ' --- \n<R>oot Options'
-                print '<E>dit Tree'
-                print '<G>rouping Options'
+                print('<S>ave Tree')
+                print('<I>mport Sequence Data')
+                print(' --- \n<R>oot Options')
+                print('<E>dit Tree')
+                print('<G>rouping Options')
             if len(tree.node) > 0 and tree.obj['SeqList']:
-                print ' --- \n<A>ncestral Sequence Prediction (GASP)'
-                print 'E<x>port Sequence Data'
-            print ' --- \n<Q>uit'
+                print(' --- \n<A>ncestral Sequence Prediction (GASP)')
+                print('E<x>port Sequence Data')
+            print(' --- \n<Q>uit')
             ## <ii> ## Choice
             choice = rje.choice('\nChoice: ',default='Q').upper()
             if choice.find('L') == 0:   # Load Tree
@@ -4379,7 +4379,7 @@ def runMain():
     try: [info,out,mainlog,cmd_list] = setupProgram()
     except SystemExit: return  
     except:
-        print 'Unexpected error during program setup:', sys.exc_info()[0]
+        print('Unexpected error during program setup:', sys.exc_info()[0])
         return 
     ### ~ [2] ~ Rest of Functionality... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try:
@@ -4395,7 +4395,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print 'Cataclysmic run error:', sys.exc_info()[0]
+    except: print('Cataclysmic run error:', sys.exc_info()[0])
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION IV                                                                                                   #

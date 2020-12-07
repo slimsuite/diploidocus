@@ -19,8 +19,8 @@
 """
 Module:       rje_blast
 Description:  BLAST+ Control Module
-Version:      2.26.0
-Last Edit:    21/08/20
+Version:      2.26.1
+Last Edit:    30/11/20
 Copyright (C) 2013  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -141,6 +141,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 2.24.1 - Fixed GFF output for atypical local tables.
     # 2.25.0 - Added bitscore=T/F toggle to switch between BitScore (True) and regular Score (False) [True]
     # 2.26.0 - Initial Python3 code conversion.
+    # 2.26.1 - Tweaked to handle BLAST v5 formatting.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -175,7 +176,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, cyear) = ('RJE_BLAST', '2.26.0', 'August 2020', '2013')
+    (program, version, last_edit, cyear) = ('RJE_BLAST', '2.26.1', 'November 2020', '2013')
     description = 'BLAST+ Control Module'
     author = 'Dr Richard J. Edwards.'
     comments = ['Please report any unexpected behaviour.']
@@ -2988,8 +2989,8 @@ def checkForDB(dbfile=None,checkage=True,log=None,protein=True,oldblast=False): 
         if not os.path.exists(dbfile):
             if log: log.errorLog('%s missing' % dbfile,False,False)
             return False
-        if protein: suffix = ['phr','pin','psd','psi','psq','pog']
-        else: suffix = ['nhr','nin','nsd','nsi','nsq','nog']
+        if protein: suffix = ['phr','pin','psq','pog']    # v5 db compatible: drop 'psd','psi'
+        else: suffix = ['nhr','nin','nsq','nog']        # v5 db dropped 'nsd','nsi'
         if oldblast: suffix.pop(-1)
         missing = []
         for suf in suffix:
@@ -3003,7 +3004,7 @@ def checkForDB(dbfile=None,checkage=True,log=None,protein=True,oldblast=False): 
                     return False
             else: missing.append(suf)
         if missing:
-            if log and len(missing) < 5: log.errorLog('%s.%s missing' % (dbfile,string.join(missing,'/')),False,False)
+            if log and len(missing) < 4: log.errorLog('%s.%s missing' % (dbfile,string.join(missing,'/')),False,False)
             return False
         return True
     except:
