@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.11.0
+Diploidocus v0.12.0
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -816,6 +816,39 @@ Finally, the input and output files are summarised (unless `summarise=F`) and st
 
 Temporary gap-reduced and minimap2 PAF files are deleted unless running in `debug` or
 `dev` modes.
+
+---
+
+### ~ Assembly gap read-spanning analysis [runmode=gapspan] ~ ###
+
+This mode first identifies all the gaps in an assembly (`seqin=FILE`) (using SeqList `gapstats` or `$SEQBASE.gaps.tdt` if pre-
+existing) and then runs the read spanning analysis (`runmode=regcheck`) with `regcnv=F`. Long read data, given
+with the `reads=FILELIST` and `readtype=LIST` options, are mapped onto the assembly using minimap2 to generate a PAF file.
+This is then parsed and reads spanning each gap are identified based on their positions and the target start and end positions in the PAF file.
+In addition to absolute spanning of regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+due to sequence length constraints.
+
+Spanning `spanid` output is also generated for each gap and saved in `$BASEFILE_spanid`. Each gap will be named:
+`seqname.start-end`.
+
+---
+
+### ~ Assembly gap re-assembly [runmode=gapass] ~ ###
+
+In addition to the `gapspan` analysis, reads identified as spanning each gap are extracted and assembled using `flye`
+in a `$BASEFILE__gapassemble/` output directory.
+
+---
+
+### ~ Re-assembled gap-filling [runmode=gapfill] ~ ###
+
+In addition to the `gapspan` and `gapass` outputs, re-assembled gap regions are compiled into a single file and then
+mapped back on the original assembly using Minimap2, with tabulated hit output into `$BASEFILE__gapfill/`.
+
+Future releases will cross-reference these hits with the original gap positions table to identify candidates for
+gap-filling. The long term goal is a PAGSAT-style re-assembly.
 
 ---
 

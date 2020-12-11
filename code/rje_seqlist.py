@@ -1038,7 +1038,7 @@ class SeqList(rje_obj.RJE_Object):
                 else:
                     fracdb = db.addEmptyTable('fracstats',['file','fraction','LXX','NXX','CtgLXX','CtgNXX'],['file','fraction'])
                     if self.getNum('GenomeSize') > 0: fracdb.addFields(['LGXX','NGXX'])
-            if self.dna() and mingap: self.printLog('#GAPS','Identifying all runs of %d+ Ns as gaps' % mingap)
+            if self.dna() and mingap: self.printLog('#GAPS','Identifying all runs of %d+ Ns as gaps. (Warning: can be slow for large, gappy genomes.)' % mingap)
             #?# Should we add an option to trim/ignore terminal gaps? #?#
             #self.printLog('#~~#','# ~~~~~~~~~~~~~~~~~~~~~~~ SEQUENCE SUMMARY FOR %s ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #' % basename)
             self.headLog('Sequence Summary for %s' % basename)

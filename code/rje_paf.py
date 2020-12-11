@@ -386,6 +386,8 @@ class PAF(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'cdict',['MapOpt']) # Splits comma separated X:Y pairs into dictionary
                 #self._cmdReadList(cmd,'cdictlist',['Att']) # As cdict but also enters keys into list
             except: self.errorLog('Problem with cmd:%s' % cmd)
+        self.list['CheckFlanks'] = rje.intList(self.list['CheckFlanks'])
+        self.list['CheckFlanks'].sort()
         #if not self.getBool('AlnSeq'): self.warnLog('alnseq=F mode is developmental - please report odd behaviour.')
         #if self.getInt('EndExtend') > 0:
         #    self.warnLog('Endextend>0 bug may cause some incorrect trimming. Watch for alignment positions warnings and consider running with endextend=0')
@@ -2700,11 +2702,19 @@ class PAF(rje_obj.RJE_Object):
                 self.printLog('#TMP','%s temp files deleted' % rje.iStr(tx))
             ## ~ [4c] Save spanning read IDs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if self.getStrLC('SpanID'):
+                nonx = 0; idx = 0
                 for spanner in rje.sortKeys(spanid):
+                    if not spanid[spanner]:
+                        nonx += 1
+                        if self.v() > 0: self.printLog('#SPANID','No %s spanning read IDs to output.' % (spanner))
+                        continue
                     spout = '%s%s.%s.span.id' % (iddir,basefile,spanner)
                     spids = rje.sortUnique(spanid[spanner])
                     open(spout,'w').write('\n'.join(spids+['']))
                     self.printLog('#SPANID','%s %s spanning read IDs output to %s' % (rje.iLen(spids),spanner,spout))
+                    idx += 1
+                self.printLog('#SPANID','%s regions with spanning read IDs output to %s.' % (rje.iStr(idx),iddir))
+                self.printLog('#SPANID','%s regions without spanning read IDs to output.' % (rje.iStr(nonx)))
             return cdb
 
         except: self.errorLog('Problem during %s checkPos().' % self.prog()); return False  # Setup failed
