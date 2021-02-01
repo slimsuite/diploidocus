@@ -36,9 +36,6 @@ Summary:
     for their up-to-date figures. By default, output for this mode is incremented by `XCoverage` but this can be switched
     to numbers of SMRT cells with `bysmrt=T`.
 
-    SMRTSCAPE `coverage=T` mode can be run from the EdwardsLab server at:
-    http://www.slimsuite.unsw.edu.au/servers/pacbio.php
-
     2. **Summarise subreads (`summarise=T`).** This function summarises subread data from a given `seqin=FILE` fasta
     file, or a set of subread fasta files given with `batch=FILELIST` (or listed in `*.fofn`). This produces sequence
     summary data (read lengths, N50 etc.) for each sequence file, SMRT cell and the combined dataset (`*.summary.tdt`).
@@ -368,6 +365,9 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
     '''
     try:### ~ [1] ~ Initial Command Setup & Info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         info = makeInfo()                                   # Sets up Info object with program details
+        if len(sys.argv) == 2 and sys.argv[1] in ['version','-version','--version']: rje.printf(info.version); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['details','-details','--details']: rje.printf('{0} v{1}'.format(info.program,info.version)); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['description','-description','--description']: rje.printf('%s: %s' % (info.program,info.description)); sys.exit(0)
         cmd_list = rje.getCmdList(sys.argv[1:],info=info)   # Reads arguments and load defaults from program.ini
         out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
         out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2 

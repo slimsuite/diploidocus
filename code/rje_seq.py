@@ -19,8 +19,8 @@
 """
 Program:      RJE_SEQ
 Description:  DNA/Protein sequence list module
-Version:      3.26.0
-Last Edit:    21/08/19
+Version:      3.25.3
+Last Edit:    21/12/20
 Copyright (C) 2005  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -145,8 +145,11 @@ import rje
 import rje_blast_V1
 import rje_blast_V2 as rje_blast
 import rje_dismatrix_V2 as rje_dismatrix    #!# Check that this is OK! #!# #import rje_dismatrix_V1 as rje_dismatrix
-import rje_pam
-import rje_sequence, rje_uniprot, rje_slimcalc
+try: import rje_pam
+except: pass
+import rje_sequence, rje_uniprot
+try: rje_slimcalc
+except: pass
 #########################################################################################################################
 def history():  ### Program History - only a method for PythonWin collapsing! ###
     '''
@@ -202,7 +205,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 3.25.0 - 9spec=T/F   : Whether to treat 9XXXX species codes as actual species (generally higher taxa) [False]
     # 3.25.1 - Fixed -long_seqids retrieval bug.
     # 3.25.2 - Fixed 9spec filtering bug.
-    # 3.26.0 - Initial Python3 code conversion.
+    # 3.25.3 - Added some bug fixes from Norman that were giving him errors.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -251,10 +254,10 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, cyear) = ('RJE_SEQ', '3.26.0', 'August 2020', '2005')
+    (program, version, last_edit, cyear) = ('RJE_SEQ', '3.25.2', 'May 2019', '2005')
     description = 'RJE Sequence Dataset Manipulation Module'
     author = 'Dr Richard J. Edwards.'
-    comments = ['Please report bugs at https://github.com/slimsuite/SLiMSuite']
+    comments = ['Please report bugs to r.edwards@soton.ac.uk']
     return rje.Info(program,version,last_edit,description,author,time.time(),cyear,comments)
 #########################################################################################################################
 def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for more sys.argv commands
@@ -264,7 +267,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         if not out: out = rje.Out()
         helpx = cmd_list.count('help') + cmd_list.count('-help') + cmd_list.count('-h')
         if helpx > 0:
-            print('\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time))))
+            print '\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time)))
             out.verbose(-1,4,text=__doc__)
             if rje.yesNo('Show general commandline options?',default='N'): out.verbose(-1,4,text=rje.__doc__)
             if rje.yesNo('Quit?'): sys.exit()
@@ -273,7 +276,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         return cmd_list
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print('Major Problem with cmdHelp()')
+    except: print 'Major Problem with cmdHelp()'
 #########################################################################################################################
 def setupProgram(): ### Basic Setup of Program
     '''
@@ -298,7 +301,7 @@ def setupProgram(): ### Basic Setup of Program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
     except:
-        print('Problem during initial setup.')
+        print 'Problem during initial setup.'
         raise
 #########################################################################################################################
 ### Regular Expressions for Sequence Details Extraction
@@ -974,10 +977,10 @@ class SeqList(rje.RJE_Object):
                         p += 1
                         physeq = rje.regExp(re_phy,line)
                         if len(physeq[1]) != int(phynum[1]):   # Wrong length!
-                            raise ValueError("Phylip Format error: %s is not declared length of %s aa." % (physeq[1],phynum[1]))
+                            raise ValueError, "Phylip Format error: %s is not declared length of %s aa." % (physeq[1],phynum[1])
                         self._addSeq(name=physeq[0], sequence=physeq[1])
                 if self.seqNum() != int(phynum[0]):   # Wrong sequence number!
-                    raise ValueError("Phylip Format error: %s seqs declared, %d seqs read." % (physeq[0],self.seqNum()))
+                    raise ValueError, "Phylip Format error: %s seqs declared, %d seqs read." % (physeq[0],self.seqNum())
                 self.printLog('\r#SEQ','%s sequences loaded from %s (Format: %s).' % (rje.integerString(self.seqNum()),seqfile,filetype))
             ##  ~ [2c] ~ Aln Format ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             elif filetype == 'aln':
@@ -1139,14 +1142,18 @@ class SeqList(rje.RJE_Object):
         if query:
             rawq = query
             for seq in self.seqs():
-                prenum = rje.matchExp('^(\d+_)(.+)$',seq.info['ID'])
-                if prenum and prenum[1] == query: query = prenum[0] + query
-                if query in [seq.info['ID'],seq.info['AccNum'],seq.shortName()]:
-                    if self.obj['QuerySeq'] != seq and old_qry != seq:     # Not Already query
-                        self.printLog('#QRY','Query Sequence = %s (%s %s).' % (seq.shortName(),seq.aaNum(),self.units()))
-                    self.obj['QuerySeq'] = seq
-                    self.seq.remove(seq)
-                    self.seq = [seq] + self.seqs()
+                try:
+                    prenum = rje.matchExp('^(\d+_)(.+)$',seq.info['ID'])
+                    if prenum and prenum[1] == query: query = prenum[0] + query
+                    if query in [seq.info['ID'],seq.info['AccNum'],seq.shortName()]:
+                        if self.obj['QuerySeq'] != seq and old_qry != seq:     # Not Already query
+                            self.printLog('#QRY','Query Sequence = %s (%s %s).' % (seq.shortName(),seq.aaNum(),self.units()))
+                        self.obj['QuerySeq'] = seq
+                        self.seq.remove(seq)
+                        self.seq = [seq] + self.seqs()
+                except:
+                    pass
+
             if not self.obj['QuerySeq'] and rje.matchExp('^(\d+)$',rawq):
                 qx = string.atoi(rje.matchExp('^(\d+)$',rawq)[0]) - 1
                 try: seq = self.seqs()[qx]
@@ -1501,16 +1508,13 @@ class SeqList(rje.RJE_Object):
             if seqlist.seqNum() == self.seqNum():   # Assume 1 to 1 mapping
                 if mapx == self.seqNum(): allmapped = True
                 else:
-                    nomatchfor = []
+                    print 'No match for:'
                     for mapseq in seqlist.seq:
-                        if map[mapseq]: nomatchfor.append(mapseq.shortName())
-                    if nomatchfor:
-                        self.warnLog('No match for: {0}'.format('; '.join(nomatchfor)))
-                    nomatchto = []
+                        if map[mapseq]:  print mapseq.shortName(),
+                    print '\n\nNo match to:'
                     for seq in self.seqs():
-                        if mapped[seq] == False: nomatchto.append(seq.shortName())
-                    if nomatchto:
-                        self.warnLog('No match to: {0}'.format('; '.join(nomatchto)))
+                        if mapped[seq] == False: print seq.shortName(),
+                    print '\n'                            
                     self.errorLog('Only %d of %d sequences mapped from %s.' % (mapx,seqlist.seqNum(),seqlist.info['Name']),printerror=False,quitchoice=True)
             else:
                 if mapx == self.seqNum(): allmapped = True
@@ -1588,23 +1592,25 @@ class SeqList(rje.RJE_Object):
             if name.lower() == 'teiresias': linelen = 0; id = False
             ### ~ [1] ~ Build output list ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             for seq in seqs:
-                ## ~ [1a] ~ Sequence name ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-                if name.lower() == 'short': outname = seq.shortName()
-                elif name.lower() == 'teiresias': outname = '%s 1' % seq.shortName()
-                elif name.lower() in ['num','number']: outname = '%d' % (self.seqs().index(seq)+1); id = False
-                else: outname = seq.info[name]
-                if id: outname = '%d %s' % (self.seqs().index(seq)+1,outname)
-                if (namelen > 0) & (len(outname) >= namelen): outname = outname[0:(namelen-3)] + '...'
-                outlist.append('>%s\n' % outname)
-                ## ~ [1b] ~ Sequence data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-                sequence = seq.getSequence(case)
-                if (linelen > 0) and (seq.seqLen() > linelen):
-                    r = linelen
-                    while r < seq.seqLen():
-                        outlist.append('%s\n' % sequence[(r-linelen):r])
-                        r += linelen
-                    if seq.seq[(r-linelen):]: outlist.append('%s\n' % sequence[(r-linelen):])
-                else: outlist.append('%s\n' % sequence)
+                try:
+                    ## ~ [1a] ~ Sequence name ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+                    if name.lower() == 'short': outname = seq.shortName()
+                    elif name.lower() == 'teiresias': outname = '%s 1' % seq.shortName()
+                    elif name.lower() in ['num','number']: outname = '%d' % (self.seqs().index(seq)+1); id = False
+                    else: outname = seq.info[name]
+                    if id: outname = '%d %s' % (self.seqs().index(seq)+1,outname)
+                    if (namelen > 0) & (len(outname) >= namelen): outname = outname[0:(namelen-3)] + '...'
+                    outlist.append('>%s\n' % outname)
+                    ## ~ [1b] ~ Sequence data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+                    sequence = seq.getSequence(case)
+                    if (linelen > 0) and (seq.seqLen() > linelen):
+                        r = linelen
+                        while r < seq.seqLen():
+                            outlist.append('%s\n' % sequence[(r-linelen):r])
+                            r += linelen
+                        if seq.seq[(r-linelen):]: outlist.append('%s\n' % sequence[(r-linelen):])
+                    else: outlist.append('%s\n' % sequence)
+                except: pass
             ### ~ [2] ~ Open file & write lines ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if append: open(seqfile, 'a').writelines(outlist)
             else: open(seqfile, 'w').writelines(outlist)
@@ -1831,26 +1837,29 @@ class SeqList(rje.RJE_Object):
             seqdic = {}
             (sx,seqnum) = (0.0,self.seqNum())
             for seq in self.seqs():
-                if proglog: self.printLog('\r#DICT','Making "%s" seqName dictionary: %.1f%%' % (key,sx/seqnum),newline=False,log=False)
-                sx += 100.0
-                if key == 'short': seqdic[seq.shortName()] = seq
-                elif key == 'NumName':
-                    name = seq.info['Name']
-                    if re.search('^\d+\s(\S.+)$',name):
-                        name = rje.matchExp('^\d+\s(\S.+)$',name)[0]
-                    seqdic[name] = seq
-                elif key == 'UniProt':
-                    seqdic[seq.info['ID']] = seq
-                    seqdic['%s_%s' % (seq.info['AccNum'],seq.info['SpecCode'])] = seq
-                elif key == 'Max':
-                    seqdic[seq.shortName()] = seq
-                    seqdic[seq.info['ID']] = seq
-                    seqdic[seq.info['AccNum']] = seq
-                    try:
-                        if seq.info['NCBI']: seqdic[seq.info['NCBI']] = seq
-                    except: pass
-                elif seq.info.has_key(key): seqdic[seq.info[key]] = seq
-                #!# else will return an empty dictionary #!#
+                try:
+                    if proglog: self.printLog('\r#DICT','Making "%s" seqName dictionary: %.1f%%' % (key,sx/seqnum),newline=False,log=False)
+                    sx += 100.0
+                    if key == 'short': seqdic[seq.shortName()] = seq
+                    elif key == 'NumName':
+                        name = seq.info['Name']
+                        if re.search('^\d+\s(\S.+)$',name):
+                            name = rje.matchExp('^\d+\s(\S.+)$',name)[0]
+                        seqdic[name] = seq
+                    elif key == 'UniProt':
+                        seqdic[seq.info['ID']] = seq
+                        seqdic['%s_%s' % (seq.info['AccNum'],seq.info['SpecCode'])] = seq
+                    elif key == 'Max':
+                        seqdic[seq.shortName()] = seq
+                        seqdic[seq.info['ID']] = seq
+                        seqdic[seq.info['AccNum']] = seq
+                        try:
+                            if seq.info['NCBI']: seqdic[seq.info['NCBI']] = seq
+                        except: pass
+                    elif seq.info.has_key(key): seqdic[seq.info[key]] = seq
+                    #!# else will return an empty dictionary #!#
+                except:
+                    pass
             if seqnum and proglog: self.printLog('\r#DICT','Made "%s" seqName dictionary: %s seq; %s keys.' % (key,rje.iStr(seqnum),rje.iStr(len(seqdic))))
             return seqdic
         except:
@@ -2878,7 +2887,7 @@ class SeqList(rje.RJE_Object):
                     return (seq2,type,seq1.shortName())
             ### <d> ### Manual Choice
             while self.stat['Interactive'] >= 1:
-                print('\n%s and %s seem equally good.' % (seq1.info['Name'],seq2.info['Name']))
+                print '\n%s and %s seem equally good.' % (seq1.info['Name'],seq2.info['Name'])
                 rem = rje.choice('<1> Remove %s, <2> Remove %s, <A>utomatic' % (seq1.shortName(),seq2.shortName()),default='A')
                 if rem == '1':
                     return (seq1, 'Manual Choice',seq2.shortName())
@@ -3449,7 +3458,7 @@ class SeqList(rje.RJE_Object):
             else: errseq = 'None'
             if seq2: errseq += ' v %s' % seq2.shortName()
             else: errseq = ' v None'
-            if command: print('Align command: %s' % command)
+            if command: print 'Align command: %s' % command
             if retry > 0:
                 self.errorLog('Problem during pwAln(%s). Trying again... (%d)' % (errseq,retry))
                 return self.pwAln(seq1,seq2,unlink=unlink,retry=(retry-1))
@@ -3916,12 +3925,12 @@ def pamDis(seqlist,pam):   ### Makes an all-by-all PAM Distance Matrix
     >> pam:rje_pam.PamCtrl Object
     '''
     ### <a> ### Check
-    print('Calculating PAM Distance Matrix')
+    print 'Calculating',
     if seqlist.seqNum() == 0:
-        print('Must load (aligned) sequences using \'seqin=FILE\' command.')
+        print 'Must load (aligned) sequences using \'seqin=FILE\' command.'
         sys.exit()
     elif seqlist.opt['Aligned'] == False:
-        print('Input sequences must be aligned! Will attempt alignment.')
+        print 'Input sequences must be aligned! Will attempt alignment.'
         seqlist = seqlist.align()
     ### <b> ### Make matrix
     matrix = rje_dismatrix.DisMatrix(log=seqlist.log)
@@ -3937,7 +3946,7 @@ def pamDis(seqlist,pam):   ### Makes an all-by-all PAM Distance Matrix
             p = pam.pamML(ancseq=seq1.info['Sequence'],descseq=seq2.info['Sequence'])
             matrix.addDis(seq1,seq2,p)
     seqlist.obj['PAM Dis'] = matrix
-    print('...Saving as %s.pamdis' % seqlist.info['Name'])
+    print '...Saving as %s.pamdis' % seqlist.info['Name']
     matrix.saveMatrix(seqlist.seq,filename='%s.pamdis' % seqlist.info['Name'],delimit=',')
 #########################################################################################################################
 def MWt(sequence=''):   ### Returns Molecular Weight of Sequence
@@ -4231,7 +4240,7 @@ def runMain():
     try: [info,out,mainlog,cmd_list] = setupProgram()
     except SystemExit: return  
     except:
-        print('Unexpected error during program setup:', sys.exc_info()[0])
+        print 'Unexpected error during program setup:', sys.exc_info()[0]
         return 
         
     ### Rest of Functionality... ###
@@ -4320,7 +4329,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print('Cataclysmic run error: {0}'.format(sys.exc_info()[0]))
+    except: print 'Cataclysmic run error:', sys.exc_info()[0]
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION IV
