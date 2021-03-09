@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.45.2
-Last Edit:    14/12/20
+Version:      1.45.3
+Last Edit:    08/03/21
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -244,6 +244,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.45.0 - Modified the newDesc() method for updating descriptions.
     # 1.45.1 - Added CtgNum to output stats.
     # 1.45.2 - Slight increase of gap extraction speed.
+    # 1.45.3 - Fixed bug for summarising masked assemblies.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -267,7 +268,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.45.2', 'December 2020', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.45.3', 'March 2021', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -1169,7 +1170,9 @@ class SeqList(rje_obj.RJE_Object):
                     self.printLog('#SUM','Contig L50 count of sequences: %s' % rje.iStr(l50))
                     seqdata['L50Ctg'] = l50
                 else:
-                    raise ValueError('Half sum of sequences not reached!')
+                    self.warnLog('Half sum of sequences not reached for contigs! Could masked data?')
+                    seqdata['N50Ctg'] = 0
+                    seqdata['L50Ctg'] = -1
                     #self.printLog('#SUM','N50 length of sequences: %s' % rje.iStr(seqlen[-1]))
                     #seqdata['N50Length'] = seqlen[-1]
             elif self.dna():

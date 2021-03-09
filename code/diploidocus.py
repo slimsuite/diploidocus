@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.14.0
-Last Edit:    20/01/21
+Version:      0.15.0
+Last Edit:    08/03/21
 Citation:     Edwards RJ et al. (2020), bioRxiv https://doi.org/10.1101/2020.11.11.379073
 GitHub:       https://github.com/slimsuite/diploidocus
 Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
@@ -122,8 +122,9 @@ Run Modes:
     ['BuscoID','Status','Contig','Start','End','Score','Length']. Entries are reduced to those with `Status` = `Complete`
     and the `Contig`, `Start` and `End` fields are used to define the regions that should be predominantly single copy.
 
-    **NOTE:** There is currently no adjustment for contamination, read mapping or imbalanced insertion:deletion
-    ratios etc. As a consequence, the current genome size prediction appears to be an over-estimate.
+    **NOTE:** The current genome size prediction appears to be an over-estimate. There is currently no adjustment for
+    contamination. The `mapadjust` option attemtps to correct for read mapping and imbalanced insertion:deletion ratios
+    etc. but has not been extensively tested.
 
     ---
     ### ~ Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap] ~ ###
@@ -377,6 +378,7 @@ Commandline:
     readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
     quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
+    mapadjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
     ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
     10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
@@ -490,6 +492,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.12.0 - Added gapspan function (regcheck but first makes the gaps table, then loads this in, and outputs reads per gap.)
     # 0.13.0 - Added full gap-filling to gapfill function.
     # 0.14.0 - Added HiFi read type.
+    # 0.14.1 - Added GapSpanner sequence summary to end.
+    # 0.14.2 - Fixed scdepth re-use printing bug.
+    # 0.15.0 - Added mapadjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -535,11 +540,14 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Add option to switch off additional gapfill read span check.
     # [Y] : Add updated gapfill regcheck output to include gap edges. (For long replacements.)
     # [ ] : Add BUSCOMP generation of new BUSCO ratings using buscofas.
+    # [ ] : Fix regcheck bug with provided PAF file.
+    # [ ] : Split out code to DepthSizer.
+    # [ ] : Update docs to point to individual programs.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.14.0', 'January 2021', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.15.0', 'March 2021', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -627,11 +635,13 @@ class Diploidocus(rje_obj.RJE_Object):
     - DepDensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
     - DocHTML=T/F     : Generate HTML BUSCOMP documentation (*.info.html) instead of main run [False]
     - Diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
+    - Diploidocus=T/F : Whether to code is being run from a direct Diploidocus commandline call [False]
     - IncludeGaps=T/F : Whether to include gaps in the zero coverage bases for adjustment (see docs) [False]
     - KeepNames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
+    - MapAdjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
     - PreTrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
-    - RegCNV=T/F      ; Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+    - RegCNV=T/F      ; Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
     - VecCheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     - UseQSub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
@@ -697,7 +707,7 @@ class Diploidocus(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','GenomeSize','PAF','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['DepDensity','Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
+        self.boollist = ['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinGapSpan','MinLen','MinMedian','MinTrim','MinVecHit',
                         'QSubPPN','QSubVMem','QSubWall','MemPerThread','MinLocLen',
                         'PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim']
@@ -738,7 +748,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','PAF','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','DocHTML','IncludeGaps','KeepNames','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
                 self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','MinLocID','TeloPerc','VecPurge']) # Percentage
@@ -813,8 +823,25 @@ class Diploidocus(rje_obj.RJE_Object):
         will be the path the to `code/` directory. Please see details in the [Diploidocus git repo](https://github.com/slimsuite/diploidocus)
         for running on example data.
 
-        For `sortnr` and `diphapnr` mode, [minimap2](https://github.com/lh3/minimap2) must be installed and either added to the
-        environment `$PATH` or given to Diploidocus with the `minimap2=PROG` setting.
+        ## Dependencies
+
+        For full functionality, Diploidocus needs a number of additional programs installed on the system:
+
+        * Python 2.x and Python 3.x
+        * KAT
+        * BedTools
+        * R
+        * purge_haplotigs
+        * bbmap
+        * BLAST+
+        * [Minimap2](https://github.com/lh3/minimap2) (added to environment `$PATH` or given with the `minimap2=PROG` setting)
+        * [Samtools](http://www.htslib.org/)
+
+        To generate documentation with `dochtml`, R will need to be installed and a pandoc environment variable must be set, e.g.
+
+            export RSTUDIO_PANDOC=/Applications/RStudio.app/Contents/MacOS/pandoc
+
+        For Diploidocus documentation, run with `dochtml=T` and read the `*.docs.html` file generated.
 
         ## Commandline options
 
@@ -839,6 +866,8 @@ class Diploidocus(rje_obj.RJE_Object):
         busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
         readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
         quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+        depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
+        mapadjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
         ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
         10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
@@ -1707,7 +1736,10 @@ class Diploidocus(rje_obj.RJE_Object):
             elif self.getStrLC('RunMode').startswith('telomere'): return self.findTelomeres()
             elif self.getStrLC('RunMode') == 'diploidocus': return self.diploidocusHocusPocus()
             elif self.getStrLC('RunMode').startswith('purgehap'): return self.diploidocusHocusPocus()
-            elif self.getStrLC('RunMode') in ['gensize','genomesize']: return self.genomeSize(makebam=True)
+            elif self.getStrLC('RunMode') in ['gensize','genomesize']:
+                if self.getBool('Diploidocus'):
+                    self.printLog('#NOTE','Please use DepthSizer for future Diploidocus gensize runs.')
+                return self.genomeSize(makebam=True)
             elif self.getStrLC('RunMode') in ['dipcycle','purgecycle']: return self.purgeCycle()
             elif self.getStrLC('RunMode') in ['deptrim']: return self.depthTrim()
             elif self.getStrLC('RunMode') in ['gapspan','gapass','gapfill']: return self.gapSpan()
@@ -1958,15 +1990,15 @@ class Diploidocus(rje_obj.RJE_Object):
             self.errorLog(self.zen())
             raise   # Delete this if method error not terrible
 #########################################################################################################################
-    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None,threaded=True):    ### Makes a system call, catching output in log file
+    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline='WARNING: No run log output!',threaded=True):    ### Makes a system call, catching output in log file
         '''
         Makes a system call, catching output in log file.
         :param cmd:str = System call command to catch
-        :param syslog:str [None] = Filename for system log in which to capture output. Will use $BASEFILE.sys.log if None
+        :param syslog:str [None] = Filename for system log in which to capture output. Will use $BASEFILE.sys.log if None.
         :param stderr:bool [True] = Whether to also capture the STDERR
         :param append:bool [False] = Whether to append the log if it exists
         :param verbosity:int [1] = Verbosity level at which output also goes to screen (tee, not redirect)
-        :param nologline:str [None] = Default logline returned if nothing is in the log
+        :param nologline:str [None] = Default logline returned if nothing is in the log.
         :param threaded:bool [True] = Whether to use multiple PPN when using dev qsub mode.
         :return: last line of syslog output
         '''
@@ -2027,8 +2059,6 @@ class Diploidocus(rje_obj.RJE_Object):
                 excode = os.system(cmd)
             if excode > 0: raise ValueError('Non-zero exit status for: {}'.format(cmd))
             logline = nologline
-            if not logline:
-                logline = 'WARNING: No run log output!'
             SYSLOG = open(syslog,'r')
             SYSLOG.seek(fend)
             for readline in SYSLOG.readlines():
@@ -3581,13 +3611,12 @@ class Diploidocus(rje_obj.RJE_Object):
                         FILLFAS.write('>{0} {1} (Diploidocus gap-filled)\n{2}\n'.format(newname,seqin.seqDesc(seq),sequence))
                     FILLFAS.close()
                     self.printLog('\r#FASOUT','Corrected Gap-filled sequences output to {2}: {0} unchanged; {1} edited; {3} of {4} filled gaps reinstated.'.format(nx,ex,fillfas,rx,fx))
-                    if rx:
-                        rje_seqlist.SeqList(self.log,self.cmd_list+['seqmode=file','autoload=T','seqin={0}'.format(fillfas),'summarise=T','dna=T'])
                 else:
                     checkfas = fillfas
                     fillfas = '{0}.gapfill.fasta'.format(basefile)
                     os.rename(checkfas,fillfas)
                     self.printLog('#FASOUT','{0} renamed {1}'.format(checkfas,fillfas))
+                rje_seqlist.SeqList(self.log, self.cmd_list + ['seqmode=file', 'autoload=T', 'seqin={0}'.format(fillfas), 'summarise=T', 'dna=T'])
 
             return True
         except:
@@ -3626,6 +3655,7 @@ class Diploidocus(rje_obj.RJE_Object):
             #i# NOTE: readbp must have been pre-calculated for this method. Use genomeSize() if not.
             readbp = self.getInt('ReadBP')
             if scdepth and not self.getInt('GenomeSize') and readbp: scdepth = False
+            if self.getBool('MapAdjust'): readbp *= self.getNum('MapAdjust')
             ## ~ [1a] ~ Load table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #i# headers=['Method','X','n','Modes'],
             mdb = db.addTable(dephist,mainkeys=['Method','X'],expect=True,name='dephist')
@@ -3660,7 +3690,7 @@ class Diploidocus(rje_obj.RJE_Object):
                     self.printLog('#RCMD',rcmd)
                     depmode = float(rje.chomp(os.popen(rcmd).readlines()[0]))
                     self.setNum({'DensityMode':depmode})
-                    self.printLog('#SCDEP','BUSCO SC combined samtools {} modal density read depth: {}X'.format(depmethod,depmode))
+                    self.printLog('#SCDEP','BUSCO SC combined samtools {0} modal density read depth: {1:.2f}X'.format(depmethod,depmode))
                     if scdepth: return self.getNum('DensityMode')
                 except:
                     raise ValueError('Problem calling Rscript depmode.R')
@@ -3694,7 +3724,12 @@ class Diploidocus(rje_obj.RJE_Object):
             seqin = self.getStr('SeqIn')
             seqlist = self.seqinObj()
             seqdict = seqlist.seqNameDic()
-            ## ~ [1a] Check Files ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            ## ~ [1a] Check programs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            if os.popen('samtools --version').read():
+                self.printLog('#SYS',' '.join(os.popen('samtools --version').read().split()))
+            else:
+                raise IOError('Cannot open samtools: check installation and/or module loading')
+            ## ~ [1b] Check Files ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if makebam: bamfile = self.getBamFile()
             else:
                 bamfile = self.getStr('BAM')
@@ -3706,7 +3741,7 @@ class Diploidocus(rje_obj.RJE_Object):
             if not rje.exists(busco): raise IOError('Cannot find BUSCO full table "{}" (busco=FILE)'.format(busco))
             self.printLog('#BUSCO',busco)
             if not readbp and not self.list['Reads'] and not scdepth: raise IOError('Cannot find any read files (reads=FILELIST) and no readbp=X set.')
-            ## ~ [1b] Total Sequencing Bases ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            ## ~ [1c] Total Sequencing Bases ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if not readbp and self.list['Reads'] and not scdepth:
                 for rfile in self.list['Reads']:
                     countfile = '{}.basecount.txt'.format(rfile)
@@ -3730,8 +3765,32 @@ class Diploidocus(rje_obj.RJE_Object):
                     open(countfile,'w').write('%d\n' % filebp)
                     readbp += filebp
                 self.setInt({'ReadBP':readbp})
-            if not scdepth: self.printLog('#READBP','Total base count: %s' % (rje.iStr(readbp)))
-            ## ~ [1c] Load BUSCO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            ## ~ [1d] MapAdjust Total Sequencing Bases ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            mapadjust = 1.0
+            if not scdepth:
+                self.printLog('#READBP', 'Total base count (unadjusted): %s' % (rje.iStr(readbp)))
+                if self.getBool('MapAdjust'):
+                    ratiofile = bamfile + '.mapratio.txt'
+                    if self.force() or not rje.exists(ratiofile) or not open(ratiofile,'r').readline().split()[0]:
+                        self.printLog('\r#ADJUST', 'Calculating Mapadjust ratio (samtools coverage)...')
+                        covbases = float(os.popen("samtools coverage {0} | grep -v coverage | awk  '{{sum += ($7 * $5)}} END {{print sum}}'".format(bamfile)).read().split()[0])
+                        self.printLog('\r#ADJUST', 'Calculating Mapadjust ratio (samtools fasta)...')
+                        mapbases = float(os.popen("samtools fasta {0} | grep -v '^>' | wc | awk '{{ $4 = $3 - $2 }} 1' | awk '{{print $4}}'".format(bamfile)).read().split()[0])
+                        open(ratiofile,'w').write('{0} {1}\n'.format(covbases,mapbases))
+                    else:
+                        self.printLog('\r#ADJUST','Use coverage:mapped ratio from {0} (force=F)'.format(ratiofile))
+                        ratio = open(ratiofile, 'r').read().split()
+                        covbases = float(ratio[0])
+                        mapbases = float(ratio[1])
+                    self.printLog('\r#ADJUST','Reference base read coverage: {0}'.format(rje.iStr(int(covbases))))
+                    self.printLog('#ADJUST','Mapped read bases: {0}'.format(rje.iStr(int(mapbases))))
+                    if not covbases or not mapbases: raise ValueError('Cannot have zero values for mapadjust. Something has gone wrong!')
+                    mapadjust = covbases / mapbases
+                    self.printLog('#ADJUST', 'Mapadjust ratio: {0:.3f}'.format(mapadjust))
+                    readbp = readbp * mapadjust
+                    self.printLog('#READBP', 'Total base count (adjusted): %s' % (rje.iStr(readbp)))
+            self.setNum({'MapAdjust':mapadjust})
+            ## ~ [1e] Load BUSCO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             ext = rje.delimitExt(db.getStr('Delimit'))
             scfiles = ['.busco{}.{}'.format(depmethod,ext), '.buscodep.{}'.format(ext), '.dephist.{}'.format(ext)]
             if rje.checkForFiles(filelist=scfiles,basename=db.baseFile(),log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.'):
@@ -3743,14 +3802,9 @@ class Diploidocus(rje_obj.RJE_Object):
             bdb.dropEntriesDirect('Status',['Complete'],inverse=True)
             dephead = ['Method','BuscoID','X','n']
             depdb = db.addEmptyTable('buscodep',dephead,['Method','BuscoID','X'],log=self.debugging())
-            ## ~ [1d] Temp directory for forked depths ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            ## ~ [1f] Temp directory for forked depths ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             tmpdir = rje.makePath(self.getStr('TmpDir'),wholepath=False)
             if not rje.exists(tmpdir): rje.mkDir(self,tmpdir)
-            ## ~ [1e] Check programs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            if os.popen('samtools --version').read():
-                self.printLog('#SYS',' '.join(os.popen('samtools --version').read().split()))
-            else:
-                raise IOError('Cannot open samtools: check installation and/or module loading')
 
             ### ~ [2] Cycle through and fork out the depth calculations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             missing = []
@@ -3845,7 +3899,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 dentry = depdb.data((depmethod,X))
                 if dentry:
                     dentry['Modes'] = n
-                else:
+                elif n:
                     self.warnLog('Cannot find {0} {1}X in dephist table.'.format(depmethod,X))
             depdb.rename('dephist')
             depdb.saveToFile()
@@ -3882,15 +3936,18 @@ class Diploidocus(rje_obj.RJE_Object):
                 bentry['CN'] = bentry['MeanX']/self.getInt('BUSCOMode')
                 bentry['CN-MoM'] = bentry['MeanX']/self.getInt('ModeOfModes')
             (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN-MoM',sortunique=False,empties=False))
-            self.printLog('#CNV','BUSCO Complete Mode of Modes CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
+            median = rje.median(bdb.dataList(bdb.entries(),'CN-MoM',sortunique=False,empties=False))
+            self.printLog('#CNV','BUSCO Complete Mode of Modes CNV depth check: %.2fN +/- %.3f (95%% CI); Median = %.2fN' % (mean,1.96 * se,median))
             (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN',sortunique=False,empties=False))
-            self.printLog('#CNV','BUSCO Complete CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
+            median = rje.median(bdb.dataList(bdb.entries(),'CN',sortunique=False,empties=False))
+            self.printLog('#CNV','BUSCO Complete CNV depth check: %.2fN +/- %.3f (95%% CI); Median = %.2fN' % (mean,1.96 * se,median))
             if self.getBool('DepDensity'):
                 bdb.addField('CN-Density')
                 for bentry in bdb.entries():
                     bentry['CN-Density'] = bentry['MeanX']/self.getNum('DensityMode')
                 (mean,se) = rje.meanse(bdb.dataList(bdb.entries(),'CN-Density',sortunique=False,empties=False))
-                self.printLog('#CNV','BUSCO Complete Density Mode CNV depth check: %.2fN +/- %.3f (95%% CI)' % (mean,1.96 * se))
+                median = rje.median(bdb.dataList(bdb.entries(),'CN-Density',sortunique=False,empties=False))
+                self.printLog('#CNV','BUSCO Complete Density Mode CNV depth check: %.2fN +/- %.3f (95%% CI); Median = %.2fN' % (mean,1.96 * se,median))
             bdb.saveToFile()
             ## ~ [3f] Generate density modes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             if self.getBool('DepDensity') and scdepth: return self.getNum('DensityMode')
@@ -3902,6 +3959,12 @@ class Diploidocus(rje_obj.RJE_Object):
             #if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
             #self.printLog('#GSIZE','Estimated genome size ({} at {}X): {}'.format(rje_seqlist.dnaLen(readbp,dp=0,sf=3),self.getInt('BUSCOMode'),rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
             # return self.getInt('BUSCOMode')
+            n = len(bdb.dataList(bdb.entries(),'CN-MoM',sortunique=False,empties=False))
+            sd = se * math.sqrt(n)
+            if (mean + 1.96 * se) < 1 and (median + sd) < 1:
+                self.warnLog('BUSCO CNV mean < 1 and median + stddev < 1: genome size over-estimated?')
+            if (mean - 1.96 * se) > 1 and (median - sd) > 1:
+                self.warnLog('BUSCO CNV mean > 1 and median + stddev > 1: genome size under-estimated?')
             return self.calculateGenomeSize(readbp)
         except SystemExit: raise    # Child
         except:
@@ -3915,9 +3978,12 @@ class Diploidocus(rje_obj.RJE_Object):
         :return: scdepth used for Genome Size estimate
         '''
         try:### ~ [0] Set up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            gdb = self.db('gensize')
+            if not gdb: gdb = self.db().addEmptyTable('gensize',['SeqFile','DepMethod','ModeMethod','ReadBP','MapAdjust','SCDepth','EstGenomeSize'],['SeqFile','DepMethod','ModeMethod'])
             sizemethods = [('ModeOfModes','Mode of Modes'),('BUSCOMode','BUSCO Modes'),('DensityMode','BUSCO density mode')]
             depmethod = 'mpileup'
             if self.getBool('QuickDepth'): depmethod = 'depth'
+            if self.getBool('MapAdjust'): depmethod += '-adjusted'
             ### ~ [1] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             for (nkey, desc) in sizemethods:
                 if self.getNum(nkey):
@@ -3926,6 +3992,9 @@ class Diploidocus(rje_obj.RJE_Object):
                     scprint = scdepth
                     if nkey in ['DensityMode']: scprint = rje.dp(scdepth,3)
                     self.printLog('#GSIZE','{0} ({1}) Estimated genome size ({2} at {3}X): {4}'.format(desc,depmethod,rje_seqlist.dnaLen(readbp,dp=0,sf=3),scprint,rje_seqlist.dnaLen(estgensize,dp=0,sf=4)))
+                    gdb.addEntry({'SeqFile':os.path.basename(self.getStr('SeqIn')),'DepMethod':depmethod,
+                                  'ModeMethod':nkey,'ReadBP':self.getInt('ReadBP'),'MapAdjust':self.getNum('MapAdjust'),
+                                  'SCDepth':scdepth,'EstGenomeSize':estgensize})
             self.setInt({'EstGenomeSize':estgensize})
             if not self.getInt('GenomeSize'): self.setInt({'GenomeSize':estgensize})
             return scdepth
@@ -4102,7 +4171,7 @@ class Diploidocus(rje_obj.RJE_Object):
             rje.checkForFiles(filelist=[bamfile,baifile],basename='',log=self.log,cutshort=False,ioerror=False)
             if self.needToRemake(baifile,bamfile):
                 makebai = 'samtools index -b {} {}.bai'.format(bamfile,bamfile)
-                logline = self.loggedSysCall(makebai,append=True,threaded=False)
+                logline = self.loggedSysCall(makebai,append=True,threaded=False,nologline='No stdout from samtools index')
             return bamfile
         except:
             self.errorLog('Diploidocus.getBamFile() error'); raise
@@ -4968,7 +5037,7 @@ class Diploidocus(rje_obj.RJE_Object):
             # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
             scdepth = self.getNum('SCDepth')
             if self.getNum('SCDepth'):
-                self.printLog('#SCDEP','Using loaded single copy read depth = {0.2f}X'.format(scdepth))
+                self.printLog('#SCDEP','Using loaded single copy read depth = {0:.2f}X'.format(scdepth))
             else:
                 scdepth = self.genomeSize(scdepth=True)
                 self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {0}X'.format(scdepth))
@@ -5314,7 +5383,7 @@ def runMain():
     except: print 'Unexpected error during program setup:', sys.exc_info()[0]; return
     
     ### ~ [2] ~ Rest of Functionality... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-    try: Diploidocus(mainlog,['dna=T']+cmd_list).run()
+    try: Diploidocus(mainlog,['dna=T','diploidocus=T']+cmd_list).run()
 
     ### ~ [3] ~ End ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     except SystemExit: return  # Fork exit etc.

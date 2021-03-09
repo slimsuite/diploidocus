@@ -1243,6 +1243,7 @@ class Table(rje.RJE_Object):
             if log: self.progLog('\r#SAVE','Saving table "%s"...' % (self.info['Name']))
             if append and rje.exists(filename): OUT = open(filename,'a')
             else:
+                append = False
                 OUT = open(filename,'w')
                 if comments:
                     hashwarn = 0
@@ -1276,7 +1277,9 @@ class Table(rje.RJE_Object):
                 OUT.write('%s\n' % string.join(outlist,delimit)); sx += 1
             OUT.close()
             if log:
-                if sx: self.printLog('\r#SAVE','Table "%s" saved to "%s": %s entries.' % (self.info['Name'],filename,rje.iStr(sx)))
+                if sx and append: self.printLog('\r#SAVE','Table "%s" appended to "%s": %s entries.' % (self.info['Name'],filename,rje.iStr(sx)))
+                elif sx: self.printLog('\r#SAVE','Table "%s" saved to "%s": %s entries.' % (self.info['Name'],filename,rje.iStr(sx)))
+                elif append: self.printLog('\r#SAVE','No Table "%s" entries to append to "%s".' % (self.info['Name'],filename))
                 else: self.printLog('\r#SAVE','Table "%s" saved to "%s": headers only.' % (self.info['Name'],filename))
             return filename
         except: self.errorLog('Problem saving table "%s" to "%s"' % (self.info['Name'],filename))

@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.14.0
+Diploidocus v0.15.0
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -59,8 +59,25 @@ directory. If running from the standalone [Diploidocus git repo](https://github.
 will be the path the to `code/` directory. Please see details in the [Diploidocus git repo](https://github.com/slimsuite/diploidocus)
 for running on example data.
 
-For `sortnr` and `diphapnr` mode, [minimap2](https://github.com/lh3/minimap2) must be installed and either added to the
-environment `$PATH` or given to Diploidocus with the `minimap2=PROG` setting.
+## Dependencies
+
+For full functionality, Diploidocus needs a number of additional programs installed on the system:
+
+* Python 2.x and Python 3.x
+* KAT
+* BedTools
+* R
+* purge_haplotigs
+* bbmap
+* BLAST+
+* [Minimap2](https://github.com/lh3/minimap2) (added to environment `$PATH` or given with the `minimap2=PROG` setting)
+* [Samtools](http://www.htslib.org/)
+
+To generate documentation with `dochtml`, R will need to be installed and a pandoc environment variable must be set, e.g.
+
+    export RSTUDIO_PANDOC=/Applications/RStudio.app/Contents/MacOS/pandoc
+
+For Diploidocus documentation, run with `dochtml=T` and read the `*.docs.html` file generated.
 
 ## Commandline options
 
@@ -85,6 +102,8 @@ tmpdir=PATH     : Path for temporary output files during forking (not all modes)
 busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
 readbp=INT      : Total combined read length for depth calculations (over-rides reads=FILELIST) []
 quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+depdensity=T/F  : Whether to use the BUSCO depth density profile in place of modal depth [True]
+mapadjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
 ### ~ DiploidocusHocusPocus and Purge haplotigs options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
 10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]

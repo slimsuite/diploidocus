@@ -1,5 +1,5 @@
 #~~#	#~+~~+~#	#~~#
-#LOG	00:00:00	Activity Log for Diploidocus V0.14.0: Mon Feb  1 20:33:51 2021
+#LOG	00:00:00	Activity Log for Diploidocus V0.15.0: Tue Mar  9 12:26:08 2021
 #DIR	00:00:00	Run from directory: /Users/redwards/OneDrive - UNSW/projects/Diploidocus/githubdev/docs
 #ARG	00:00:00	Commandline arguments: dochtml newlog
 #INI	00:00:00	INI file: ../code/diploidocus.ini; Commands loaded: -minimap2 /Users/redwards/Data/BiowareOSX/minimap2/minimap2 minimap2=/Users/redwards/Bioware/minimap2/minimap2
@@ -8,5 +8,5 @@
 #BASE	00:00:00	Output file basename: diploidocus
 #RMD	00:00:00	RMarkdown Diploidocus documentation output to diploidocus.docs.Rmd
 #RCMD	00:00:00	Rscript -e 'library(rmarkdown); rmarkdown::render("diploidocus.docs.Rmd", "html_document")'
-#RCMD	00:00:01	diploidocus.docs.html generated from diploidocus.docs.Rmd
-#LOG	00:00:01	Diploidocus V0.14.0 End: Mon Feb  1 20:33:52 2021
+#RCMD	00:00:02	diploidocus.docs.html generated from diploidocus.docs.Rmd
+#LOG	00:00:02	Diploidocus V0.15.0 End: Tue Mar  9 12:26:10 2021
