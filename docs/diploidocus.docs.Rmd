@@ -23,8 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Diploidocus: Diploid genome assembly analysis tools
 
-<img alt="Diploidocus logo" align="right" style="margin-left:10px;margin-bottom" width="150" src="https://github.com/slimsuite/diploidocus/blob/master/docs/diploidocus_logo.png">[Diploidocus: Diploid genome assembly analysis toolkit](https://github.com/slimsuite/diploidocus)
-
+<img alt="Diploidocus logo" align="right" style="margin-left:10px;margin-bottom" width="150" src="https://raw.githubusercontent.com/slimsuite/diploidocus/master/docs/diploidocus_logo.png">
 Diploidocus is a sequence analysis toolkit for a number of different analyses related to diploid genome assembly.
 The main suite of analyses combines long read depth profiles, short read kmer analysis, assembly kmer analysis,
 BUSCO gene prediction and contaminant screening for a number of assembly tasks including contamination identification,
@@ -61,6 +60,12 @@ found at <https://github.com/slimsuite/SLiMSuite>.
 
 Diploidocus is available as part of SLiMSuite, or via a standalone GitHub repo at
 <https://github.com/slimsuite/diploidocus>.
+
+## Citing Diploidocus
+
+If using Diploidocus in a publication, please cite: Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]. Not
+all of the Diploidocus functions were described in this paper. Future versions of the documentation will include
+a more detailed breakdown of appropriate citations. If in doubt, please contact the author.
 
 ---
 
