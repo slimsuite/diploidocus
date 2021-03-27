@@ -19,9 +19,9 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.15.0
-Last Edit:    08/03/21
-Citation:     Edwards RJ et al. (2020), bioRxiv https://doi.org/10.1101/2020.11.11.379073
+Version:      0.16.2
+Last Edit:    27/03/21
+Citation:     Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 GitHub:       https://github.com/slimsuite/diploidocus
 Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
 
@@ -37,7 +37,10 @@ Function:
     and secondary scaffolds from 10x pseudohap output (`diphap`), and creating an in silico diploid set of long reads from two
     haploid parents (for testing phasing etc.) (`insilico`).
 
-    Please note that Diploidocus is still in development and documentation is currently a bit sparse.
+    Please note that Diploidocus is still in development and documentation is currently a bit sparse. Like its (almost)
+    namesake, Diploidocus has developed into a large, lumbering beast and is in the process of being split up into a
+    number of specialised tools. Core mechanics will still be performed by Diploidocus but some of the documentation will
+    be moved to other programs and sites.
 
     The different run modes are set using `runmode=X`:
 
@@ -71,6 +74,7 @@ Run Modes:
 
     * `*.diploidocus.fasta` = the scaffolds kept for the next round of PurgeHap
     * `*.core.fasta` = the same set of scaffolds, minus repeats
+    * `*.repeats.fasta` = the repeat scaffolds excluded from core
     * `*.junk.fasta` = low coverage scaffolds, removed as junk
     * `*.quarantine.fasta` = putative haplotigs, removed from the assembly but retained for reference.
 
@@ -95,6 +99,7 @@ Run Modes:
     * `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Cycle`).
     * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
     * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
+    * `$BASEFILE.repeats.fasta` = the repeat scaffolds excluded from core
     * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
     * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
 
@@ -301,7 +306,7 @@ Run Modes:
 
     The general workflow therefore sought to remove redundancy, generate a set of primary scaffolds based on scaffold
     length, and generate a non-redundant set of alternative scaffolds where heterozygosity exists. If `diphapnr` mode
-    is used, the full workflow is implement by first running the `sortnr` workflow described above. In the reduced
+    is used, the full workflow is implemented by first running the `sortnr` workflow described above. In the reduced
     `diphap` mode, redundancy is not removed first.
 
     Sequences are loaded and matching haplotigs identified based on their names. Sequence names MUST end `HAP(\d+)`,
@@ -405,11 +410,13 @@ Commandline:
     ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
     screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
-    minvechit=INT   : Minimum length for a screendb match [50]
+    minvechit=INT   : Minimum length for a non-identical screendb match [50]
+    minidhit=INT    : Minimum length for an identical screendb match (based on NCBI filtering) [27]
     efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
     vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
     vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
     vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
+    maskmode=X      : Whether to perform full (all bases) or partial (every other base) masking of hits [partial]
     keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     ### ~ Region checking options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -495,6 +502,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.14.1 - Added GapSpanner sequence summary to end.
     # 0.14.2 - Fixed scdepth re-use printing bug.
     # 0.15.0 - Added mapadjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
+    # 0.16.0 - Updated vecscreen mode to have two-tier length filter, and partial masking to avoid splitting contigs.
+    # 0.16.1 - Added *.repeats.fasta output of the non-score diploidocus sequences.
+    # 0.16.2 - Minor bug fix catching Class key error. Added logo to docs.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -547,7 +557,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.15.0', 'March 2021', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.16.2', 'March 2021', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -616,6 +626,7 @@ class Diploidocus(rje_obj.RJE_Object):
     Str:str
     - BAM=FILE        : BAM file of reads mapped onto assembly [$BASEFILE.bam]
     - BUSCO=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
+    - MaskMode=X      : Whether to perform full (all bases) or partial (every other base) masking of hits [partial]
     - PAF=FILE        : PAF file of reads mapped onto assembly [$BASEFILE.paf]
     - Parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
     - Parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
@@ -656,6 +667,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - MemPerThread=INT: Number of Gb per thread to allocate to samtools etc. [6]
     - MinGap=INT      : Minimum length of a stretch of N bases to count as a gap for exclusion [10]
     - MinGapSpan=INT  : Minimum number of reads spanning a gap in order to re-assemble [2]
+    - MinIDHit=INT    : Minimum length for an identical screendb match (based on NCBI filtering) [27]
     - MinLength=INT   : Minimum scaffold lenght to avoid low quality filter [500]
     - MinLocLen=INT   : Minimum length for aligned chunk to be kept (local hit length in bp) [0]
     - MinMedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
@@ -706,9 +718,9 @@ class Diploidocus(rje_obj.RJE_Object):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['BAM','BUSCO','GenomeSize','PAF','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
+        self.strlist = ['BAM','BUSCO','GenomeSize','MaskMode','PAF','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
         self.boollist = ['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
-        self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinGapSpan','MinLen','MinMedian','MinTrim','MinVecHit',
+        self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinGapSpan','MinIDHit','MinLen','MinMedian','MinTrim','MinVecHit',
                         'QSubPPN','QSubVMem','QSubWall','MemPerThread','MinLocLen',
                         'PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim']
         self.numlist = ['CheckCov','eFDR','MinLocID','RQFilter','SCDepth','TeloPerc','VecPurge']
@@ -718,9 +730,9 @@ class Diploidocus(rje_obj.RJE_Object):
         self.objlist = ['Forker','SeqIn']
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
-        self.setStr({'PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
+        self.setStr({'MaskMode':'partial','PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
         self.setBool({'DepDensity':True,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
-        self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
+        self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinIDHit':27,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,'MinGapSpan':2,'MinLocLen':500,
                      'GenomeSize':0,'ReadBP':0,'SubForks':1,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'SCDepth':0,'TeloPerc':50.0,'VecPurge':50.0,'MinLocID':0.0})
@@ -744,12 +756,12 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._forkCmd(cmd)  # Delete if no forking
                 ### Class Options (No need for arg if arg = att.lower()) ### 
                 #self._cmdRead(cmd,type='str',att='Att',arg='Cmd')  # No need for arg if arg = att.lower()
-                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','PurgeMode','RunMode','ScreenMode','SpanID','TeloFwd','TeloRev'])   # Normal strings
+                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','MaskMode','PurgeMode','RunMode','ScreenMode','SpanID','TeloFwd','TeloRev'])   # Normal strings
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','PAF','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
                 self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinIDHit','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','MinLocID','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
@@ -772,6 +784,8 @@ class Diploidocus(rje_obj.RJE_Object):
     def run(self):  ### Main Diploidocus run method
         '''
         # Diploidocus: Diploid genome assembly analysis tools
+
+        <img alt="Diploidocus logo" align="right" style="margin-left:10px;margin-bottom" width="150" src="https://github.com/slimsuite/diploidocus/blob/master/docs/diploidocus_logo.png">[Diploidocus: Diploid genome assembly analysis toolkit](https://github.com/slimsuite/diploidocus)
 
         Diploidocus is a sequence analysis toolkit for a number of different analyses related to diploid genome assembly.
         The main suite of analyses combines long read depth profiles, short read kmer analysis, assembly kmer analysis,
@@ -895,10 +909,12 @@ class Diploidocus(rje_obj.RJE_Object):
         screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
         screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
         minvechit=INT   : Minimum length for a screendb match [50]
+        minidhit=INT    : Minimum length for an identical screendb match (based on NCBI filtering) [27]
         efdr=NUM        : Expected FDR threshold for VecScreen queries (0 is no filter) [1.0]
         vecpurge=PERC   : Remove any scaffolds with >= PERC % vector coverage [50.0]
         vectrim=INT     : Trim any vector hits (after any vecpurge) within INT bp of the nearest end of a scaffold [1000]
         vecmask=INT     : Mask any vector hits of INT bp or greater (after vecpurge and vectrim) [900]
+        maskmode=X      : Whether to perform full (all bases) or partial (every other base) masking of hits [partial]
         keepnames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
         veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
         ### ~ Region checking options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -955,6 +971,7 @@ class Diploidocus(rje_obj.RJE_Object):
         * `$BASEFILE.diploidocus.tdt` = Final ratings for the input scaffolds. This is like the single cycle output with an additional `Cycle` field containing the last cycle this scaffold was processed in.
         * `$BASEFILE.ratings.tdt` = Reduced final ratings output for the input scaffolds (`SeqName`,`SeqLen`,`ScreenPerc`,`Class`,`Rating`,`Set`,`Cycle`).
         * `$BASEFILE.diploidocus.fasta` = the scaffolds kept from the final Diploidocus cycle
+        * `$BASEFILE.repeats.fasta` = the repeat scaffolds excluded from core
         * `$BASEFILE.core.fasta` = the same set of scaffolds, minus repeats
         * `$BASEFILE.quarantine.fasta` = concatenated purged scaffolds from all Diploidocus cycles.
         * `$BASEFILE.junk.fasta` = concatenated low coverage and low quality scaffolds, removed as junk, from all cycles.
@@ -985,6 +1002,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         * `*.diploidocus.fasta` = the scaffolds kept for the next round of PurgeHap
         * `*.core.fasta` = the same set of scaffolds, minus repeats
+        * `*.repeats.fasta` = the repeat scaffolds excluded from core
         * `*.junk.fasta` = low coverage scaffolds, removed as junk
         * `*.quarantine.fasta` = putative haplotigs, removed from the assembly but retained for reference.
 
@@ -1562,6 +1580,50 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
+        ## ~ Assembly gap read-spanning analysis [runmode=gapspan] ~ ###
+
+        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+
+        This mode first identifies all the gaps in an assembly (`seqin=FILE`) (using SeqList `gapstats` or `$SEQBASE.gaps.tdt` if pre-
+        existing) and then runs the read spanning analysis (`runmode=regcheck`) with `regcnv=F`. Long read data, given
+        with the `reads=FILELIST` and `readtype=LIST` options, are mapped onto the assembly using minimap2 to generate a PAF file.
+        This is then parsed and reads spanning each gap are identified based on their positions and the target start and end positions in the PAF file.
+        In addition to absolute spanning of regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
+        sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
+        using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
+        due to sequence length constraints.
+
+        Spanning `spanid` output is also generated for each gap and saved in `$BASEFILE_spanid`. Each gap will be named:
+        `seqname.start-end`.
+
+        ---
+
+        ## ~ Assembly gap re-assembly [runmode=gapass] ~ ###
+
+        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+
+        In addition to the `gapspan` analysis, reads identified as spanning each gap are extracted and assembled using `flye`
+        in a `$BASEFILE__gapassemble/` output directory. Only gaps with at least `mingapspan=INT` (default 2) reads are
+        re-assembled.
+
+        ---
+
+        ## ~ Re-assembled gap-filling [runmode=gapfill] ~ ###
+
+        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+
+        In addition to the `gapspan` and `gapass` outputs, re-assembled gap regions are compiled into a single file and then
+        mapped back on the original assembly using Minimap2, with tabulated hit output into `$BASEFILE__gapfill/`. Local hits
+        are reduced to unique coverage of the assembly sequences. Gaps are filled if one of the two conditions are met:
+
+        1. A single local alignment spans an entire gap.
+        2. A pair of concordant local alignments from the same re-assembly contig (same orientation) flank an entire gap.
+
+        In the case of a single spanning local alignment, the entire assembly region is replaced by the corresponding
+        re-assembly contig region. For a pair of hits, the region between the two hits is replaced.
+
+        ---
+
         ## Sorted non-redundant assembly cleanup [runmode=sortnr]
 
         The sorted non-redundant assembly cleanup mode (`runmode=sortnr`) screens out any sequences that are 100% gap,
@@ -1610,50 +1672,6 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ### ~ Assembly gap read-spanning analysis [runmode=gapspan] ~ ###
-
-        This mode first identifies all the gaps in an assembly (`seqin=FILE`) (using SeqList `gapstats` or `$SEQBASE.gaps.tdt` if pre-
-        existing) and then runs the read spanning analysis (`runmode=regcheck`) with `regcnv=F`. Long read data, given
-        with the `reads=FILELIST` and `readtype=LIST` options, are mapped onto the assembly using minimap2 to generate a PAF file.
-        This is then parsed and reads spanning each gap are identified based on their positions and the target start and end positions in the PAF file.
-        In addition to absolute spanning of regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
-        sequence is reached before the end of the read, this will also count as flanking. Such regions can be identified
-        using the `MaxFlank5` and `MaxFlank3` fields, which identify the maximum distance 5' and 3' that a read can span
-        due to sequence length constraints.
-
-        Spanning `spanid` output is also generated for each gap and saved in `$BASEFILE_spanid`. Each gap will be named:
-        `seqname.start-end`.
-
-        This mode is now primarily documented and updated through GapSpanner.
-
-        ---
-
-        ### ~ Assembly gap re-assembly [runmode=gapass] ~ ###
-
-        In addition to the `gapspan` analysis, reads identified as spanning each gap are extracted and assembled using `flye`
-        in a `$BASEFILE__gapassemble/` output directory. Only gaps with at least `mingapspan=INT` (default 2) reads are
-        re-assembled.
-
-        This mode is now primarily documented and updated through GapSpanner.
-
-        ---
-
-        ### ~ Re-assembled gap-filling [runmode=gapfill] ~ ###
-
-        In addition to the `gapspan` and `gapass` outputs, re-assembled gap regions are compiled into a single file and then
-        mapped back on the original assembly using Minimap2, with tabulated hit output into `$BASEFILE__gapfill/`. Local hits
-        are reduced to unique coverage of the assembly sequences. Gaps are filled if one of the two conditions are met:
-
-        1. A single local alignment spans an entire gap.
-        2. A pair of concordant local alignments from the same re-assembly contig (same orientation) flank an entire gap.
-
-        In the case of a single spanning local alignment, the entire assembly region is replaced by the corresponding
-        re-assembly contig region. For a pair of hits, the region between the two hits is replaced.
-
-        This mode is now primarily documented and updated through GapSpanner.
-
-        ---
-
         ## Pseudodiploid to primary and alternative haploptigs [runmode=diphap(nr)]
 
         This protocol is based on 10x assemblies made for multiple organisms with supernova v2.0.0 and supernova v2.1.1.
@@ -1663,7 +1681,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         The general workflow therefore sought to remove redundancy, generate a set of primary scaffolds based on scaffold
         length, and generate a non-redundant set of alternative scaffolds where heterozygosity exists. If `diphapnr` mode
-        is used, the full workflow is implement by first running the `sortnr` workflow described above. In the reduced
+        is used, the full workflow is implemented by first running the `sortnr` workflow described above. In the reduced
         `diphap` mode, redundancy is not removed first.
 
         Sequences are loaded and matching haplotigs identified based on their names. Sequence names MUST end `HAP(\d+)`,
@@ -1866,7 +1884,7 @@ class Diploidocus(rje_obj.RJE_Object):
             dipdb.baseFile(basefile)
             dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
             dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Cycle'])
-            for ext in ['diploidocus.fasta','core.fasta']:
+            for ext in ['diploidocus.fasta','core.fasta','repeats.fasta']:
                 if rje.exists('{}.{}'.format(newbase,ext)):
                     rje.backup(self,'{}.{}'.format(basefile,ext))
                     shutil.copy('{}.{}'.format(newbase,ext),'{}.{}'.format(basefile,ext))
@@ -1890,7 +1908,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
             ### ~ [4] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if seqlist.getBool('Summarise'):
-                for seqset in ['diploidocus','core','quarantine','junk']:
+                for seqset in ['diploidocus','core','repeats','quarantine','junk']:
                     setfas = '%s.%s.fasta' % (basefile,seqset)
                     if not rje.baseFile(setfas): continue
                     seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']
@@ -2557,9 +2575,19 @@ class Diploidocus(rje_obj.RJE_Object):
                     if data['eFDR'] > self.getNum('eFDR'): vecdb.data().pop(ekey)
                     #else: self.debug(data)
                 self.printLog('\r#EFDR','Filtered entries with eFDR<{}: {} -> {} entries'.format(self.getNum('eFDR'),rje.iStr(etot),rje.iStr(vecdb.entryNum())))
-            if self.getNum('MinVecHit') > 0:
-                self.printLog('#HITLEN','Filtering entries with Length<{}'.format(self.getInt('MinVecHit')))
-                vecdb.dropEntries('Length<{}'.format(self.getInt('MinVecHit')))
+            if self.getNum('MinVecHit') > 0 or self.getNum('MinIDHit') > 0:
+                self.printLog('#HITLEN','Filtering identical hits with Length<{0} bp and non-identical hits <{1} bp'.format(self.getInt('MinIDHit'),self.getInt('MinVecHit')))
+                idx = 0
+                vecx = 0
+                prex = vecdb.entryNum()
+                for vkey, ventry in vecdb.data().items():
+                    if ventry['Length'] < self.getInt('MinIDHit'):
+                        vecdb.dict['Data'].pop(vkey); idx += 1
+                    elif ventry['Identity'] != ventry['Length'] and ventry['Length'] < self.getInt('MinVecHit'):
+                        vecdb.dict['Data'].pop(vkey); vecx += 1
+                if idx or vecx: vecdb.dict['Index'] = {}
+                self.printLog('#DROP','Length filtering: %s vecscreen entries reduced to %s entries' % (rje.integerString(prex),rje.integerString(vecdb.entryNum())))
+                #x#vecdb.dropEntries('Length<{}'.format(self.getInt('MinVecHit')))
 
             ### ~ [3] Process Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             proxbp = 25
@@ -2768,6 +2796,12 @@ class Diploidocus(rje_obj.RJE_Object):
             seqlist = self.seqinObj() #rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file'])
             seqdict = seqlist.seqNameDic()
             basefile = self.baseFile(strip_path=True)
+            if self.getStrLC('MaskMode') not in ['full','partial']:
+                self.warnLog('#MASK','MaskMode "{0}" not recognised: defaulting to "partial".'.format(self.getStrLC('MaskMode')))
+                self.setStr({'MaskMode':'partial'})
+            maskmode = self.getStrLC('MaskMode')
+            self.printLog('#MASK','Mask mode: {0}'.format(maskmode))
+
             ## ~ [1a] ~ Setup database tables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             db = self.db()
             vecdb = self.db('vecscreen')
@@ -2820,10 +2854,12 @@ class Diploidocus(rje_obj.RJE_Object):
                 if self.getInt('VecMask') <= 0: continue
                 for (mask5,mask3) in vecpos:
                     masklen = mask3-mask5+1
-                    #self.bugPrint('{}: ({},{})={} >= {}? (Trim <{}|{}<)'.format(seqname,mask5,mask3,masklen,self.getInt('VecMask'),trim5,trim3))
+                    self.bugPrint('{}: ({},{})={} >= {}? (Trim <{}|{}<)'.format(seqname,mask5,mask3,masklen,self.getInt('VecMask'),trim5,trim3))
                     if masklen < self.getInt('VecMask'): continue
                     if mask3 <= trim5 or mask5 >= trim3: continue
                     trimdb.addEntry({'SeqName':seqname, 'SeqLen':seqlen, 'Start':mask5, 'End':mask3, 'Edit':'mask'})
+                self.bugPrint('{0}: {1}'.format(seqname,vecdb.index('Hit')[seqname]))
+                self.deBug('{0}: {1}'.format(seqname,vecpos))
 
             ### ~ [3] ~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             # If any sequences are purged/trimmed/masked, output is then saved to:
@@ -2851,8 +2887,19 @@ class Diploidocus(rje_obj.RJE_Object):
                 #i# Mask
                 trimmed = masked = False
                 for entry in trimdb.indexEntries('SeqName',seqname):
-                    if entry['Edit'] == 'mask':
+                    if entry['Edit'] == 'mask' and maskmode == 'full':
                         sequence = sequence[:entry['Start']-1] + 'N' * (entry['End']-entry['Start']+1) + sequence[entry['End']:]
+                        if len(sequence) != seqlen: raise ValueError('Masking problem!')
+                        masked = True
+                    elif entry['Edit'] == 'mask':
+                        maskseq = sequence[:entry['Start']-1]
+                        maskbase = True
+                        for i in range(entry['Start']-1,entry['End']):
+                            if maskbase: maskseq += 'N'
+                            else: maskseq += sequence[i]
+                            maskbase = not maskbase
+                        maskseq += sequence[entry['End']:]
+                        sequence = maskseq
                         if len(sequence) != seqlen: raise ValueError('Masking problem!')
                         masked = True
                     elif entry['Edit'] == 'trim':
@@ -4155,14 +4202,18 @@ class Diploidocus(rje_obj.RJE_Object):
             bamfile = self.getStr('BAM')
 
             ### ~ [2] BAM file check/generation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            if not self.getStrLC('BAM'):
+            if self.getStrLC('BAM') and not rje.exists(bamfile) and self.i() >= 0 and not rje.yesNo('Cannot find BAM file "{}" (bam=FILE): generate?'.format(bamfile)):
+                raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
+            elif not self.getStrLC('BAM'):
                 bamfile = self.baseFile(strip_path=True) + '.bam'
-                if not rje.exists(bamfile):
-                    self.printLog('#BAM','Cannot find BAM file "{}": generating'.format(bamfile))
-                    bamfile = self.longreadMinimap()
-                elif self.needToRemake(bamfile,seqin):
-                    self.printLog('#BAM','SeqIn younger than BAM file "{}": regenerating'.format(bamfile))
-                    bamfile = self.longreadMinimap()
+            # Generate if missing, or regenerate if inventing name and too old
+            if not rje.exists(bamfile):
+                self.printLog('#BAM','Cannot find BAM file "{}": generating'.format(bamfile))
+                bamfile = self.longreadMinimap()
+            elif not self.getStrLC('BAM') and self.needToRemake(bamfile,seqin):
+                self.printLog('#BAM','SeqIn younger than BAM file "{}": regenerating'.format(bamfile))
+                bamfile = self.longreadMinimap()
+            # Check for existence now
             if not rje.exists(bamfile): raise IOError('Cannot find BAM file "{}" (bam=FILE)'.format(bamfile))
             self.setStr({'BAM':bamfile})
             baifile = '{}.bai'.format(bamfile)
@@ -4208,6 +4259,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         * `*.diploidocus.fasta` = the scaffolds kept for the next round of PurgeHap
         * `*.core.fasta` = the same set of scaffolds, minus repeats
+        * `*.repeats.fasta` = the repeat scaffolds excluded from core
         * `*.junk.fasta` = low coverage scaffolds, removed as junk
         * `*.quarantine.fasta` = putative haplotigs, removed from the assembly but retained for reference.
 
@@ -4648,8 +4700,16 @@ class Diploidocus(rje_obj.RJE_Object):
             for entry in dipdb.entries():
                 tentry = dipdb.data(entry['TopHit'],expect=False)
                 sentry = dipdb.data(entry['SecHit'],expect=False)
-                if tentry: entry['TopClass'] = tentry['Class']
-                if sentry: entry['SecClass'] = sentry['Class']
+                if tentry:
+                    try: entry['TopClass'] = tentry['Class']
+                    except:
+                        self.warnLog('Could not extract Class for TopHit "%s"' % entry['TopHit'])
+                        tentry = None
+                if sentry:
+                    try: entry['SecClass'] = sentry['Class']
+                    except:
+                        self.warnLog('Could not extract Class for SecHit "%s"' % entry['SecHit'])
+                        sentry = None
                 # PURITY | DEPTH | HOM | TOP | MEDK | BUSCO
                 cdata = entry['Class'].split('|')
                 rep = cdata[4] == "REP"
@@ -4944,10 +5004,10 @@ class Diploidocus(rje_obj.RJE_Object):
             dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
             dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Set'])
 
-            for seqset in ['diploidocus','core','quarantine','junk']:
+            for seqset in ['diploidocus','core','repeats','quarantine','junk']:
                 rje.backup(self,'%s.%s.fasta' % (basefile,seqset),appendable=False)
                 open('%s.%s.fasta' % (basefile,seqset),'w')
-            seqx = {'diploidocus':0,'core':0,'quarantine':0,'junk':0,'diploidify':0}
+            seqx = {'diploidocus':0,'core':0,'repeats':0,'quarantine':0,'junk':0,'diploidify':0}
             for rating in keep:
                 for entry in dipdb.indexEntries('Rating',rating):
                     (seqname, sequence) = seqlist.getSeq(seqdict[entry['SeqName']])
@@ -4966,7 +5026,9 @@ class Diploidocus(rje_obj.RJE_Object):
                         oldrate = rje.matchExp('Diploidocus:(\S+) Diploidocus:',seqname)[0]
                         seqname = seqname.replace('Diploidocus:{} Diploidocus:'.format(oldrate),'Diploidocus:{}|'.format(oldrate))
                     open('{}.diploidocus.fasta'.format(basefile),'a').write('>{}\n{}\n'.format(seqname, sequence))
+                    open('{}.repeats.fasta'.format(basefile),'a').write('>{}\n{}\n'.format(seqname, sequence))
                     seqx['diploidocus'] += 1
+                    seqx['repeats'] += 1
             for rating in quarantine:
                 for entry in dipdb.indexEntries('Rating',rating):
                     (seqname, sequence) = seqlist.getSeq(seqdict[entry['SeqName']])
@@ -4985,7 +5047,7 @@ class Diploidocus(rje_obj.RJE_Object):
                         seqname = seqname.replace('Diploidocus:{} Diploidocus:'.format(oldrate),'Diploidocus:{}|'.format(oldrate))
                     open('{}.junk.fasta'.format(basefile),'a').write('>{}\n{}\n'.format(seqname, sequence))
                     seqx['junk'] += 1
-            for seqset in ['diploidocus','core','quarantine','junk']:
+            for seqset in ['diploidocus','core','repeats','quarantine','junk']:
                 self.printLog('#SEQ','%s sequences saved to %s.%s.fasta' % (rje.iStr(seqx[seqset]),basefile,seqset))
             ### Special diploidify output
             if self.getBool('Diploidify'):
@@ -5006,7 +5068,7 @@ class Diploidocus(rje_obj.RJE_Object):
                         seqx[seqset] += 1
 
             if seqlist.getBool('Summarise'):
-                for seqset in ['diploidocus','core','quarantine','junk','diploidify']:
+                for seqset in ['diploidocus','core','repeats','quarantine','junk','diploidify']:
                     if not seqx[seqset]: continue
                     setfas = '%s.%s.fasta' % (basefile,seqset)
                     seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']

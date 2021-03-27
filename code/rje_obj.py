@@ -19,8 +19,8 @@
 """
 Module:       rje_obj
 Description:  Contains revised General Object templates for Rich Edwards scripts and bioinformatics programs
-Version:      2.7.1
-Last Edit:    28/04/20
+Version:      2.7.2
+Last Edit:    24/03/21
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -65,7 +65,7 @@ System Commandline:
 
 Forking Commandline:
     noforks=T/F     : Whether to avoid forks [False]
-    forks=X         : Number of parallel sequences to process at once [0]
+    forks=X         : Number of parallel sequences to process at once (also threads=INT) [0]
     killforks=X     : Number of seconds of no activity before killing all remaining forks. [36000]
 
 Development Commandline:
@@ -120,6 +120,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 2.6.0 - Added threads() method to basic object.
     # 2.7.0 - Added loggedSystemCall()
     # 2.7.1 - Fixed formatting for Python 2.6 back compatibility for servers.
+    # 2.7.2 - Tweaked the forks and threads settings and methods.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -340,7 +341,9 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         elif self.obj['Parent']: return self.obj['Parent'].getInt(key,default,checkdata)
         else: return default
 #########################################################################################################################
-    def getPerc(self,key=None,default=0.0,checkdata=False): return self.getNum(key,default,checkdata)/100.0
+    def getPerc(self,key=None,default=0.0,checkdata=False): ### Returns a 'perc' attribute type as a proportion
+        '''Convert stored 0-100 scale number, e.g. X=PERC variable, as a 0-1 float.'''
+        return self.getNum(key,default,checkdata)/100.0
     def getNum(self,key=None,default=0.0,checkdata=False):    ### Returns float attribute
         '''Returns float attribute.'''
         try:
@@ -650,6 +653,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
             self._cmdReadList(cmd,'int',['Forks','KillForks'])
             self._cmdRead(cmd,type='bool',att='NoForks')
             self._cmdRead(cmd,type='bool',att='NoForks',arg='nofork')
+            self._cmdRead(cmd,type='int',att='Forks',arg='threads')
         except: self.log.errorLog('Problem with cmd:%s' % cmd)
 #########################################################################################################################
      ### <4> ### Input/Output                                                                                            #
@@ -1296,6 +1300,8 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
             return self.restOutputError('%s.restFullOutput() error.' % self.prog())
 #########################################################################################################################
     ### <5> ### Forks                                                                                                   #
+#########################################################################################################################
+    def forks(self): return self.threads()
 #########################################################################################################################
     def threads(self):  ### Returns number of threads to use (forks=INT with min=1)
         '''

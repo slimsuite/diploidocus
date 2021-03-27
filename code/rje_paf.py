@@ -19,8 +19,8 @@
 """
 Module:       rje_paf
 Description:  Minimap2 PAF parser and converter
-Version:      0.11.0
-Last Edit:    20/01/21
+Version:      0.12.0
+Last Edit:    24/03/21
 Copyright (C) 2019  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -77,6 +77,7 @@ Commandline:
     qcut=X          : Min. quality score for a mapped read to be included [0]
     minqn=X         : Min. number of non-N reads meeting qcut for output (after indel filtering) [10]
     rid=T/F         : Whether to include Read ID (number) lists for each allele [True]
+    readnames=T/F   : Output the read names to the RID file [False]
     indels=T/F      : Whether to include indels in "SNP" parsing [True]
     skiploci=LIST   : List of loci to exclude from pileup parsing (e.g. mitochondria) []
     mincut=X        : Minimum read count for minor allele (proportion if <1) [0.05]
@@ -123,6 +124,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.10.2 - Fixed formatting for Python 2.6 back compatibility for servers.
     # 0.10.3 - Fixing issues of PAF files not being generated.
     # 0.11.0 - Added HiFi read type.
+    # 0.12.0 - Added readnames=T/F : Output the read names to the RID file [False]
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -155,7 +157,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('RJE_PAF', '0.11.0', 'January 2021', '2019')
+    (program, version, last_edit, copy_right) = ('RJE_PAF', '0.12.0', 'March 2021', '2019')
     description = 'Minimap2 PAF parser and converter'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -295,6 +297,7 @@ class PAF(rje_obj.RJE_Object):
     - LocalAln = Whether to keep local alignments in Local Table [False]
     - MapSplice=T/F   : Switch default minimap2 options to `-x splice -uf -C5` [False]
     - MockBLAST = Whether to output mock BLAST headers even when not appropriate [True]
+    - ReadNames=T/F   : Output the read names to the RID file [False]
     - RID=T/F         : Whether to include Read ID (number) lists for each allele [True]
     - SNPTableOut=T/F : Generated output of filtered variants to SNP Table [False]
     - UniqueHit=T/F   : Option to use *.hitunique.tdt table of unique coverage for GABLAM coverage stats [False]
@@ -335,7 +338,7 @@ class PAF(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['CheckPos','Minimap2','PAFIn','SeqIn','SpanID','Reference','TmpDir']
-        self.boollist = ['AlnSeq','BiAllelic','IgnoreN','IgnoreRef','Indels','LocalAln','MapSplice','MockBLAST','RID','SNPTableOut','UniqueHit','UniqueOut']
+        self.boollist = ['AlnSeq','BiAllelic','IgnoreN','IgnoreRef','Indels','LocalAln','MapSplice','MockBLAST','ReadNames','RID','SNPTableOut','UniqueHit','UniqueOut']
         self.intlist = ['AbsMinCut','EndExtend','MinLocLen','MinQN','QCut']
         self.numlist = ['MinCut','MinLocID']
         self.filelist = []
@@ -346,7 +349,7 @@ class PAF(rje_obj.RJE_Object):
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self.setStr({'Minimap2':'minimap2','TmpDir':'./tmp/'})
         self.setBool({'AlnSeq':False,'LocalAln':False,'MapSplice':False,'MockBLAST':True,'UniqueHit':False,'UniqueOut':True,
-                      'BiAllelic':False,'IgnoreN':True,'IgnoreRef':True,'Indels':True,'RID':True,'SNPTableOut':False})
+                      'BiAllelic':False,'IgnoreN':True,'IgnoreRef':True,'Indels':True,'ReadNames':False,'RID':True,'SNPTableOut':False})
         self.setInt({'AbsMinCut':2,'EndExtend':0,'MinLocLen':1,'MinQN':10,'QCut':0})
         self.setNum({'MinCut':0.05,'MinLocID':0.0})
         self.dict['MapOpt'] = {} #'N':'100','p':'0.0001','x':'asm5'}
@@ -374,7 +377,7 @@ class PAF(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['CheckPos','PAFIn','SeqIn','Reference'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['AlnSeq','BiAllelic','IgnoreN','IgnoreRef','Indels','LocalAln','MapSplice','MockBLAST','RID','SNPTableOut','UniqueHit','UniqueOut'])  # True/False Booleans
+                self._cmdReadList(cmd,'bool',['AlnSeq','BiAllelic','IgnoreN','IgnoreRef','Indels','LocalAln','MapSplice','MockBLAST','ReadNames','RID','SNPTableOut','UniqueHit','UniqueOut'])  # True/False Booleans
                 self._cmdReadList(cmd,'int',['AbsMinCut','EndExtend','MinLocLen','MinQN','QCut'])   # Integers
                 self._cmdReadList(cmd,'perc',['MinLocID'])   # 0-100 percentage, converted x100 if <=1
                 self._cmdReadList(cmd,'float',['MinCut']) # Floats

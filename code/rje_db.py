@@ -787,6 +787,7 @@ class Table(rje.RJE_Object):
         >> keylist:list [] = List of key values to join with delimiter or convert to tuple
         >> expect:bool [False] = Whether to raise exception if missing, else return None.
         '''
+        if not key and key not in [None, False]: return None
         if not (key or makekey or keylist): return self.dict['Data']
         try:
             if key: return self.dict['Data'][key]
@@ -1845,6 +1846,9 @@ class Table(rje.RJE_Object):
             self.dict['Data'].pop(ekey)
         except:
             self.errorLog('DropEntry error!')
+#########################################################################################################################
+    def dropEntryList(self,entries,inverse=False,log=True,logtxt=''): return self.dropEntries(entries,inverse,log,logtxt,purelist=True)
+    def dropEntriesFromKeys(self,keys,inverse=False,log=True,logtxt=''): return self.dropEntries(entries,inverse,log,logtxt,keylist=True)
 #########################################################################################################################
     def dropEntries(self,filters,inverse=False,log=True,logtxt='',purelist=False,keylist=False):    ### Drops certain entries from Table
         '''

@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.45.3
-Last Edit:    08/03/21
+Version:      1.46.0
+Last Edit:    09/03/21
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -90,7 +90,7 @@ Commandline:
     duperr=T/F      : Whether identification of duplicate sequence names should raise an error [True]
 
     ### ~ SEQUENCE FORMATTING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-    reformat=X      : Output format for sequence files (fasta/short/acc/acclist/accdesc/speclist/index/dna2prot/peptides/(q)region/revcomp/reverse/descaffold) [fasta]
+    reformat=X      : Output format for sequence files (fasta/short/acc/acclist/accdesc/speclist/index/dna2prot/dna2orfs/peptides/(q)region/revcomp/reverse/descaffold) [fasta]
     rename=T/F      : Whether to rename sequences [False]
     spcode=X        : Species code for non-gnspacc format sequences [None]
     newacc=X        : New base for sequence accession numbers - will rename sequences [None]
@@ -245,6 +245,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.45.1 - Added CtgNum to output stats.
     # 1.45.2 - Slight increase of gap extraction speed.
     # 1.45.3 - Fixed bug for summarising masked assemblies.
+    # 1.46.0 - Added dna2orfs reformatting options.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -264,11 +265,12 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Add stripgap=X method, based on rje_seq stripGap() method.
     # [ ] : Add align=T [alnprog=X] methods directly using rje_seq.
     # [Y] : Add raw=T/F setting to slightly adjust the summarise stats. (X coverage and no gaps.)
+    # [Y] : Add dna2orfs output for bacterial-style ORF annotation.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.45.3', 'March 2021', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.46.0', 'March 2021', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -316,7 +318,7 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
 #########################################################################################################################
 file_ext = {'fasta':'fas','short':'fas','acc':'fas','acclist':'acc','speclist':'txt',
             'index':'fas',  # This does not seem to work? (At least for REST output.)
-            'dna2prot':'fas','peptides':'txt','qregion':'fas','region':'fas'}
+            'dna2prot':'fas','dna2orfs':'fas','peptides':'txt','qregion':'fas','region':'fas'}
 #########################################################################################################################
 ### END OF SECTION I                                                                                                    #
 #########################################################################################################################
@@ -498,7 +500,7 @@ class SeqList(rje_obj.RJE_Object):
             self.warnLog('rftran=%d not recognised: will use rftran=1' % self.getInt('RFTran'))
             self.setInt({'RFTran':1})
         ## ~ [1b] ~ REST Command setup/adjustment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-        if self.getStrLC('Rest') in string.split('fasta/short/acc/acclist/accdesc/speclist/index/dna2prot/rna2prot/translate/nt2prot/peptides/qregion/region/descaffold','/'):
+        if self.getStrLC('Rest') in string.split('fasta/short/acc/acclist/accdesc/speclist/index/dna2prot/dna2orfs/rna2prot/translate/nt2prot/peptides/qregion/region/descaffold','/'):
             self.setStr({'ReFormat':self.getStrLC('Rest')})
             self.dict['Output'][self.getStrLC('Rest')] = 'SeqOut'
         elif self.getStrLC('Rest') and self.getStrLC('ReFormat'):
@@ -507,7 +509,7 @@ class SeqList(rje_obj.RJE_Object):
         elif self.getStrLC('ReFormat') == 'rest': self.setStr({'ReFormat':'None'})
         if self.getStrLC('Region') and self.getStr('Region') != '1,-1' and self.getStrLC('ReFormat') not in ['qregion','region']:
             self.warnLog('Region=%s but no reformat=(q)region: no region trimming.' % self.getStr('Region'))
-        if self.getStrLC('ReFormat') == 'dna2prot' and self.getStrLC('Rest'): self.setBool({'DNA':True})
+        if self.getStrLC('ReFormat') in ['dna2prot','dna2orfs'] and self.getStrLC('Rest'): self.setBool({'DNA':True})
         ### ~ [2] ~ AutoLoad option ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         if self.getBool('DNA') and not self.nt(): self.str['SeqType'] = 'dna'
         self._filterCmd()
@@ -2697,7 +2699,7 @@ class SeqList(rje_obj.RJE_Object):
                 if self.getStrLC('ReFormat'): reformat = self.getStr('ReFormat')
                 else: reformat = 'fasta'
             if reformat == 'speclist': speclist = []
-            if reformat in ['dna2prot','rna2prot','translate','nt2prot'] and not self.nt():
+            if reformat in ['dna2prot','dna2orfs','rna2prot','translate','nt2prot'] and not self.nt():
                 self.readSeqType()
                 if not self.nt(): self.warnLog('Trying to translate possible non-nucleotide sequence (dna=F).')
             ifile = '%s.index' % rje.baseFile(seqfile)
@@ -2787,9 +2789,9 @@ class SeqList(rje_obj.RJE_Object):
                     elif reformat == 'acclist': SEQOUT.write('%s\n' % (acc)); fasx += 1
                     elif reformat == 'speclist':
                         if spec not in speclist: speclist.append(spec)
-                elif reformat in ['dna2prot','rna2prot','translate','nt2prot']:
+                elif reformat in ['dna2prot','rna2prot','translate','nt2prot','dna2orfs']:
                     #SEQOUT.write('>%s\n%s\n' % (name,rje_sequence.dna2prot(sequence)))
-                    pfasta = self.dna2protFasta(name,sequence)
+                    pfasta = self.dna2protFasta(name,sequence,orfseq=reformat in ['dna2orfs'])
                     fasx = fasx + (pfasta.count('\n')/2) - 1
                     SEQOUT.write(pfasta); fasx += 1
                 elif reformat in ['revcomp']:
@@ -2988,9 +2990,14 @@ class SeqList(rje_obj.RJE_Object):
             return splits
         except: self.errorLog("Problem saving %s-split sequences" % splitseq); raise
 #########################################################################################################################
-    def dna2protFasta(self,name,sequence): ### Returns fasta text for translated DNA sequence, using self.attributes.
-        '''Returns fasta text for translated DNA sequence, using self.attributes.'''
+    def dna2protFasta(self,name,sequence,orfseq=False): ### Returns fasta text for translated DNA sequence, using self.attributes.
+        '''
+        Returns fasta text for translated DNA sequence, using self.attributes. If orfseq=True then ORFs will be returned
+        rather than the protein sequence itself.
+        '''
         try:### ~ [0] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if orfseq and self.getInt('MinORF') < 1:
+                raise ValueError('Cannot return ORF DNA sequences with minorf<1')
             rf = self.getInt('RFTran')
             tranfas = ''
             namesplit = string.split(name)
@@ -3017,15 +3024,15 @@ class SeqList(rje_obj.RJE_Object):
                     if self.getBool('ORFMet'):  # Trim to Nterminal Met
                         if 'M' in orf: orf = orf[orf.find('M'):]
                         else: continue
-                    if len(orf) < (minorf + 1): continue
+                    if len(orf) - orf.count('X') < (minorf + 1): continue
                     orfs.append(orf); longorf = True    # More than termini - internal ORFs meet length requirement
                 fullorfs[frame] = orfs[0:]
                 if terminorf >= 0 and not longorf:
                     if len(osplit) == 1:    # Full read-through
-                        if len(osplit[0]) > terminorf: orfs.append(osplit[0])
+                        if len(osplit[0]) - osplit[0].count('X') > terminorf: orfs.append(osplit[0])
                     else:
-                        if len(osplit[0]) >= terminorf: orfs.append(osplit[0])
-                        if len(osplit[-1]) > terminorf: orfs.append(osplit[-1])
+                        if len(osplit[0]) - osplit[0].count('X') >= terminorf: orfs.append(osplit[0])
+                        if len(osplit[-1]) - osplit[-1].count('X') > terminorf: orfs.append(osplit[-1])
                 rforfs[frame] = orfs
 
             for frame in rje.sortKeys(rfseq):
@@ -3033,8 +3040,32 @@ class SeqList(rje_obj.RJE_Object):
                 if longorf: orfs = fullorfs[frame]
                 else: orfs = rforfs[frame]
                 # Remaining ORFs should meet length requirements
-                for i in range(len(orfs)):
-                    tranfas += '>%s\n%s\n' % (string.join([namesplit[0]+'.RF%d.ORF%d' % (frame,i+1)]+namesplit[1:]+['Length=%d' % len(orfs[i])]),orfs[i])
+                if orfseq:
+                    # Set up sequence to extract ORFs from
+                    frameseq = sequence; rf = frame - 1
+                    if frame < 0:
+                        frameseq = rje_sequence.reverseComplement(sequence,rna=self.rna())
+                        rf = -frame - 1
+                    frameseq = frameseq[rf:]
+                    # Find ORFs
+                    rfseq[frame] = rfseq[frame].upper()
+                    fpos = 0    # Last ORF found
+                    for i in range(len(orfs)):
+                        fpos = rfseq[frame].find(orfs[i],fpos)
+                        orfnt = frameseq[fpos*3:(fpos+len(orfs[i]))*3]
+                        self.bugPrint(orfs[i])
+                        x = fpos*3 + rf + 1
+                        y = (fpos+len(orfs[i]))*3 + rf
+                        if frame < 0:
+                            x = len(sequence) - x + 1
+                            y = len(sequence) - y + 1
+                        orfout = '>%s\n%s\n' % (string.join([namesplit[0]+'.RF%d.ORF%d %d-%d' % (frame,i+1,x,y)]+namesplit[1:]+['Length=%dbp' % (len(orfs[i])*3)]),orfnt)
+                        tranfas += orfout
+                        self.deBug(orfout)
+                        fpos += 1
+                else:
+                    for i in range(len(orfs)):
+                        tranfas += '>%s\n%s\n' % (string.join([namesplit[0]+'.RF%d.ORF%d' % (frame,i+1)]+namesplit[1:]+['Length=%d' % len(orfs[i])]),orfs[i])
             return tranfas
         except: self.errorLog("Problem with dna2protFasta()"); raise
 #########################################################################################################################
