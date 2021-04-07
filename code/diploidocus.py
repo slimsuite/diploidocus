@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      0.16.2
-Last Edit:    27/03/21
+Version:      0.17.0
+Last Edit:    07/04/21
 Citation:     Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 GitHub:       https://github.com/slimsuite/diploidocus
 Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
@@ -399,6 +399,7 @@ Commandline:
     diploidify=T/F  : Whether to generate alternative diploid output with duplicated diploid contigs and no hpurge [False]
     pretrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
     maxcycle=INT    : Restrict run to maximum of INT cycles (0=No limit) [0]
+    purgecyc=INT    : Minimum number of purged sequences to trigger next round of dipcycle [2]
     ### ~ Depth Trim options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     deptrim=INT     : Trim termini with <X depth [1]
     mintrim=INT     : Min length of terminal depth trimming [1000]
@@ -506,6 +507,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.16.1 - Added *.repeats.fasta output of the non-score diploidocus sequences.
     # 0.16.2 - Minor bug fix catching Class key error. Added logo to docs.
     # 0.16.3 - Updated some of the documentation.
+    # 0.16.4 - Fixed a bug where pretrim of vecscreen results will cause BUSCO genes to be missed during classification.
+    # 0.17.0 - Added purgecyc=INT : Minimum number of purged sequences to trigger next round of dipcycle [2]
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -554,13 +557,13 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Fix regcheck bug with provided PAF file.
     # [ ] : Split out code to DepthSizer etc. so they don't all need all Diploidocus dependencies.
     # [ ] : Update docs to point to individual programs.
-    # [ ] : Add purgecyc=INT : Minimum number of purged sequences to trigger next round of dipcycle [2]
+    # [Y] : Add purgecyc=INT : Minimum number of purged sequences to trigger next round of dipcycle [2]
     # [ ] : Add final output of input and output to *.tdt (rather than having to run summarise again).
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.16.3', 'April 2021', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.17.0', 'April 2021', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -654,6 +657,7 @@ class Diploidocus(rje_obj.RJE_Object):
     - KeepNames=T/F   : Whether to keep names unchanged for edited sequences or append 'X' [False]
     - MapAdjust=T/F   : Whether to adjust predicted genome size based on read length:mapping ratio [False]
     - PreTrim=T/F     : Run vectrim/vecmask and deptrim trimming prior to diploidocus run [False]
+    - PurgeCyc=INT    : Minimum number of purged sequences to trigger next round of dipcycle [2]
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - RegCNV=T/F      ; Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
@@ -724,7 +728,7 @@ class Diploidocus(rje_obj.RJE_Object):
         self.strlist = ['BAM','BUSCO','GenomeSize','MaskMode','PAF','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
         self.boollist = ['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinGapSpan','MinIDHit','MinLen','MinMedian','MinTrim','MinVecHit',
-                        'QSubPPN','QSubVMem','QSubWall','MemPerThread','MinLocLen',
+                        'QSubPPN','QSubVMem','QSubWall','MemPerThread','MinLocLen','PurgeCyc',
                         'PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim']
         self.numlist = ['CheckCov','eFDR','MinLocID','RQFilter','SCDepth','TeloPerc','VecPurge']
         self.filelist = []
@@ -736,7 +740,7 @@ class Diploidocus(rje_obj.RJE_Object):
         self.setStr({'MaskMode':'partial','PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'','TmpDir':'./tmpdir/'})
         self.setBool({'DepDensity':True,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinIDHit':27,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
-                     'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,'MinGapSpan':2,'MinLocLen':500,
+                     'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,'MinGapSpan':2,'MinLocLen':500,'PurgeCyc':2,
                      'GenomeSize':0,'ReadBP':0,'SubForks':1,'TeloSize':50,'MinGap':10,'VecMask':900,'VecTrim':1000})
         self.setNum({'CheckCov':95.0,'eFDR':1.0,'RQFilter':0,'SCDepth':0,'TeloPerc':50.0,'VecPurge':50.0,'MinLocID':0.0})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -764,7 +768,7 @@ class Diploidocus(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'file',['BAM','PAF','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
                 self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinIDHit','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
+                self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinIDHit','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','PurgeCyc','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','MinLocID','TeloPerc','VecPurge']) # Percentage
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
@@ -1366,7 +1370,9 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ## Genome size prediction [runmode=gensize]
+        ## DepthSizer Genome size prediction [runmode=gensize]
+
+        **NOTE:** This mode is now primarily documented and updated through [DepthSizer](https://github.com/slimsuite/depthsizer).
 
         The main inputs for Diploidocus genome size prediction are:
 
@@ -1835,13 +1841,20 @@ class Diploidocus(rje_obj.RJE_Object):
                 seqin = self.preTrim()  ### Performs vecscreen and deptrim trimming, updates self.seqinObj() and returns trimmed fasta file
 
             ### ~ [2] ~ Cycle ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            maxstop = False
+            maxstop = False; purgestop = False
             while seqlist.seqNum() != prevseqx:
                 # Check maxcyle
                 if self.getInt('MaxCycle') > 0 and cycle >= self.getInt('MaxCycle'):
                     self.printLog('#CYCLE','Max cycle reached (maxcycle={}). Finishing run.'.format(self.getInt('MaxCycle')))
                     maxstop = True
                     break
+                # Check purgecycle
+                if self.getInt('PurgeCyc') > 0 and prevseqx:
+                    purgex = (seqlist.seqNum() - prevseqx)
+                    if purgex < self.getInt('PurgeCyc'):
+                        self.printLog('#CYCLE','Min sequence purging not exceeded (purgecycle={}). Finishing run.'.format(self.getInt('PurgeCyc')))
+                        purgestop = True
+                        break
                 # Increment cycle and make new basefile
                 prevseqx = seqlist.seqNum()
                 cycle += 1
@@ -1896,6 +1909,11 @@ class Diploidocus(rje_obj.RJE_Object):
             if maxstop:
                 if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached?'):
                     self.warnLog('Cycle data not tidied: re-run with higher maxcycle=INT to resume')
+                    return True
+                self.warnLog('#Cycling terminated: re-run on {}.diploidocus.fasta output to resume tidying'.format(basefile))
+            elif purgestop:
+                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached?'):
+                    self.warnLog('Cycle data not tidied: re-run with lower purgecyc=INT to resume')
                     return True
                 self.warnLog('#Cycling terminated: re-run on {}.diploidocus.fasta output to resume tidying'.format(basefile))
             else:
@@ -4476,8 +4494,16 @@ class Diploidocus(rje_obj.RJE_Object):
                 busdb.compress(['Contig'],default='sum')
                 busdb.dropField('#')
                 missing = 0
+                trimmed = 0
                 for bentry in busdb.entries():
-                    if bentry['Contig'] not in seqdict: busdb.dropEntry(bentry); missing += 1
+                    if bentry['Contig'] not in seqdict:
+                        contigx = bentry['Contig'] + 'X'
+                        if self.getBool('PreTrim') and contigx in seqdict:
+                            bentry['Contig'] = contigx; trimmed += 1
+                        else:
+                            busdb.dropEntry(bentry); missing += 1
+                if trimmed:
+                    self.printLog('#BUSCO','{} BUSCO contigs mapped onto *X vecscreen trim names (pretrim=T)'.format(rje.iStr(trimmed)))
                 self.printLog('#BUSCO','{} BUSCO contigs dropped: not found in {}'.format(rje.iStr(missing),seqin))
 
             ### ~ [6] ~ Compile Data ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###

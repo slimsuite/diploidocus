@@ -1,5 +1,5 @@
 ---
-title: "Diploidocus V0.16.3 Documentation"
+title: "Diploidocus V0.17.0 Documentation"
 author: "Richard J. Edwards"
 date: "2021-04-07"
 output:
@@ -601,7 +601,9 @@ Diploid scaffolds are saved with an `X2` suffix on their sequence name.
 
 ---
 
-## Genome size prediction [runmode=gensize]
+## DepthSizer Genome size prediction [runmode=gensize]
+
+**NOTE:** This mode is now primarily documented and updated through [DepthSizer](https://github.com/slimsuite/depthsizer).
 
 The main inputs for Diploidocus genome size prediction are:
 

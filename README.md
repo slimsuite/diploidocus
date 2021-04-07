@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.16.3
+Diploidocus v0.17.0
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -587,7 +587,9 @@ Diploid scaffolds are saved with an `X2` suffix on their sequence name.
 
 ---
 
-## Genome size prediction [runmode=gensize]
+## DepthSizer Genome size prediction [runmode=gensize]
+
+**NOTE:** This mode is now primarily documented and updated through [DepthSizer](https://github.com/slimsuite/depthsizer).
 
 The main inputs for Diploidocus genome size prediction are:
 
