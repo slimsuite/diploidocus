@@ -907,7 +907,7 @@ class BLASTRun(rje_obj.RJE_Object):
                     if log: self.printLog('#PROG','BLAST Program changed (%s): %s vs %s' % (self.str['Type'],qtype,stype))
                     return True
             else: blastp = 'Unknown'
-            self.printLog('#ERR','WARNING: %s vs %s and blastp=%s (Recommended: %s)' % (qtype,stype,self.str['Type'],blastp))
+            self.printLog('#ERR','WARNING: sequences appear to be %s vs %s, but blastp=%s (Recommended: %s)' % (qtype,stype,self.str['Type'],blastp))
             return False
         except: self.errorLog('Something went wrong with blast.checkProg()'); return False
 #########################################################################################################################

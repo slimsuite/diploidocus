@@ -505,6 +505,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.16.0 - Updated vecscreen mode to have two-tier length filter, and partial masking to avoid splitting contigs.
     # 0.16.1 - Added *.repeats.fasta output of the non-score diploidocus sequences.
     # 0.16.2 - Minor bug fix catching Class key error. Added logo to docs.
+    # 0.16.3 - Updated some of the documentation.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -551,13 +552,15 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Add updated gapfill regcheck output to include gap edges. (For long replacements.)
     # [ ] : Add BUSCOMP generation of new BUSCO ratings using buscofas.
     # [ ] : Fix regcheck bug with provided PAF file.
-    # [ ] : Split out code to DepthSizer.
+    # [ ] : Split out code to DepthSizer etc. so they don't all need all Diploidocus dependencies.
     # [ ] : Update docs to point to individual programs.
+    # [ ] : Add purgecyc=INT : Minimum number of purged sequences to trigger next round of dipcycle [2]
+    # [ ] : Add final output of input and output to *.tdt (rather than having to run summarise again).
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '0.16.2', 'March 2021', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '0.16.3', 'April 2021', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
@@ -924,7 +927,7 @@ class Diploidocus(rje_obj.RJE_Object):
         veccheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
         ### ~ Region checking options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         regcheck=FILE   : File of SeqName, Start, End positions for read coverage checking [None]
-        checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [Hit,SbjStart,SbjEnd]
+        checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking (unless GFF) [Hit,SbjStart,SbjEnd]
         checkflanks=LIST: List of lengths flanking check regions that must also be spanned by reads [0,100,1000,5000]
         spanid=X        : Generate sets of read IDs that span veccheck/regcheck regions, grouped by values of field X []
         regcnv=T/F      : Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
@@ -1226,7 +1229,7 @@ class Diploidocus(rje_obj.RJE_Object):
             * `LOWCOV` = Poor median read coverage (`Median_fold < minmedian=INT`)
             * `LOWQUAL` = Scaffolds below the sequence length set by `minlen=INT`
             * `LOWCOV` = Low read depth and 50%+ sequence without short read kmers (`PURE|LOW|...` or `GOOD|LOW|...`, and `MedK=0`)
-            * `LOWCOV` = Low read depth and high frequency short read kmers (`...|LOW|...|REP|...`)
+            * `LOWCOV` = Low read depth and high frequency assembly kmers (`...|LOW|...|REP|...`)
         2. High quality scaffolds to keep:
             * `QUALITY` = Highest quality scaffolds: pure duploid, complete BUSCOs, no Duplicated BUSCOs (`PURE|DIP|UNIQ|...|PRI|COMP` & `Duplicated` = 0)
             * `FINAL` = As Quality but `PRI|FRAG` and `PRI|NONE` also allowed (`PURE|DIP|UNIQ|...|PRI|...` & `Duplicated` = 0)
@@ -1421,7 +1424,20 @@ class Diploidocus(rje_obj.RJE_Object):
         ---
 
         ## Telomere finding [runmode=telomere]
-        _Details coming soon!_
+
+        Diploidocus has implemented a regex-based search for Telomeres, based on the code at
+        https://github.com/JanaSperschneider/FindTelomeres. This looks for a canonical telomere motif of TTAGGG/CCCTAA,
+        allowing for some variation. For each sequence, Diploidocus trims off any trailing Ns and then searches for
+        telomere-like sequences at sequence ends. For each sequence, the presence/absence and length of trimming are
+        reported for the 5' end (`tel5` and `trim5`) and 3' end (`tel3` and `trim3`), along with the total percentage
+        telomeric sequence (`TelPerc`).
+
+        By default, Diploidocus searches for a forward telomere regex sequence of `C{2,4}T{1,2}A{1,3}` at the 5' end, and
+        a reverse sequence at the 3' end of `T{1,3}A{1,2}G{2,4}`. These can be set with `telofwd=X` and `telorev=X`.
+        Telomeres are marked if at least 50% (`teloperc=PERC`) of the terminal 50 bp (`telosize=INT`) matches the
+        appropriate regex. If either end contains a telomere, the total percentage of the sequence matching either
+        regex is calculated as `TelPerc`. Note that this number neither restricts matches to the termini, not includes
+        sequences within predicted telomeres that do not match the regex.
 
         ---
 
@@ -1446,7 +1462,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         * `Terminal` = within 25 bp of either end of the sequence.
         * `Proximal` = within 25 bp of a vecsreen match (`Weak`, `Moderate` or `Strong`).
-        * `Internal` = over 25 bp of a sequence end or vecsreen match.
+        * `Internal` = over 25 bp from a sequence end or vecsreen match.
         * `Suspect` = Segments added as `Suspect`.
 
         `MatchStr` will have a value of:
@@ -1529,7 +1545,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ### ~ Region checking [runmode=regcheck] ~ ###
+        ## Assembly region read-spanning and copy number analysis [runmode=regcheck/regcnv]
 
         Region checking, whether for read spanning analysis (`runmode=regcheck`) or copy number analysis
         (`runmode=regcnv` or `runmode=regcheck regcnv=T`), analyses regions extracted from a delimited file given by:
@@ -1538,7 +1554,9 @@ class Diploidocus(rje_obj.RJE_Object):
         fields default to `SeqName`, `Start` and `End` fields. If these fields cannot be found, the first three fields
         of the `regcheck=FILE` file will be used.
 
-        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are then mapped onto the assembly
+        ### Region read-spanning analysis [runmode=regcheck]
+
+        Long read data, given with the `reads=FILELIST` and `readtype=LIST` options, are mapped onto the assembly
         (`seqin=FILE`) using minimap2 to generate a PAF file. This is then parsed and reads spanning each feature based
         on their positions and the target start and end positions in the PAF file. In addition to absolute spanning of
         regions, reads spanning a region +/- distances set by `checkflanks=LIST` will also be calculated. If the end of a
@@ -1553,10 +1571,11 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ### ~ Region copy number analysis [runmode=regcnv] ~ ###
+        ### Region copy number analysis [runmode=regcnv]
 
-        Copy number analysis uses the same single copy depth profile analysis as the `runmode=gensize` genome size
-        prediction. In short, the modal read depth of BUSCO single copy `Complete` genes is calculated using samtools
+        Copy number analysis uses the same single copy depth profile analysis as the [DepthSizer](https://github.com/slimsuite/depthsizer)
+        (Diploidocus `runmode=gensize`) genome size prediction. In short, the modal read depth of BUSCO single copy
+        `Complete` genes is calculated using samtools
         `mpileup` (or samtools `depth` if `quickdepth=T`) and used to defined "single copy read depth". BUSCO single-copy
         genes are parsed from a BUSCO full results table, given by `busco=TSVFILE` (default
         `full_table_$BASEFILE.busco.tsv`). This can be replaced with any table with the fields:
@@ -1575,7 +1594,7 @@ class Diploidocus(rje_obj.RJE_Object):
         meet a certain minimum length cutoff, e.g. 10kb.
 
         **Query-based CNV analysis.** If the `regcheck=FILE` file has additional `Qry`, `QryLen`, `QryStart` and `QryEnd`
-        fields, the copy number analysi will have an additional query-focus. In this case, each region mapping onto a
+        fields, the copy number analysis will have an additional query-focus. In this case, each region mapping onto a
         specific query is summed up, adjusted for the proportion of the query covered by that region. For example, 3.5X
         mean depth of a 100% length copy and 3.0X coverage of a 50% length copy would sum to (3.5x1.0 + 3x0.5 = 5 total
         copies). If these fields are not present, each region will be analysed independently.
@@ -1585,9 +1604,12 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ## ~ Assembly gap read-spanning analysis [runmode=gapspan] ~ ###
+        ## GapSpanner functions [runmode=gapspan/gapass/gapfill]
 
-        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+        **NOTE:** These modes are now primarily documented and updated through [GapSpanner](https://github.com/slimsuite/gapspanner).
+
+
+        ### Assembly gap read-spanning analysis [runmode=gapspan]
 
         This mode first identifies all the gaps in an assembly (`seqin=FILE`) (using SeqList `gapstats` or `$SEQBASE.gaps.tdt` if pre-
         existing) and then runs the read spanning analysis (`runmode=regcheck`) with `regcnv=F`. Long read data, given
@@ -1603,9 +1625,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ## ~ Assembly gap re-assembly [runmode=gapass] ~ ###
-
-        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+        ### Assembly gap re-assembly [runmode=gapass]
 
         In addition to the `gapspan` analysis, reads identified as spanning each gap are extracted and assembled using `flye`
         in a `$BASEFILE__gapassemble/` output directory. Only gaps with at least `mingapspan=INT` (default 2) reads are
@@ -1613,9 +1633,7 @@ class Diploidocus(rje_obj.RJE_Object):
 
         ---
 
-        ## ~ Re-assembled gap-filling [runmode=gapfill] ~ ###
-
-        **NOTE:** This mode is now primarily documented and updated through GapSpanner.
+        ### Re-assembled gap-filling [runmode=gapfill]
 
         In addition to the `gapspan` and `gapass` outputs, re-assembled gap regions are compiled into a single file and then
         mapped back on the original assembly using Minimap2, with tabulated hit output into `$BASEFILE__gapfill/`. Local hits
