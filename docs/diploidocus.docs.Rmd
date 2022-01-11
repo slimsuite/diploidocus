@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V0.17.0 Documentation"
+title: "Diploidocus V1.1.1 Documentation"
 author: "Richard J. Edwards"
-date: "2021-04-07"
+date: "2022-01-12"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -368,6 +368,8 @@ Once all the different elements have been run, Diploidocus compiles results per 
 * `*.telomeres.tdt`: Telomere prediction results
     - `Tel5` = Whether a 5' telomere is predicted
     - `Tel3` = Whether a 5' telomere is predicted
+    - `Tel5Len` = Length in window chunks of 5' telomere
+    - `Tel3Len` = Length in window chunks of 3' telomere
     - `TelPerc` = Percentage of sequence predicted to telomeres. (Crude calculation.)
 * `full_table_*.busco.tsv`
     - `Complete` = Number of BUSCO Complete genes in sequence

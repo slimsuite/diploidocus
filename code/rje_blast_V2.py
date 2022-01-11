@@ -1443,21 +1443,26 @@ class BLASTRun(rje_obj.RJE_Object):
         << returns dictionary of {Hit:Sequence}
         '''
         try:### ~ [1] ~ Map hits to seqlist sequences and return dictionary ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            self.debug(self.getStr('DBase'))
+            self.bugPrint('BLAST.hitToSeq')
+            self.bugPrint(self.getStr('DBase'))
             seqobj = '%s' % seqlist
             newseqlist = seqobj.startswith('<rje_seqlist')
             if newseqlist:
-                seqdic = seqlist.makeSeqNameDic('max')
+                #i# This newseqlist object should correspond to the BLAST database
+                if not seqlist.dict['SeqDict']: seqlist.makeSeqNameDic('max',warnings=False)
+                seqdic = seqlist.seqNameDic()
                 seqlist.setStr({'BLAST+ Path': self.getStr('BLAST+ Path')})
-            else: seqdic = seqlist.seqNameDic(proglog=False)
+            else: seqdic = seqlist.seqNameDic(proglog=self.debugging())
             hitseq = {}; hx = 0; hitseqlist = []
             if not hitlist: hitlist = self.queryHits(query)
             for hit in hitlist:
                 hitseq[hit] = None
                 if seqdic.has_key(hit):
+                    self.bugPrint('From dict: {0}'.format(hit))
                     hitseq[hit] = seqdic[hit]; hitseqlist.append(seqdic[hit])
                     hx += 1
                 else:
+                    self.bugPrint('From blastDBCmd: {0}'.format(hit))
                     newseq = seqlist.seqFromBlastDBCmd(hit,self.getStr('DBase'))
                     if newseq:
                         hitseq[hit] = newseq; hx += 1
@@ -1467,6 +1472,8 @@ class BLASTRun(rje_obj.RJE_Object):
                             self.verbose(2,4,'Seq %d retrieved from %s: %s.' % (len(hitseqlist),self.getStr('DBase'),sname),1)
                         else: self.verbose(2,4,'Seq %d retrieved from %s: %s.' % (seqlist.seqNum(),self.getStr('DBase'),newseq.shortName()),1)
                     else: self.errorLog('No Seq retrieval for %s using BLASTRun.hitToSeq().' % hit,printerror=False)
+            if newseqlist: self.bugPrint('{0} seqs from {1}'.format(len(hitseqlist),seqlist))
+            else: self.bugPrint('{0} seqs from {1}'.format(len(seqlist.seq[-hx:]),seqlist))
             if hx and hitseq and filename and filename.lower() != 'none':
                 if newseqlist: seqlist.saveSeq(seqs=hitseqlist,seqfile=filename,append=appendfile)
                 else: seqlist.saveFasta(seqs=seqlist.seq[-hx:],seqfile=filename,append=appendfile)

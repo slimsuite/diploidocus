@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v0.17.0
+Diploidocus v1.1.1
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -354,6 +354,8 @@ Once all the different elements have been run, Diploidocus compiles results per 
 * `*.telomeres.tdt`: Telomere prediction results
     - `Tel5` = Whether a 5' telomere is predicted
     - `Tel3` = Whether a 5' telomere is predicted
+    - `Tel5Len` = Length in window chunks of 5' telomere
+    - `Tel3Len` = Length in window chunks of 3' telomere
     - `TelPerc` = Percentage of sequence predicted to telomeres. (Crude calculation.)
 * `full_table_*.busco.tsv`
     - `Complete` = Number of BUSCO Complete genes in sequence
