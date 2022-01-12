@@ -19,11 +19,11 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.1.1
-Last Edit:    06/01/22
+Version:      1.1.2
+Last Edit:    12/01/22
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
-Tidy Citation:  Chen SH et al. & Edwards RJ (preprint), bioRxiv 2021.06.02.444084; [doi: 10.1101/2021.06.02.444084]
+Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
 GitHub:       https://github.com/slimsuite/diploidocus
 Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
 
@@ -520,6 +520,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.0.1 - Bug fixes for GFF checkpos.
     # 1.1.0 - Fixed TeloRev sequence for finding 3' telomeres. Add reporting of telomere lengths.
     # 1.1.1 - Fixed DepthSizer object bug for DipCycle.
+    # 1.1.2 - Updated Tidy citation to Mol Ecol Res paper.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -581,10 +582,12 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.1', 'January 2022', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.2', 'January 2022', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
-    comments = ['Citation: Chen SH et al. & Edwards RJ (preprint): bioRxiv 2021.06.02.444084 (doi: 10.1101/2021.06.02.444084)',
+    comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
+                'Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]',
+                'DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; (doi: 10.1101/2021.04.07.438753)',
                 'Please raise bugs or questions at https://github.com/slimsuite/diploidocus.',
                 'NOTE: telomere finding rules are based on https://github.com/JanaSperschneider/FindTelomeres',
                 rje_obj.zen()]
@@ -859,9 +862,28 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
 
         ## Citing Diploidocus
 
-        If using Diploidocus in a publication, please cite: Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]. Not
-        all of the Diploidocus functions were described in this paper. Future versions of the documentation will include
-        a more detailed breakdown of appropriate citations. If in doubt, please contact the author.
+        The main Diploidocus tidy mode has been published as part of the Waratah genome paper:
+
+        > Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (2022).
+        Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+        linked-reads and Hi-C. Molecular Ecology Resources doi: [10.1111/1755-0998.13574](https://doi.org/10.1111/1755-0998.13574)
+
+        Note that the genome size prediction and copy number estimation modes are now available through [DepthSizer](https://github.com/slimsuite/depthsizer)
+        and [DepthKopy](https://github.com/slimsuite/depthkopy), which should cite the same article.
+        Please contact the author if you have trouble getting the full text version, or read the bioRxiv preprint version:
+
+        > Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+        linked-reads and Hi-C. [bioRxiv 2021.06.02.444084](https://www.biorxiv.org/content/10.1101/2021.06.02.444084v2.full);
+        doi: 10.1101/2021.06.02.444084.
+
+        If using the simplified Nala version of the tidy algorithm, please cite: Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677].
+
+        If using the 10x genomics non-redundancy pipeline, cite the Starling genome paper:
+
+        > Stuart KC*, Edwards RJ*, Cheng Y, Warren WC, Burt DW, Sherwin WB, Hofmeister NR, Werner SJ, Ball GF, Bateson M,
+        Brandley MC, Buchanan KL, Cassey P, Clayton DF, De Meyer T, Meddle SL & Rollins LA (preprint):
+        Transcript- and annotation-guided genome assembly of the European starling.
+        [bioRxiv 2021.04.07.438753](https://www.biorxiv.org/content/10.1101/2021.04.07.438753v1.full); doi: 10.1101/2021.04.07.438753. [*Joint first authors]
 
         ---
 

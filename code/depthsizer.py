@@ -19,9 +19,9 @@
 """
 Module:       depthsizer
 Description:  Read-depth based genome size prediction
-Version:      1.6.0
-Last Edit:    19/11/21
-Citation:     Chen SH et al. & Edwards RJ (preprint): bioRxiv 2021.06.02.444084 (doi: 10.1101/2021.06.02.444084)
+Version:      1.6.2
+Last Edit:    13/01/22
+Citation:     Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -123,6 +123,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     #       - MapBases = Use map bases, not covbases for min read volumne
     #       - MapRatio = Use mapbases adjusted by indelratio
     # 1.6.0 - Disable legacy mode using Diploidocus.
+    # 1.6.1 - Bug fixes to underlying R script and related core codebase.
+    # 1.6.2 - Updated citation to Mol Ecol Res paper.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -133,7 +135,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Create initial working version of program.
     # [N] : Add REST outputs to restSetup() and restOutputOrder()
     # [Y] : Add to SLiMSuite or SeqSuite.
-    # [ ] : Update docstring.
+    # [Y] : Update docstring.
     # [Y] : Work out why the indel ratio is not working properly.
     # [Y] : Rationalise the log outputs etc.
     # [Y] : Add Lower output based solely on mapped reads (+/- Adjust)
@@ -142,10 +144,10 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('DepthSizer', '1.6.0', 'November 2021', '2021')
+    (program, version, last_edit, copy_right) = ('DepthSizer', '1.6.2', 'January 2022', '2021')
     description = 'Read-depth based genome size prediction'
     author = 'Dr Richard J. Edwards.'
-    comments = ['Citation: Chen SH et al. & Edwards RJ (preprint): bioRxiv 2021.06.02.444084 (doi: 10.1101/2021.06.02.444084)',
+    comments = ['Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
                 'Please raise bugs or questions at https://github.com/slimsuite/depthsizer.',rje_obj.zen()]
     return rje.Info(program,version,last_edit,description,author,time.time(),copy_right,comments)
 #########################################################################################################################
@@ -322,10 +324,15 @@ class DepthSizer(rje_readcore.ReadCore):
 
         ## Citation
 
-        DepthSizer is still under review as part of the Waratah genome paper. For now, please cite the preprint:
+        DepthSizer has been published as part of the Waratah genome paper:
 
-        > Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (preprint):
+        > Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (2022).
         Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+        linked-reads and Hi-C. Molecular Ecology Resources doi: [10.1111/1755-0998.13574](https://doi.org/10.1111/1755-0998.13574)
+
+        Please contact the author if you have trouble getting the full text version, or read the bioRxiv preprint version:
+
+        > Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
         linked-reads and Hi-C. [bioRxiv 2021.06.02.444084](https://www.biorxiv.org/content/10.1101/2021.06.02.444084v2.full);
         doi: 10.1101/2021.06.02.444084.
 

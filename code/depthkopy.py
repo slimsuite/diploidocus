@@ -19,9 +19,9 @@
 """
 Module:       DepthKopy
 Description:  Single-copy read-depth and kmer based copy number analysis
-Version:      1.0.1
+Version:      1.0.2
 Last Edit:    13/12/21
-Citation:     Chen SH et al. & Edwards RJ (preprint): bioRxiv 2021.06.02.444084 (doi: 10.1101/2021.06.02.444084)
+Citation:     Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -117,6 +117,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.4.0 - Updated to use the seqin file to restrict sequences under analysis from regfile/BUSCO etc. Updated docs.
     # 1.0.0 - Added over-ride of BUSCO calculation when scdepth=X is provided. First true release. Added to SeqSuite.
     # 1.0.1 - Added passing on of gfftype=LIST option to Rscript.
+    # 1.0.2 - Updated citation to Mol Ecol Res paper.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -137,10 +138,10 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('DepthKopy', '1.0.1', 'December 2021', '2021')
+    (program, version, last_edit, copy_right) = ('DepthKopy', '1.0.2', 'January 2022', '2021')
     description = 'Single-copy read-depth based copy number analysis'
     author = 'Dr Richard J. Edwards.'
-    comments = ['Citation: Chen SH et al. & Edwards RJ (preprint): bioRxiv 2021.06.02.444084 (doi: 10.1101/2021.06.02.444084)',
+    comments = ['Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
                 'Please raise bugs or questions at https://github.com/slimsuite/depthkopy.',rje_obj.zen()]
     return rje.Info(program,version,last_edit,description,author,time.time(),copy_right,comments)
 #########################################################################################################################
@@ -331,10 +332,15 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
 
         ## Citation
 
-        DepthKopy is still under review as part of the Waratah genome paper. For now, please cite the preprint:
+        DepthKopy has been published as part of the Waratah genome paper:
 
-        > Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (preprint):
+        > Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (2022).
         Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+        linked-reads and Hi-C. Molecular Ecology Resources doi: [10.1111/1755-0998.13574](https://doi.org/10.1111/1755-0998.13574)
+
+        Please contact the author if you have trouble getting the full text version, or read the bioRxiv preprint version:
+
+        > Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
         linked-reads and Hi-C. [bioRxiv 2021.06.02.444084](https://www.biorxiv.org/content/10.1101/2021.06.02.444084v2.full);
         doi: 10.1101/2021.06.02.444084.
 

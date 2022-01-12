@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v1.1.1
+Diploidocus v1.1.2
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -49,9 +49,28 @@ Diploidocus is available as part of SLiMSuite, or via a standalone GitHub repo a
 
 ## Citing Diploidocus
 
-If using Diploidocus in a publication, please cite: Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]. Not
-all of the Diploidocus functions were described in this paper. Future versions of the documentation will include
-a more detailed breakdown of appropriate citations. If in doubt, please contact the author.
+The main Diploidocus tidy mode has been published as part of the Waratah genome paper:
+
+> Chen SH, Rossetto M, van der Merwe M, Lu-Irving P, Yap JS, Sauquet H, Bourke G, Amos TG, Bragg JG & Edwards RJ (2022).
+Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+linked-reads and Hi-C. Molecular Ecology Resources doi: [10.1111/1755-0998.13574](https://doi.org/10.1111/1755-0998.13574)
+
+Note that the genome size prediction and copy number estimation modes are now available through [DepthSizer](https://github.com/slimsuite/depthsizer)
+and [DepthKopy](https://github.com/slimsuite/depthkopy), which should cite the same article.
+Please contact the author if you have trouble getting the full text version, or read the bioRxiv preprint version:
+
+> Chromosome-level de novo genome assembly of Telopea speciosissima (New South Wales waratah) using long-reads,
+linked-reads and Hi-C. [bioRxiv 2021.06.02.444084](https://www.biorxiv.org/content/10.1101/2021.06.02.444084v2.full);
+doi: 10.1101/2021.06.02.444084.
+
+If using the simplified Nala version of the tidy algorithm, please cite: Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677].
+
+If using the 10x genomics non-redundancy pipeline, cite the Starling genome paper:
+
+> Stuart KC*, Edwards RJ*, Cheng Y, Warren WC, Burt DW, Sherwin WB, Hofmeister NR, Werner SJ, Ball GF, Bateson M,
+Brandley MC, Buchanan KL, Cassey P, Clayton DF, De Meyer T, Meddle SL & Rollins LA (preprint):
+Transcript- and annotation-guided genome assembly of the European starling.
+[bioRxiv 2021.04.07.438753](https://www.biorxiv.org/content/10.1101/2021.04.07.438753v1.full); doi: 10.1101/2021.04.07.438753. [*Joint first authors]
 
 ---
 
