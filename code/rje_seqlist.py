@@ -650,6 +650,7 @@ class SeqList(rje_obj.RJE_Object):
             #!# This cannot work for tuples #!# self.obj['CurrSeq'] = self.getSeq(self.obj['Current'])
             return self.getSeq(self.obj['Current']) #self.obj['CurrSeq']
         else: return None
+    def reset(self): self.obj['Current'] = None     # Can run this before a while nextSeq() loop.
 #########################################################################################################################
     def nextSeq(self):  ### Returns next sequence in list and updates current
         try:

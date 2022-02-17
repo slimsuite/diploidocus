@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.1.2
-Last Edit:    12/01/22
+Version:      1.1.3
+Last Edit:    17/02/22
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -456,6 +456,7 @@ Commandline:
 ### SECTION I: GENERAL SETUP & PROGRAM DETAILS                                                                          #
 #########################################################################################################################
 import glob, math, os, re, string, subprocess, sys, time, shutil
+mypath = os.path.abspath(os.path.dirname(os.path.realpath(__file__))) + os.path.sep
 slimsuitepath = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../')) + os.path.sep
 sys.path.append(os.path.join(slimsuitepath,'libraries/'))
 sys.path.append(os.path.join(slimsuitepath,'tools/'))
@@ -521,6 +522,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.1.0 - Fixed TeloRev sequence for finding 3' telomeres. Add reporting of telomere lengths.
     # 1.1.1 - Fixed DepthSizer object bug for DipCycle.
     # 1.1.2 - Updated Tidy citation to Mol Ecol Res paper.
+    # 1.1.3 - Fixed Rscript finding for standalone repo.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -582,7 +584,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.2', 'January 2022', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.3', 'February 2022', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -3041,6 +3043,10 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             self.errorLog('Diploidocus.vecPurge() error'); raise
         return None
 #########################################################################################################################
+    def rDir(self,rscript='depthcopy.R'):
+        if rje.exists(mypath+rscript): return mypath
+        else: return '%slibraries/r/' % slimsuitepath
+#########################################################################################################################
     #!# regcnv has been replaced with DepthKopy
     #!# should drop regcnv=T from regcheck mode until tidier
     def regCheck(self): ### Performs read check and/or CNV analysis of supplied region
@@ -3105,7 +3111,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             db = self.db()
             basefile = self.baseFile(strip_path=True)
             depmethod = 'mpileup'
-            rdir = '%slibraries/r/' % slimsuitepath
+            rdir = self.rDir()
             if self.getBool('QuickDepth'): depmethod = 'depth'
             ## ~ [1a] ~ Check input ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #!# Add feature to recognise and change first field if not given #!#
@@ -3880,7 +3886,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             if self.getBool('DepDensity'):
                 #!# Add check of Rscript #!#
                 depfile = '{0}.dephist.tdt'.format(self.baseFile())
-                rdir = '%slibraries/r/' % slimsuitepath
+                rdir = self.rDir()
                 try:
                     rcmd = 'Rscript {0}depmode.R {1} {2}'.format(rdir, depfile, depmethod)
                     self.printLog('#RCMD',rcmd)
@@ -4085,7 +4091,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                         depcounts[X] += n
                     bentry['MeanX'] = (1.0 * bambp) / seqbp
                     try:
-                        rdir = '%slibraries/r/' % slimsuitepath
+                        rdir = self.rDir()
                         rcmd = 'Rscript {0}depmode.R {1} pure'.format(rdir, tmpfile)
                         bentry['DensX'] = float(rje.chomp(os.popen(rcmd).readlines()[0]))
                     except:
@@ -4124,7 +4130,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             if self.getBool('DepDensity'):
                 #!# Add check of Rscript #!#
                 depfile = '{0}.dephist.tdt'.format(self.baseFile())
-                rdir = '%slibraries/r/' % slimsuitepath
+                rdir = self.rDir()
                 try:
                     rcmd = 'Rscript {0}depmode.R {1} {2}'.format(rdir, depfile, depmethod)
                     self.printLog('#RCMD',rcmd)
