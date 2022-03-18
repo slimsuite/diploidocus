@@ -73,7 +73,7 @@ Commandline:
     busco=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
     quickdepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     depfile=FILE    : Precomputed depth file (*.fastdep or *.fastmp) to use [None]
-    homfile=FILE    : Precomputed homology depth file (*.fasthom) to use [None]
+    homfile=FILE    : Precomputed homology depth file (*.fasthom) to use (false=off) [None]
     regfile=CDICT   : List of Name:Files (or single FILE) of SeqName, Start, End positions (or GFF) for CN checking [None]
     checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [SeqName,Start,End]
     gfftype=LIST    : Optional feature types to use if performing regcheck on GFF file (e.g. gene) ['gene']

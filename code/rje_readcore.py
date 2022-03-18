@@ -725,7 +725,7 @@ class ReadCore(rje_obj.RJE_Object):
             logline = self.loggedSysCall(bamsort,maplog,append=True)
             if not self.checkBAMFile(bamfile, makeindex=False, needed=True): raise IOError('Problem with sorted BAM file')
             os.unlink('{0}.tmp.bam'.format(prefix))
-            if self.debugging: self.printLog('#SAM','Keeping "{0}.sam" (debug=T): delete later'.format(prefix))
+            if self.debugging(): self.printLog('#SAM','Keeping "{0}.sam" (debug=T): delete later'.format(prefix))
             else:
                 os.unlink('{0}.sam'.format(prefix))
             return bamfile

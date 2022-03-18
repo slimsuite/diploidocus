@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.48.0
-Last Edit:    19/11/21
+Version:      1.48.1
+Last Edit:    10/03/22
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -147,7 +147,7 @@ Commandline:
     fracstep=INT    : Step size for NXX and LXX fractions (1/2/5/10/25) [5]
     lenstats=LIST   : List of min sequence lengths to output stats for (raw=T) []
     gapstats=T/F    : Output a summary of assembly gap sizes and positions [False]
-    contigs=T/F     : Output a table of contigs during summarise (sets gapstats=T) [False]
+    contigs=T/F     : Output a table of contigs during summarise (sets gapstats=T) [True]
     mingap=INT      : Minimum length of a stretch of N bases to count as a gap (0=None unless gapstats=T) [10]
     gapfix=X:Y(,X:Y): List of gap lengths X to convert to different lengths Y []
     maker=T/F       : Whether to extract MAKER2 statistics (AED, eAED, QI) from sequence names [False]
@@ -257,6 +257,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.46.2 - Added orfgaps=T/F. Partial implementation of GFF output for dna2orfs reformatting. Need completion.
     # 1.47.0 - Added reformat=degap option for removing alignment gaps from input sequences.
     # 1.48.0 - Output a table of contigs during summarise (sets gapstats=T) [False]. Removed some dependencies.
+    # 1.48.1 - Switched contigs=TRUE as the default.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -284,7 +285,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.48.0', 'November 2021', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.48.1', 'March 2022', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -333,7 +334,7 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
     except KeyboardInterrupt: sys.exit()
     except: rje.printf('Problem during initial setup.'); raise
 #########################################################################################################################
-file_ext = {'fasta':'fas','short':'fas','acc':'fas','acclist':'acc','speclist':'txt',
+file_ext = {'fasta':'fas','short':'fas','acc':'fas','accdesc':'fas','acclist':'acc','speclist':'txt',
             'index':'fas',  # This does not seem to work? (At least for REST output.)
             'dna2prot':'fas','dna2orfs':'fas','peptides':'txt','qregion':'fas','region':'fas'}
 #########################################################################################################################
@@ -377,7 +378,7 @@ class SeqList(rje_obj.RJE_Object):
     - AutoFilter = Whether to automatically apply sequence filtering. [True]
     - AutoLoad = Whether to automatically load sequences upon initialisation. [True]
     - Concatenate = Concatenate sequences into single output sequence named after file [False]
-    - Contigs = Output a table of contigs during summarise (sets gapstats=T) [False]
+    - Contigs = Output a table of contigs during summarise (sets gapstats=T) [True]
     - DNA = Alternative option to indicate dealing with nucleotide sequences [False]
     - DupErr = Whether identification of duplicate sequence names should raise an error [True]
     - Edit = Enter sequence edit mode upon loading (will switch seqmode=list) [False]
@@ -456,7 +457,7 @@ class SeqList(rje_obj.RJE_Object):
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True)
         self.setStr({'SeqMode':'file','ReFormat':'None','Region':'1,-1','TileName':'pos','TmpDir':rje.makePath('./tmp/')})
-        self.setBool({'AutoFilter':True,'AutoLoad':True,'Contigs':False,'DupErr':True,'GapStats':False,'GeneSpAcc':True,'KeepName':True,
+        self.setBool({'AutoFilter':True,'AutoLoad':True,'Contigs':True,'DupErr':True,'GapStats':False,'GeneSpAcc':True,'KeepName':True,
                       'ORFMet':True,'Raw':False,'SeqIndex':True,'GrepNR':True,'RevCompNR':True,'TwoPass':True,'ORFGaps':True})
         self.setInt({'FracStep':5,'MinGap':10,'MinORF':-1,'RFTran':1,'TerMinORF':-1,'Tile':0,'TileStep':0})
         self.setNum({'MinTile':0.1})

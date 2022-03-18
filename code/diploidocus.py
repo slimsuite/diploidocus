@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.1.3
-Last Edit:    17/02/22
+Version:      1.1.4
+Last Edit:    18/03/22
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -523,6 +523,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.1.1 - Fixed DepthSizer object bug for DipCycle.
     # 1.1.2 - Updated Tidy citation to Mol Ecol Res paper.
     # 1.1.3 - Fixed Rscript finding for standalone repo.
+    # 1.1.4 - Minor bug fixes for read mapping and depth analyses.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -584,7 +585,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.3', 'February 2022', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.4', 'March 2022', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',

@@ -1,7 +1,7 @@
 ########################################################
 ### DepthCopy SC depth functions               ~~~~~ ###
-### VERSION: 1.0.0                             ~~~~~ ###
-### LAST EDIT: 03/02/22                        ~~~~~ ###
+### VERSION: 1.0.2                             ~~~~~ ###
+### LAST EDIT: 07/03/22                        ~~~~~ ###
 ### AUTHORS: Richard Edwards 2021              ~~~~~ ###
 ### CONTACT: richard.edwards@unsw.edu.au       ~~~~~ ###
 ########################################################
@@ -30,7 +30,9 @@
 # v0.8.1 : Fixed bug with empty lists crashing script.
 # v0.9.0 : Fixed issues of reverse strand regfile data (Start > End) and added basefile to regfile output.
 # v1.0.0 : Switched to v1 in-line with published DepthKopy. Added setup for future parallelisation with clusterApply.
-version = "v1.0.0"
+# v1.0.1 : Fixed odd tidyverse filter bug.
+# v1.0.2 : Fixed more odd tidyverse filter bugs.
+version = "v1.0.2"
 
 ####################################### ::: USAGE ::: ############################################
 # Example use:
@@ -219,7 +221,8 @@ buscoTable <- function(filename){
   buscodb <- buscodb[buscodb$Status == "Complete",]
   logWrite(paste('#BUSCO',nrow(buscodb),"Complete BUSCO genes loaded from",filename))
   if(length(settings$seqnames) > 0){
-    buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
+    #buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
+    buscodb <- buscodb[buscodb$Contig %in% settings$seqnames,]
     logWrite(paste('#BUSCO',nrow(buscodb),"Complete BUSCO genes following filtering to",length(settings$seqnames),"sequences."))
   }
   return(buscodb)
@@ -239,7 +242,8 @@ buscoDupTable <- function(filename){
   #logWrite(paste(nrow(buscodb),"Duplicated BUSCO genes loaded from",filename))
   logWrite(paste('#BUSCO',nrow(buscodb),"Duplicated BUSCO genes loaded from",filename))
   if(length(settings$seqnames) > 0){
-    buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
+    #buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
+    buscodb <- buscodb[buscodb$Contig %in% settings$seqnames,]
     logWrite(paste('#BUSCO',nrow(buscodb),"Duplicated BUSCO genes following filtering to",length(settings$seqnames),"sequences."))
   }
   return(buscodb)
@@ -284,7 +288,8 @@ gffTable <- function(filename,gfftype="gene"){
   logWrite(paste('#GFF',nrow(gffdb),"GFF features loaded from",filename))
   colnames(gffdb) = c('SeqName', 'Source', 'FType', 'Start', 'End', 'Score', 'Strand', 'Phase', 'Attributes')
   if(! "*" %in% gfftype){
-    gffdb = gffdb %>% filter(FType %in% gfftype)
+    #gffdb = gffdb %>% filter(FType %in% gfftype)
+    gffdb = gffdb[gffdb$FType %in% gfftype,]
   }
   logWrite(paste('#GFF',nrow(gffdb),"GFF features retained post-filtering by gfftype:",paste(gfftype,collapse=", ")))
   if(nrow(gffdb)<1){
@@ -298,7 +303,8 @@ gffTable <- function(filename,gfftype="gene"){
   #logWrite(paste(nrow(gffdb),"regions loaded from",filename))
   logWrite(paste('#GFF',nrow(gffdb),"GFF filtered regions retained from",filename))
   if(length(settings$seqnames) > 0){
-    gffdb <- gffdb %>% filter(SeqName %in% settings$seqnames)
+    #gffdb <- gffdb %>% filter(SeqName %in% settings$seqnames)
+    gffdb <- gffdb[gffdb$SeqName %in% settings$seqnames,]
     logWrite(paste('#GFF',nrow(gffdb),"GFF regions following filtering to",length(settings$seqnames),"sequences."))
   }
   return(gffdb)
