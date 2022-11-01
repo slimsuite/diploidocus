@@ -19,8 +19,8 @@
 """
 Module:       rje_readcore
 Description:  Read mapping and analysis core module
-Version:      0.8.0
-Last Edit:    29/01/22
+Version:      0.8.1
+Last Edit:    27/06/22
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -75,6 +75,7 @@ sys.path.append(os.path.join(slimsuitepath,'libraries/'))
 sys.path.append(os.path.join(slimsuitepath,'tools/'))
 ### User modules - remember to add *.__doc__ to cmdHelp() below ###
 import rje, rje_db, rje_forker, rje_obj, rje_seqlist
+import slimfarmer
 #########################################################################################################################
 def history():  ### Program History - only a method for PythonWin collapsing! ###
     '''
@@ -95,6 +96,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.7.0 - Added passing on of gfftype=LIST option to Rscript.
     # 0.7.1 - Fixed readtype recycle bug.
     # 0.8.0 - Added bamcsi=T/F : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
+    # 0.8.1 - Made reghead=LIST a synonym for checkfields=LIST.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -113,7 +115,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('ReadMap', '0.8.0', 'January 2022', '2021')
+    (program, version, last_edit, copy_right) = ('ReadMap', '0.8.1', 'June 2022', '2021')
     description = 'Read mapping analysis module'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -273,6 +275,7 @@ class ReadCore(rje_obj.RJE_Object):
         self._cmdReadList(cmd,'glist',['Reads'])
         self._cmdReadList(cmd,'list',['CheckFields','GFFType','ReadType'])
         self._cmdRead(cmd,'int','Adjust','depadjust')   # Integers
+        self._cmdRead(cmd,'list','CheckFields','reghead')   # List
         self._cmdRead(cmd,type='str',att='RegFile',arg='regcheck')  # No need for arg if arg = att.lower()
         self._cmdRead(cmd,type='list',att='CheckFields',arg='reghead')  # No need for arg if arg = att.lower()
 #########################################################################################################################
@@ -574,7 +577,7 @@ class ReadCore(rje_obj.RJE_Object):
                 raise IOError('BUSCO file not given (busco=FILE)')
             ### ~ [3] Check RegFile ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if self.getStrLC('RegFile'):
-                regfilename = string.split(string.split(self.getStr('RegFile'),',')[0],':')[-1]
+                regfilename = rje.split(rje.split(self.getStr('RegFile'),',')[0],':')[-1]
                 rje.checkForFiles([regfilename],basename='',log=self.log,ioerror=True)
                 ## ~ [3a] Check Fields ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
                 if regfilename.endswith('.gff') or regfilename.endswith('.gff3'):
@@ -712,7 +715,7 @@ class ReadCore(rje_obj.RJE_Object):
             self.printLog('#BAM', 'SAM to BAM conversion')
             try:
                 sam2bam = 'samtools view -bo {0}.tmp.bam -@ {1} -S {2}.sam'.format(prefix,self.threads()-1,prefix)
-                logline = self.loggedSysCall(sam2bam, maplog, append=True, nologline='No stdout from sam2bam')
+                logline = self.loggedSysCall(sam2bam, maplog, append=True, nologline='No stdout from sam2bam',slimfarmer=slimfarmer)
                 if not self.checkBAMFile(tmpfile,makeindex=False,needed=True): raise IOError('Problem with temp BAM file')
             except:
                 self.printLog('#BAM','Converting SAM to BAM. Using a single thread due to missing data.')
@@ -722,7 +725,7 @@ class ReadCore(rje_obj.RJE_Object):
             ## ~ [2c] Sorting BAM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             self.printLog('#BAM','Sorting BAM file.')
             bamsort = 'samtools sort -@ {0} -o {1}.bam -m 6G {2}.tmp.bam'.format(self.threads()-1,prefix,prefix)
-            logline = self.loggedSysCall(bamsort,maplog,append=True)
+            logline = self.loggedSysCall(bamsort,maplog,append=True,slimfarmer=slimfarmer)
             if not self.checkBAMFile(bamfile, makeindex=False, needed=True): raise IOError('Problem with sorted BAM file')
             os.unlink('{0}.tmp.bam'.format(prefix))
             if self.debugging(): self.printLog('#SAM','Keeping "{0}.sam" (debug=T): delete later'.format(prefix))
@@ -819,7 +822,7 @@ class ReadCore(rje_obj.RJE_Object):
                     runmap = False
                     mapfile = bamfile
                 if runmap:
-                    logline = self.loggedSysCall(mapcmd,maplog,append=True)
+                    logline = self.loggedSysCall(mapcmd,maplog,append=True,slimfarmer=slimfarmer)
                 else:
                     self.printLog('#MAP','Will use existing file "{0}" (force=F).'.format(mapfile))
                 if not os.path.getsize(mapfile): raise IOError('{0} not generated correctly'.format(mapfile))

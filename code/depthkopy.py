@@ -19,8 +19,8 @@
 """
 Module:       DepthKopy
 Description:  Single-copy read-depth and kmer based copy number analysis
-Version:      1.0.2
-Last Edit:    13/12/21
+Version:      1.0.5
+Last Edit:    27/06/22
 Citation:     Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
@@ -75,7 +75,7 @@ Commandline:
     depfile=FILE    : Precomputed depth file (*.fastdep or *.fastmp) to use [None]
     homfile=FILE    : Precomputed homology depth file (*.fasthom) to use (false=off) [None]
     regfile=CDICT   : List of Name:Files (or single FILE) of SeqName, Start, End positions (or GFF) for CN checking [None]
-    checkfields=LIST: Fields in checkpos file to give Locus, Start and End for checking [SeqName,Start,End]
+    reghead=LIST    : Fields in checkpos file to give Locus, Start and End for checking (also checkfields=LIST) [SeqName,Start,End]
     gfftype=LIST    : Optional feature types to use if performing regcheck on GFF file (e.g. gene) ['gene']
     winsize=INT     : Generate additional window-based depth and CN profiles of INT bp (0 to switch off) [100000]
     winstep=NUM     : Generate window every NUM bp (or fraction of winsize=INT if <=1) [1]
@@ -118,6 +118,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.0.0 - Added over-ride of BUSCO calculation when scdepth=X is provided. First true release. Added to SeqSuite.
     # 1.0.1 - Added passing on of gfftype=LIST option to Rscript.
     # 1.0.2 - Updated citation to Mol Ecol Res paper.
+    # 1.0.3 : Fixed problem with only a single density point.
+    # 1.0.4 : Fixed bug with missing BUSCOs.
+    # 1.0.5 : Fixed problem with reghead and updated checkfields to use reghead=LIST too.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -138,7 +141,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('DepthKopy', '1.0.2', 'January 2022', '2021')
+    (program, version, last_edit, copy_right) = ('DepthKopy', '1.0.5', 'June 2022', '2021')
     description = 'Single-copy read-depth based copy number analysis'
     author = 'Dr Richard J. Edwards.'
     comments = ['Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',

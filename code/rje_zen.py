@@ -226,7 +226,7 @@ class Zen(rje.RJE_Object):
             ### ~ Tidy, join and return Zen as string ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             while '' in zen: zen.remove('')
             ## Try to improve by removing repetition ##
-            zen = rje.jstring.join(zen)
+            zen = rje.stringj.join(zen)
             if mytype not in ['D']:
                 wordlist = []
                 for word in zen.split():
@@ -236,7 +236,7 @@ class Zen(rje.RJE_Object):
             for vowel in 'aeiou':
                 zen = zen.replace(' a %s' % vowel,' an %s' % vowel)
                 if zen.find('A %s' % vowel) == 0: zen = 'An %s' % zen[2:]
-            return rje.jstring.join(zen.split())
+            return rje.stringj.join(zen.split())
         except: self.log.errorLog('Bad vibes from Zen.wisdom()')
 #########################################################################################################################
     ### <3> ### Random Wisdom Methods                                                                                   #
@@ -345,7 +345,7 @@ class Zen(rje.RJE_Object):
             nlist = ['misery','happiness','poverty','wisdom','enlightenment','zen','dreams','passion','lunacy','plenty',
                      'alternative facts','truth','ultimate truth','knowledge','protection','immunity',
                      'death','disease','discovery','Chaos','religion','peril','philosophy','the Soul','debuggery','youth']
-        if ztype == 'Z': return rje.jstring.join([rje.randomList(['A','The'])[0].lower(),rje.randomList([self._adjective('A'),self._adverb('A'),''])[0], self._noun('A')])
+        if ztype == 'Z': return rje.stringj.join([rje.randomList(['A','The'])[0].lower(),rje.randomList([self._adjective('A'),self._adverb('A'),''])[0], self._noun('A')])
         if ztype == 'of' or (ztype in ['A','B'] and random.random() < 0.2):
             nlist = nlist + ['shroom','pie','wine','gravy','egg','chocolate','cheese','conspiracy theory',
                              'banana','stool','horn','custard','drug',
@@ -353,7 +353,7 @@ class Zen(rje.RJE_Object):
                              'kebab','fruit','falafel','teapot','transcriptome','vase','vaccine',
                              'coffee','river','cake','cookie','sponge','abundance','repository','collection','library'] * 2
             nlist += ['cgi-bin']
-            return rje.jstring.join([rje.randomList(nlist)[0],'of',self._noun('C')])
+            return rje.stringj.join([rje.randomList(nlist)[0],'of',self._noun('C')])
         return rje.randomList(nlist)[0]
 #########################################################################################################################
     def _linker(self,ztype='A'):    ### Returns a random linker

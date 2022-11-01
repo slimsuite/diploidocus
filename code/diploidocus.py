@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.1.4
-Last Edit:    18/03/22
+Version:      1.3.1
+Last Edit:    11/05/22
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -135,11 +135,25 @@ Run Modes:
 
     ---
     ### ~ Running Purge_haplotigs using BUSCO-guided cutoffs [runmode=purgehap] ~ ###
-    _See main docs_
+
+    This runs just the Purge_haplotigs part of the main Diploidocus workflow. _See main docs for details._
 
     ---
     ### ~ Telomere finding [runmode=telomere] ~ ###
-    _Details coming soon!_
+
+    Diploidocus performs a regex-based search for Telomeres, based on [FindTelomeres](https://github.com/JanaSperschneider/FindTelomeres).
+    By default, this looks for a canonical telomere motif of TTAGGG/CCCTAA, allowing for some variation. (See main docs
+    to change telomere sequence.) For each sequence, Diploidocus trims off any trailing Ns and then searches for
+    telomere-like sequences at sequence ends. For each sequence, the presence/absence and length of trimming are reported
+    for the 5' end (tel5 and trim5) and 3' end (tel3 and trim3), along with the total percentage telomeric sequence (TelPerc).
+
+    By default, Diploidocus searches for a forward telomere regex sequence of C{2,4}T{1,2}A{1,3} at the 5' end, and a
+    reverse sequence at the 3' end of T{1,3}A{1,2}G{2,4}. These can be set with telofwd=X and telorev=X. Telomeres are
+    marked if at least 50% (teloperc=PERC) of the terminal 50 bp (telosize=INT) matches the appropriate regex. If either
+    end contains a telomere, the total percentage of the sequence matching either regex is calculated as TelPerc. Note
+    that this number neither restricts matches to the termini, not includes sequences within predicted telomeres that do
+    not match the regex. By default, only sequences with telomeres are output to the `*.telomeres.tdt` output, but
+    switching `telonull=T` will output all sequences.
 
     ---
     ### ~ Vector/contamination screening [runmode=vecscreen] ~ ###
@@ -391,6 +405,7 @@ Commandline:
     10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
     minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
     minlen=INT      : Minimum scaffold length to avoid low quality filter [500]
+    purgehap=X      : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
     phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
     phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
     phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -410,6 +425,7 @@ Commandline:
     telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
     telosize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
     teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
+    telonull=T/F    : Whether to output sequences without telomeres to telomere table [False]
     ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
     screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
@@ -464,6 +480,7 @@ sys.path.append(os.path.join(slimsuitepath,'tools/'))
 import rje, rje_db, rje_forker, rje_obj, rje_rmd, rje_seqlist, rje_sequence, rje_paf #, rje_genomics
 import rje_kat, rje_readcore, depthkopy, depthsizer
 import rje_blast_V2 as rje_blast
+import gablam
 import smrtscape
 import slimfarmer
 #########################################################################################################################
@@ -524,6 +541,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.1.2 - Updated Tidy citation to Mol Ecol Res paper.
     # 1.1.3 - Fixed Rscript finding for standalone repo.
     # 1.1.4 - Minor bug fixes for read mapping and depth analyses.
+    # 1.2.0 - Altered telomere output table to use SeqName not Name, for ChromSyn compatibility. Added telonull=T/F.
+    # 1.3.0 - Added Rscript replacement for purge_haplotigs purgehap=X : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
+    # 1.3.1 - Fixed purge_hap triggering bug.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -581,11 +601,16 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Update to Version 1.0.
     # [ ] : Added auto-detection of regcheck=FILE and setting correct run mode if needed.
     # [Y] : Check 3' recognition of Telomeres and telomere output positions.
+    # [ ] : Replace PURGE haplotigs with DepthKopy-inspired depth parsing and GABLAM
+    # [ ] : >> The two alignment scores that are calculated are:
+    #       max_match_coverage: This is the total % of alignments between the suspect contig and its two top hit contigs
+    #      (e.g. if it totally aligns to both the hit contigs then the max_match_coverage will be ~ 200 %). This is mostly depreciated, especially if you supply repeat annotations, however, it may be useful in identifying repeat-rich contigs.
+    #      NB. Not sure if this is actually right but becomes MaxHitCov = assumed to be summed coverage across all hits -> Sum local hits?
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.1.4', 'March 2022', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.3.1', 'May 2022', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -662,6 +687,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
     - PAF=FILE        : PAF file of reads mapped onto assembly [$BASEFILE.paf]
     - Parent1=FOFN    : File of file names for subreads fasta files on Parent 1. []
     - Parent2=FOFN    : File of file names for subreads fasta files on Parent 2. []
+    - PurgeHap=X      : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
     - PurgeMode=X     : Rules used for purgehap analysis (simple/complex/nala) [complex]
     - RegCheck=TDTFILE: File of SeqName, Start, End positions for read coverage checking [None]
     - RunMode=X       : Diploidocus run mode [insilico/sortnr/diphap/vecscreen]
@@ -688,6 +714,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - RegCNV=T/F      ; Whether to calculate mean depth and predicted CNV of regcheck regions based on SCdepth [True]
     - Summarise=T/F   : Whether to generate and output summary statistics sequence data before and after processing [True]
+    - TeloNull=T/F    : Whether to output sequences without telomeres to telomere table [False]
     - VecCheck=T/F    : Check coverage of filtered contaminant hits using reads=FILELIST data [False]
     - UseQSub=T/F     : Whether to use qsub to queue up system calls (dev only) [False]
     - ZeroAdjust=T/F  : Add zero coverage bases to purge_haplotigs LowPerc and adjust total [True]
@@ -752,8 +779,11 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['BAM','BUSCO','GenomeSize','MaskMode','PAF','Parent1','Parent2','PurgeMode','RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
-        self.boollist = ['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','Legacy','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim']
+        self.strlist = ['BAM','BUSCO','GenomeSize','MaskMode','PAF','Parent1','Parent2','PurgeHap','PurgeMode',
+                        'RegCheck','RunMode','ScreenDB','ScreenMode','SeqIn','SeqOut','DebugStr','SpanID','TeloFwd','TeloRev','TmpDir']
+        self.boollist = ['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','Legacy',
+                         'MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','TeloNull','UseQSub','VecCheck',
+                         'ZeroAdjust','10xTrim']
         self.intlist = ['DepTrim','GenomeSize','LenFilter','MaxCycle','MinGap','MinGapSpan','MinIDHit','MinLen','MinMedian','MinTrim','MinVecHit',
                         'QSubPPN','QSubVMem','QSubWall','MemPerThread','MinLocLen','PurgeCyc',
                         'PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim']
@@ -766,9 +796,9 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
         self._setReadCoreAttributes()   # See rje_readcore
         self._setKatAttributes()        # See rje_kat
-        self.setStr({'MaskMode':'partial','PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'T{1,3}A{1,2}G{2,4}','TmpDir':'./tmpdir/'})
+        self.setStr({'MaskMode':'partial','PurgeHap':'purgehap','PurgeMode':'complex','RunMode':'diploidocus','ScreenMode':'report','TeloFwd':'C{2,4}T{1,2}A{1,3}','TeloRev':'T{1,3}A{1,2}G{2,4}','TmpDir':'./tmpdir/'})
         self.setBool({'DepDensity':True,'Diploidify':False,'DocHTML':False,'IncludeGaps':False,'KeepNames':False,
-                      'Legacy':False,
+                      'Legacy':False,'TeloNull':False,
                       'PreTrim':False,'QuickDepth':False,'RegCNV':True,'Summarise':True,'UseQSub':False,'ZeroAdjust':True,'10xTrim':False})
         self.setInt({'DepTrim':0,'LenFilter':500,'MaxCycle':0,'MinMedian':3,'MinIDHit':27,'MinLen':500,'MinTrim':1000,'MinVecHit':50,
                      'QSubPPN':16,'QSubVMem':126,'QSubWall':12,'MemPerThread':6,'MinGapSpan':2,'MinLocLen':500,'PurgeCyc':2,
@@ -796,11 +826,11 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 self._katCmd(cmd)       # Set kat commands recognised.
                 ### Class Options (No need for arg if arg = att.lower()) ###
                 self._cmdRead(cmd,type='file',att='ScreenDB',arg='vecscreen')  # No need for arg if arg = att.lower()
-                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','MaskMode','PurgeMode','RunMode','ScreenMode','SpanID','TeloFwd','TeloRev'])   # Normal strings
+                self._cmdReadList(cmd,'str',['GenomeSize','DebugStr','MaskMode','PurgeHap','PurgeMode','RunMode','ScreenMode','SpanID','TeloFwd','TeloRev'])   # Normal strings
                 self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['BAM','PAF','Parent1','Parent2','RegCheck','ScreenDB','SeqIn','SeqOut','BUSCO'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
-                self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','Legacy','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
+                self._cmdReadList(cmd,'bool',['DepDensity','Diploidify','Diploidocus','DocHTML','IncludeGaps','KeepNames','Legacy','MapAdjust','PreTrim','QuickDepth','RegCNV','Summarise','TeloNull','UseQSub','VecCheck','ZeroAdjust','10xTrim'])  # True/False Booleans
                 self._cmdReadList(cmd,'int',['DepTrim','LenFilter','MaxCycle','MemPerThread','MinGap','MinGapSpan','MinIDHit','MinLocLen','MinLen','MinMedian','MinTrim','MinVecHit','PurgeCyc','QSubPPN','QSubVMem','QSubWall','PHLow','PHMid','PHHigh','ReadBP','SubForks','TeloSize','VecMask','VecTrim'])   # Integers
                 self._cmdReadList(cmd,'float',['eFDR','RQFilter','SCDepth']) # Floats
                 self._cmdReadList(cmd,'perc',['CheckCov','MinLocID','TeloPerc','VecPurge']) # Percentage
@@ -951,6 +981,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
         minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
         minlen=INT      : Minimum scaffold length to avoid low quality filter [500]
+        purgehap=X      : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
         phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
         phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
         phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -969,6 +1000,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
         telosize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
         teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
+        telonull=T/F    : Whether to output sequences without telomeres to telomere table [False]
         ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
         screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
@@ -1499,6 +1531,9 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         regex is calculated as `TelPerc`. Note that this number neither restricts matches to the termini, not includes
         sequences within predicted telomeres that do not match the regex.
 
+        By default, only sequences with telomeres are output to the `*.telomeres.tdt` output, but
+        switching `telonull=T` will output all sequences.
+
         ---
 
         ## Vector/contamination screening [runmode=vecscreen]
@@ -1834,7 +1869,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             elif self.getStrLC('RunMode') == 'vecscreen':
                 if self.getStr('ScreenMode') == 'purge': return self.vecPurge()
                 else: return self.vecScreen()
-            elif self.getStrLC('RunMode').startswith('telomere'): return self.findTelomeres()
+            elif self.getStrLC('RunMode').startswith('telomere'): return self.findTelomeres(keepnull=self.getBool('TeloNull'))
             elif self.getStrLC('RunMode') == 'diploidocus': return self.diploidocusHocusPocus()
             elif self.getStrLC('RunMode').startswith('purgehap'): return self.diploidocusHocusPocus()
             elif self.getStrLC('RunMode') in ['gensize','genomesize']:
@@ -2112,7 +2147,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             rmd = rje_rmd.Rmd(self.log,self.cmd_list)
             rtxt = rmd.rmdHead(title='%s Documentation' % prog,author='Richard J. Edwards',setup=True)
             #!# Replace this with documentation text?
-            rtxt += string.replace(self.run.__doc__,'\n        ','\n')
+            rtxt += rje.replace(self.run.__doc__,'\n        ','\n')
             rtxt += '\n\n<br>\n<small>&copy; 2019 Richard Edwards | richard.edwards@unsw.edu.au</small>\n'
             rmdfile = '%s.docs.Rmd' % self.baseFile()
             open(rmdfile,'w').write(rtxt)
@@ -2328,9 +2363,9 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 for seq in seqlist.seqs():
                     self.progLog('\r#OUT','Extracting subreads: %.2f%%' % (sx/sn)); sx += si
                     (name,sequence) = seqlist.getSeq(seq)
-                    try: [smrt,zmw,pos,rq] = string.split(string.replace(name,'/',' '))
+                    try: [smrt,zmw,pos,rq] = rje.split(rje.replace(name,'/',' '))
                     except:
-                        [smrt,zmw,pos] = string.split(string.replace(name,'/',' '))
+                        [smrt,zmw,pos] = rje.split(rje.replace(name,'/',' '))
                         rq = minrq
                     if (cdb.data(smrt)['SMRT'],int(zmw),pos) not in zmwlist: continue
                     SEQOUT.write('>%s\n%s\n' % (name,sequence)); fx += 1
@@ -2365,7 +2400,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 self.progLog('\r#LEN','Scanning sequences: %.1f%%' % (sx/stot)); sx += 100
                 if seqin.seqNonX():
                     (name,sequence) = seqin.currSeq()
-                    sequence = string.join( re.split('[Nn]{10}[Nn]+',sequence), 'NNNNNNNNNN')
+                    sequence = rje.join( re.split('[Nn]{10}[Nn]+',sequence), 'NNNNNNNNNN')
                     TMPSEQ.write('>%s\n%s\n' % (name,sequence))
                     minlen = min(minlen,len(sequence))
                 else:
@@ -2484,13 +2519,13 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 else: diplist.append(hap)
             for seq in seqlist.seqs():
                 self.progLog('\r#DIPHAP','Pseudodiploid haplotig assignment: %.1f%%' % (sx/stot)); sx += 100
-                sname = string.split(seqlist.shortName(seq),'_')
+                sname = rje.split(seqlist.shortName(seq),'_')
                 hap = rje.matchExp('HAP(\d+)',seqlist.shortName(seq))
                 if hap in haplist:
                     if hap in diplist: haptxt = 'haploidA'; diplist.remove(hap); sname[0] = 'pri%s' % hap; px += 1
                     else: haptxt = 'haploidB'; sname[0] = 'alt%s' % hap; ax += 1
                 else: haptxt = 'diploid'; sname[0] = 'pri%s' % hap; dx += 1; px += 1
-                sname = string.join(sname,'_')
+                sname = rje.join(sname,'_')
                 SEQOUT.write('>%s %s %s\n%s\n' % (sname,haptxt,seqlist.seqDesc(seq),seqlist.seqSequence(seq)))
                 if sname[:3] == 'pri':
                     PRIOUT.write('>%s %s %s\n%s\n' % (sname,haptxt,seqlist.seqDesc(seq),seqlist.seqSequence(seq)))
@@ -2652,7 +2687,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     for line in open(blast.getStr('OptionFile'),'r').readlines(): command = '%s %s' % (command,rje.chomp(line))
                 blast.str['BLASTCmd'] = command
                 #self.printLog('\r#SYS',command)
-                self.loggedSysCall(command,syslog='{}.blastn.log'.format(self.baseFile()))
+                self.loggedSysCall(command,syslog='{}.blastn.log'.format(self.baseFile()),slimfarmer=slimfarmer)
                 #os.system(command)
                 if not blast.checkBLAST(): raise IOError('Problem with VecSreen BLAST results file "%s"' % bfile)
             ## ~ [2a] Read Results ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
@@ -3126,7 +3161,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 if self.list['GFFType']:
                     self.printLog('#GFF','Parsing "{0}" features only'.format(','.join(self.list['GFFType'])))
                 else: self.printLog('#GFF','Parsing all features types (no gfftype=LIST set)')
-                gffhead = string.split('seqid source type start end score strand phase attributes')
+                gffhead = rje.split('seqid source type start end score strand phase attributes')
                 cdb = db.addTable(self.getStr('RegCheck'),mainkeys='auto',datakeys='All',delimit='\t',headers=gffhead,ignore=['#'],lists=False,name='check',expect=True)
                 cdb.addField('Query')
                 if self.list['GFFType']:
@@ -3427,7 +3462,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 reassemble = False
             if reassemble:
                 try:
-                    vcheck = string.split(os.popen('{0} --version'.format(assembler)).read())[0]
+                    vcheck = rje.split(os.popen('{0} --version'.format(assembler)).read())[0]
                     self.printLog('#PROG','{0} version: {1}'.format(assembler,vcheck))
                 except:
                     raise ValueError('Assembler check error - failed to run: {0} --version'.format(assembler))
@@ -3504,7 +3539,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     self.printLog('#GAPASS','Assembling gap-spanning reads for {0}.'.format(spanner))
                     if assembler == 'flye':
                         acmd = 'flye --{0} {1} --out-dir {2}{3}.{4}_flye --genome-size {5} --threads {6}'.format(rtype,fasout,assdir,basefile,spanner,gensize,self.getInt('SubForks'))
-                        logline = self.loggedSysCall(acmd,alog,append=True,nologline='No stdout from flye',threaded=False)
+                        logline = self.loggedSysCall(acmd,alog,append=True,nologline='No stdout from flye',threaded=False,slimfarmer=slimfarmer)
                         assembly = '{0}{1}.{2}_flye/assembly.fasta'.format(assdir,basefile,spanner)
                     if rje.exists(assembly):
                         self.printLog('#GAPASS','{0} generated -> {1}'.format(assembly,target))
@@ -4312,7 +4347,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 # else:
                 #     #i# Generally useful to see minimap2 progress
                 #     os.system(maprun)
-                logline = self.loggedSysCall(maprun,maplog,append=False)
+                logline = self.loggedSysCall(maprun,maplog,append=False,slimfarmer=slimfarmer)
                 #!# Add check that run has finished #!#
                 if not rje.exists('{}.sam'.format(prefix)):
                     if self.i() > -1 and rje.yesNo('{}.sam missing! Pause and make manually?'.format(prefix)) and not rje.yesNo('{}.sam ready? Yes to continue; No to terminate.'.format(prefix)):
@@ -4334,7 +4369,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     vmem = self.getInt('QSubVMem')
                     mgb = min(mgb,int(vmem/float(ppn)))
                 bamsort = 'samtools sort -@ {} -o {}.bam -m {}G {}.tmp.bam'.format(self.threads()-1,prefix,mgb,prefix)
-                logline = self.loggedSysCall(bamsort,maplog,append=True)
+                logline = self.loggedSysCall(bamsort,maplog,append=True,slimfarmer=slimfarmer)
                 #!# Add check that run has finished #!#
                 if not rje.exists(sortbam): raise IOError('Sorted BAM file "%s" not generated' % sortbam)
                 os.unlink('{}.sam'.format(prefix))
@@ -4464,8 +4499,15 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             purgemode = self.getStrLC('PurgeMode')
             ## ~ [1b] Programs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             #!# Make more nuanced. Add a partial=T/F mode, which can run with some of the programs? Or useX settings?
-            if not os.popen('purge_haplotigs hist 2>&1').read():
-                self.warnLog('Cannot run "purge_haplotigs hist": check installation or pre-generation of files')
+            if self.getStrLC('PurgeHap') in ['purgehap','purge_haplotigs']:
+                self.setStr({'PurgeHap': 'purgehap'})
+                if not os.popen('purge_haplotigs hist 2>&1').read():
+                    self.warnLog('Cannot run "purge_haplotigs hist": check installation or pre-generation of files')
+                    self.setStr({'PurgeHap': 'diploidocus'})
+                    self.printLog('#PURGE', 'Set purgehap mode to "diploidocus"')
+            elif self.getStrLC('PurgeHap') not in ['diploidocus']:
+                self.setStr({'PurgeHap':'diploidocus'})
+                self.printLog('#PURGE','Set purgehap mode to "diploidocus"')
             for program in ['kat','samtools','pileup.sh']:
                 if not os.popen('{} --version 2>&1'.format(program)).read():
                     self.warnLog('Cannot run "{} --version": check installation or pre-generation of files'.format(program))
@@ -4488,56 +4530,18 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             ### ~ [2] ~ Run PurgeHapolotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             #i# This establishes SC read depth using samtools prior to running purge_haplotigs
             self.purgeHaplotigs()
-            #scdepth = self.getNum('SCDepth')
             bamstrip = os.path.basename(bamfile)
             gencov = '{}.gencov'.format(bamstrip)
-            covstats = '{}.purge.coverage_stats.csv'.format(basefile)
-            purge = '{}.purge.reassignments.tsv'.format(basefile)
-            if not rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
+            if self.getStrLC('PurgeHap') == 'purgehap':
+                covstats = '{}.purge.coverage_stats.csv'.format(basefile)
+                purge = '{}.purge.reassignments.tsv'.format(basefile)
+                purgefiles = [gencov, covstats, purge]
+            else:
+                covstats = purge = '{}.deppurgehap.tsv'.format(basefile)
+                purgefiles = [gencov, purge]
+            if not rje.checkForFiles(filelist=purgefiles,basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
                 phdir = 'purge_{}/'.format(basefile)
                 raise IOError('Cannot find purge_haplotigs output. Check {}'.format(phdir))
-
-            # ## ~ [2a] ~ Establish SC read depth using samtools ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            # # scdepth=INT     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
-            # scdepth = self.getNum('SCDepth')
-            # if self.getNum('SCDepth'):
-            #     self.printLog('#SCDEP','Using loaded single copy read depth = {}X'.format(scdepth))
-            # else:
-            #     scdepth = self.genomeSize(scdepth=True)
-            #     self.printLog('#SCDEP','Using BUSCO-derived single copy read depth = {}X'.format(scdepth))
-            #     if not scdepth: raise ValueError('Failed to establish SC read depth')
-            # ## ~ [2b] ~ Setup purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            # # phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
-            # if self.getInt('PHLow') <= 0: self.setInt({'PHLow': int(float(scdepth)/4.0) })
-            # phlow = self.getInt('PHLow')
-            # # phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
-            # if self.getInt('PHMid') <= 0:
-            #     dupdepth = scdepth/2.0
-            #     self.setInt({'PHMid': int(1.5 * dupdepth) })
-            # phmid = self.getInt('PHMid')
-            # # phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
-            # if self.getInt('PHHigh') <= 0:
-            #     self.setInt({'PHHigh': scdepth * 2 })
-            # phhigh = self.getInt('PHHigh')
-            # #?# Add checks and warnings of cutoff conflicts
-            # ## ~ [2c] ~ Run purge haplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            # gencov = '{}.gencov'.format(bamfile)
-            # covstats = '{}.purge.coverage_stats.csv'.format(basefile)
-            # purge = '{}.purge.reassignments.tsv'.format(basefile)
-            # rje.checkForFiles(filelist=[gencov,covstats,purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.')
-            # #i# The -depth setting will be increased from 200 to 2xphhigh if >100
-            # phcmd1 = 'purge_haplotigs hist -b {} -g {} -t {} -d {}'.format(bamfile,seqin,self.threads(),max(200,2*phhigh))
-            # if self.needToRemake(gencov,bamfile):
-            #     logline = self.loggedSysCall(phcmd1,append=True)
-            # #!# Option to update the automatically set cutoffs
-            # self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
-            # phcmd2 = 'purge_haplotigs cov -i {}.gencov -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(bamfile,phlow,phmid,phhigh,basefile)
-            # if self.needToRemake(covstats,gencov):
-            #     logline = self.loggedSysCall(phcmd2,append=True)
-            # else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
-            # phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
-            # if self.needToRemake(purge,covstats):
-            #     logline = self.loggedSysCall(phcmd3,append=True)
             if self.getStrLC('RunMode').startswith('purgehap'):
                 self.printLog('#PURGE','purge_haplotigs run complete. Use runmode=diploidocus for additional filtering')
                 return True
@@ -4610,7 +4614,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             else:
                 screencov = '{}.screencov.{}'.format(db.baseFile(),rje.delimitExt(db.getStr('Delimit')))
             ## ~ [5b] Find Telomeres ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            teldb = self.findTelomeres()
+            teldb = self.findTelomeres(keepnull=self.getBool('TeloNull'))
             ## ~ [5c] BUSCO ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             busdb = None
             busco = self.getStr('BUSCO')
@@ -4661,35 +4665,39 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             joinlist.append((depdb,'SeqName'))
 
             ## ~ [6c] PurgeHaplotigs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            #i# NOTE: Had a problem with a sequence missing from *.coverage_stats.csv
-            #  - will need some default values and warnings
-            # ==> tiger.wtdbg2v1.racon2.10x.pilon2.scaffolds.purge.coverage_stats.csv <==
-            # #contig,contig_reassign,bases_hap_dip,bases_low_high,bases_all,perc_low_coverage,perc_hap_coverage,perc_dip_coverage,perc_high_coverage
-            # Scaff10x_0,,14719523,37459,14756982,0.004,9.823,89.923,0.250
-            phcovdb = db.addTable(covstats,mainkeys=['#contig'],expect=True,name='phcov')
-            phcovdb.renameField('#contig','SeqName')
-            for cov in ['Low','Hap','Dip','High']:
-                phcovdb.renameField('perc_{}_coverage'.format(cov.lower()), '{}Perc'.format(cov))
-            phcovdb.setFields(['SeqName','LowPerc','HapPerc','DipPerc','HighPerc'])
-            joinlist.append((phcovdb,'SeqName'))
+            if self.getStrLC('PurgeHap') == 'purgehap':
+                #i# NOTE: Had a problem with a sequence missing from *.coverage_stats.csv
+                #  - will need some default values and warnings
+                # ==> tiger.wtdbg2v1.racon2.10x.pilon2.scaffolds.purge.coverage_stats.csv <==
+                # #contig,contig_reassign,bases_hap_dip,bases_low_high,bases_all,perc_low_coverage,perc_hap_coverage,perc_dip_coverage,perc_high_coverage
+                # Scaff10x_0,,14719523,37459,14756982,0.004,9.823,89.923,0.250
+                phcovdb = db.addTable(covstats,mainkeys=['#contig'],expect=True,name='phcov')
+                phcovdb.renameField('#contig','SeqName')
+                for cov in ['Low','Hap','Dip','High']:
+                    phcovdb.renameField('perc_{}_coverage'.format(cov.lower()), '{}Perc'.format(cov))
+                phcovdb.setFields(['SeqName','LowPerc','HapPerc','DipPerc','HighPerc'])
+                joinlist.append((phcovdb,'SeqName'))
 
-            # ==> tiger.wtdbg2v1.racon2.10x.pilon2.scaffolds.purge.reassignments.tsv <==
-            # #reassigned_contig      top_hit_contig  second_hit_contig       best_match_coverage     max_match_coverage      reassignment
-            # Scaff10x_1000   Scaff10x_562    Scaff10x_676    98.37   918.99  REPEAT
-            purgedb = db.addTable(purge,mainkeys=['#reassigned_contig'],expect=True,name='purge')
-            purgedb.renameField('#reassigned_contig','SeqName')
-            purgedb.renameField('top_hit_contig','TopHit')
-            purgedb.renameField('second_hit_contig','SecHit')
-            purgedb.renameField('best_match_coverage','TopHitCov')
-            purgedb.renameField('max_match_coverage','MaxHitCov')
-            purgedb.renameField('reassignment','PurgeHap')
-            purgedb.index('TopHit')
-            purgedb.index('SecHit')
-            purgedb.addFields(['TopNum','SecNum'],evalue=0)
-            for entry in purgedb.entries():
-                if entry['SeqName'] in purgedb.index('TopHit'): entry['TopNum'] = len(purgedb.index('TopHit')[entry['SeqName']])
-                if entry['SeqName'] in purgedb.index('SecHit'): entry['SecNum'] = len(purgedb.index('SecHit')[entry['SeqName']])
-            joinlist.append((purgedb,'SeqName'))
+                # ==> tiger.wtdbg2v1.racon2.10x.pilon2.scaffolds.purge.reassignments.tsv <==
+                # #reassigned_contig      top_hit_contig  second_hit_contig       best_match_coverage     max_match_coverage      reassignment
+                # Scaff10x_1000   Scaff10x_562    Scaff10x_676    98.37   918.99  REPEAT
+                purgedb = db.addTable(purge,mainkeys=['#reassigned_contig'],expect=True,name='purge')
+                purgedb.renameField('#reassigned_contig','SeqName')
+                purgedb.renameField('top_hit_contig','TopHit')
+                purgedb.renameField('second_hit_contig','SecHit')
+                purgedb.renameField('best_match_coverage','TopHitCov')
+                purgedb.renameField('max_match_coverage','MaxHitCov')
+                purgedb.renameField('reassignment','PurgeHap')
+                purgedb.index('TopHit')
+                purgedb.index('SecHit')
+                purgedb.addFields(['TopNum','SecNum'],evalue=0)
+                for entry in purgedb.entries():
+                    if entry['SeqName'] in purgedb.index('TopHit'): entry['TopNum'] = len(purgedb.index('TopHit')[entry['SeqName']])
+                    if entry['SeqName'] in purgedb.index('SecHit'): entry['SecNum'] = len(purgedb.index('SecHit')[entry['SeqName']])
+                joinlist.append((purgedb,'SeqName'))
+            else:
+                purgedb = db.addTable(purge,mainkeys=['SeqName'],expect=True,name='purge')
+                joinlist.append((purgedb,'SeqName'))
 
             ## ~ [6d] KAT ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             # ==> tiger.wtdbg2v1.racon2.10x.pilon2.scaffolds.kat-stats.tsv <==
@@ -4725,7 +4733,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 vecdb.renameField('Hit','SeqName')
                 joinlist.append((vecdb,'SeqName'))
             if teldb:
-                teldb.renameField('Name','SeqName')
+                # Now outputs SeqName ... teldb.renameField('Name','SeqName')
                 teldb.dropField('SeqLen')
                 joinlist.append((teldb,'SeqName'))
             if busdb:
@@ -4752,7 +4760,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     seqname, seq = seqlist.getSeq(seqdict[entry['SeqName']])
                     seq = seq.upper()
                     entry['N_bases'] = seq.count('N')
-                    seqdata = string.split(seqname,maxsplit=1)
+                    seqdata = rje.split(seqname,maxsplit=1)
                     if len(seqdata) > 1: entry['SeqDesc'] = seqdata[1]
                     gapn = len(''.join(re.findall('N{%d,}' % mingap,seq)))
                     gaptot += gapn
@@ -5242,7 +5250,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                             sdat = rje.matchExp('^(\S+)_(\S+)__(\S+)',seqname)
                             seqname = '%sX2_%s__%sX2 Diploidify: %s' % (sdat[0],sdat[1],sdat[2],seqname)
                         else:
-                            sdat = string.split(seqname)
+                            sdat = rje.split(seqname)
                             seqname = '%sX2 Diploidify: %s' % (sdat[0],seqname)
                         open('{}.{}.fasta'.format(basefile,seqset),'a').write('>{}\n{}\n'.format(seqname, sequence))
                         seqx[seqset] += 1
@@ -5258,11 +5266,76 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             self.errorLog('Diploidocus.diploidocusHocusPocus() error')
             return None
 #########################################################################################################################
+    def depPurgeHaplotigs(self):   ### Runs the depPurgeHap.
+        '''
+        Runs purge_haplotigs in a subdirectory, using SC read depths to set parameters.
+        '''
+        try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            self.headLog('DIPLOIDOCUS DEPTH PURGE HAPLOTIGS',line='=')
+            basefile = self.baseFile(strip_path=True)
+            bamfile = os.path.abspath(self.getStr('BAM'))
+            seqin = os.path.abspath(self.getStr('SeqIn'))
+            purge = '{0}.deppurgehap.tsv'.format(basefile)
+            if rje.checkForFiles(filelist=[purge],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.') and not self.force():
+                return True
+
+            ### ~ [2] Run GABLAM ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            gabbase = '{0}.gablam'.format(basefile)
+            gabcmd = ['seqin={0}'.format(seqin),'mapper=minimap','basefile={0}'.format(gabbase)]
+            locfile = '{0}.gablam.local.tdt'.format(basefile)
+            if not rje.checkForFiles(filelist=[locfile],basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: will generate.') and not self.force():
+                gablam.GABLAM(self.log,self.cmd_list+gabcmd).run()
+
+            ### ~ [3] Run R ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            ## ~ [3a] Setup options and generate depth file ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            depcmd = ['bam={0}'.format(bamfile)]
+            depobj = depthkopy.DepthKopy(self.log,self.cmd_list+depcmd)
+            depfile = depobj.getFastDep()         # This will generate the BAM file if needed
+            rdir = self.rDir('deppurgehap.R')
+            options = ['depfile={0}'.format(depfile),'busco={0}'.format(self.getStr('BUSCO')),'basefile={0}'.format(basefile),
+                       'gablam={0}.gablam'.format(basefile),'rdir={0}'.format(rdir)]
+            scdepth = self.getNum('SCDepth')
+            if self.getNum('SCDepth'):
+                self.printLog('#SCDEP','Using loaded single copy read depth = {0:.2f}X'.format(scdepth))
+                options.append('scdepth={0}'.format(scdepth))
+            optionstr = ' '.join(options)
+            ## ~ [3b] Run Rscript ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
+            complete = False
+            rcmd = 'Rscript {0}deppurgehap.R {1}'.format(rdir, optionstr)
+            self.printLog('#RCMD',rcmd)
+            RCMD = os.popen(rcmd)
+            rline = RCMD.readline()
+            while rline:
+                if '] #' in rline:
+                    rline = ' '.join(rline.split('] ')[1:])
+                    logstr = rje.chomp(rline).split()
+                    self.printLog('{0}'.format(logstr[0].upper()), ' '.join(logstr[1:]))
+                elif rline[:1] == '[':
+                    self.verbose(v=0,text=rje.chomp(rline),newline=0)
+                else:
+                    self.verbose(v=1,text=rje.chomp(rline),newline=0)
+                #!# Parse scdepth and other key points to printLog
+                complete = complete or 'DepPurgeHap.R finished' in rline
+                rline = RCMD.readline()
+            RCMD.close()
+            if not complete:
+                self.warnLog('Does not look like deppurgehap.R finished OK.')
+
+            ### ~ [4] Return success ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            return rje.checkForFiles(filelist=[purge],basename='',log=self.log,cutshort=False,ioerror=True,missingtext='Not found: check log for details.')
+
+        except:
+            self.errorLog('Diploidocus.depPurgeHaplotigs() error')
+            raise
+#########################################################################################################################
     def purgeHaplotigs(self):   ### Runs purge_haplotigs in a subdirectory, using SC read depths to set parameters.
         '''
         Runs purge_haplotigs in a subdirectory, using SC read depths to set parameters.
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+            if self.getStrLC('PurgeHap') == 'diploidocus':
+                return self.depPurgeHaplotigs()
+            self.headLog('PURGE_HAPLOTIGS',line='=')
             basefile = self.baseFile(strip_path=True)
             bamfile = os.path.abspath(self.getStr('BAM'))
             bamstrip = os.path.basename(bamfile)
@@ -5309,16 +5382,16 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             #i# The -depth setting will be increased from 200 to 2xphhigh if >100
             phcmd1 = 'purge_haplotigs hist -b {} -g {} -t {} -d {}'.format(bamfile,seqin,self.threads(),max(200,2*phhigh))
             if self.needToRemake(gencov,bamfile):
-                logline = self.loggedSysCall(phcmd1,append=True)
+                logline = self.loggedSysCall(phcmd1,append=True,slimfarmer=slimfarmer)
             #!# Option to update the automatically set cutoffs
             self.printLog('#PHDEP','Low=%dX; Mid=%dX; High=%dX. (SC=%dX)' % (phlow,phmid,phhigh,scdepth))
             phcmd2 = 'purge_haplotigs cov -i {} -l {} -m {} -h {} -o {}.purge.coverage_stats.csv -j 80 -s 80'.format(gencov,phlow,phmid,phhigh,basefile)
             if self.needToRemake(covstats,gencov):
-                logline = self.loggedSysCall(phcmd2,append=True,threaded=False)
+                logline = self.loggedSysCall(phcmd2,append=True,threaded=False,slimfarmer=slimfarmer)
             else: self.printLog('#NOTE','Reusing existing %s on assumption that cutoffs have not changed' % covstats)
             phcmd3 = 'purge_haplotigs purge -g {} -c {}.purge.coverage_stats.csv -t {} -o {}.purge -a 95'.format(seqin,basefile,self.threads(),basefile)
             if self.needToRemake(purge,covstats):
-                logline = self.loggedSysCall(phcmd3,append=True,threaded=True)
+                logline = self.loggedSysCall(phcmd3,append=True,threaded=True,slimfarmer=slimfarmer)
             os.chdir(mydir)
             ## ~ [2a] ~ Link output files back to main directory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             for ofile in (gencov,covstats,purge):
@@ -5565,10 +5638,10 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             db = self.db()
-            #i#teldb = self.db().addEmptyTable('telomeres',['Name','SeqLen','Tel5','Tel3','Tel5Len','Tel3Len','Trim5','Trim3','TelPerc'],['Name'],log=self.debugging())
+            #i#teldb = self.db().addEmptyTable('telomeres',['SeqName','SeqLen','Tel5','Tel3','Tel5Len','Tel3Len','Trim5','Trim3','TelPerc'],['SeqName'],log=self.debugging())
             telfile = '{}.telomeres.{}'.format(db.baseFile(),rje.delimitExt(db.getStr('Delimit')))
             if not self.force() and rje.checkForFiles(filelist=[telfile],basename='',log=self.log):
-                teldb = db.addTable(telfile,name='telomeres',mainkeys=['Name'])
+                teldb = db.addTable(telfile,name='telomeres',mainkeys=['SeqName'])
                 teldb.dataFormat({'SeqLen':'int','Trim5':'int','Trim3':'int','TelPerc':'num'})
                 return teldb
             forks = self.getInt('Forks')
@@ -5577,7 +5650,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 raise IOError('Diploidocus Telomere mode needs input assembly (seqin=FILE)')
             seqin = rje_seqlist.SeqList(self.log,self.cmd_list+['autoload=T','seqmode=file','summarise=F','autofilter=F'])
             ## ~ [1b] ~ Results table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-            teldb = self.db().addEmptyTable('telomeres',['Name','SeqLen','Tel5','Tel3','Tel5Len','Tel3Len','Trim5','Trim3','TelPerc'],['Name'],log=self.debugging())
+            teldb = self.db().addEmptyTable('telomeres',['SeqName','SeqLen','Tel5','Tel3','Tel5Len','Tel3Len','Trim5','Trim3','TelPerc'],['SeqName'],log=self.debugging())
             telomeres = []  # List of sequences with telomeres
             tel5 = tel3 = telboth = 0
 
@@ -5590,7 +5663,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 self.progLog('\r#TELO','Analysing {} sequences for telomeric repeats: {:.2f}%'.format(rje.iStr(stot),sx/stot)); sx += 100.0
                 sname = seqin.shortName()
                 sequence = seqin.seqSequence()
-                tentry = teldb.addEntry(rje.combineDict({'Name':sname,'SeqLen':len(sequence)},self.findTelomere(sequence)))
+                tentry = teldb.addEntry(rje.combineDict({'SeqName':sname,'SeqLen':len(sequence)},self.findTelomere(sequence)))
                 # Add reporting in verbose mode?
                 if tentry['Tel5'] or tentry['Tel3']:
                     telomeres.append(sname)
@@ -5637,8 +5710,8 @@ def runMain():
     ### ~ [1] ~ Basic Setup of Program  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try: (info,out,mainlog,cmd_list) = setupProgram()
     except SystemExit: return  
-    except: print 'Unexpected error during program setup:', sys.exc_info()[0]; return
-    
+    except: rje.printf('Unexpected error during program setup:', sys.exc_info()[0]); return
+
     ### ~ [2] ~ Rest of Functionality... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try: Diploidocus(mainlog,['dna=T','diploidocus=T']+cmd_list).run()
 
@@ -5650,7 +5723,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print 'Cataclysmic run error:', sys.exc_info()[0]
+    except: rje.printf('Cataclysmic run error: {0}'.format(sys.exc_info()[0]))
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION IV                                                                                                   #

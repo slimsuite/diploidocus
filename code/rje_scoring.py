@@ -134,7 +134,7 @@ def statFilter(callobj,data={},statfilter={},inverse=False,filtermissing=False):
             (op,strcut,numcut) = statfilter[stat]
             for key in data.keys()[0:]:
                 ## ~ [1a] ~ Check for stat ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
-                if not data[key].has_key(stat):
+                if stat not in data[key]:
                     if filtermissing:
                         if not inverse: data.pop(key)
                     else: callobj.log.errorLog('Data for "%s" missing stat "%s"!' % (key,stat),printerror=False)
@@ -236,7 +236,7 @@ def rankObj(callobj,objlist,dkey,dlist=['stat'],case=False,default=None,rev=True
         for i in range(len(objlist)):
             obj = objlist[i]
             r = newranks[i]
-            if rankdict.has_key(r):
+            if r in rankdict:
                 rankdict[r].append(obj)
             else:
                 rankdict[r] = [obj]
@@ -326,7 +326,7 @@ def adjustedProb(scorelist,reverse=False):  ### Returns the adjust probability v
     print(looklist)
     for i in range(L):
         s = looklist[i]
-        if adj.has_key(s):
+        if s in adj:
             print(s, i, adj[s])
             continue
         j = i + 1

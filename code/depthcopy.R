@@ -1,7 +1,7 @@
 ########################################################
 ### DepthCopy SC depth functions               ~~~~~ ###
-### VERSION: 1.0.2                             ~~~~~ ###
-### LAST EDIT: 07/03/22                        ~~~~~ ###
+### VERSION: 1.0.5                             ~~~~~ ###
+### LAST EDIT: 27/06/22                        ~~~~~ ###
 ### AUTHORS: Richard Edwards 2021              ~~~~~ ###
 ### CONTACT: richard.edwards@unsw.edu.au       ~~~~~ ###
 ########################################################
@@ -32,7 +32,10 @@
 # v1.0.0 : Switched to v1 in-line with published DepthKopy. Added setup for future parallelisation with clusterApply.
 # v1.0.1 : Fixed odd tidyverse filter bug.
 # v1.0.2 : Fixed more odd tidyverse filter bugs.
-version = "v1.0.2"
+# v1.0.3 : Fixed problem with only a single density point.
+# v1.0.4 : Added catching of missing BUSCO file if scdepth not given.
+# v1.0.5 : Added some additional bug catching for bad region file headers.
+version = "v1.0.5"
 
 ####################################### ::: USAGE ::: ############################################
 # Example use:
@@ -73,6 +76,9 @@ version = "v1.0.2"
 #!# Complete documentation of Usage and Outputs.
 #!# Add external setting of settings$seqnames and then filter the depth/kmer lists too.
 #!# Output the regions files to renamed files too if new name is given with name:file.
+#!# Add GC content calculation to the tabular output.
+#!# Add min. length for regions to check
+#!# Add support for CSV feature files.
 
 ####################################### ::: SETUP ::: ############################################
 ### ~ Commandline arguments ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -250,14 +256,16 @@ buscoDupTable <- function(filename){
 }
 
 ### ~ Load Region File ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+#!# Replace with rje_load.R function
 #i# Load delimited file into Region file
 #i# regdb = regionTable(filename,delimit="\t",uniqreg=FALSE)
 regionTable <- function(filename,delimit="\t",uniqreg=FALSE){
+  #!# Change to deal with different case
   regdb = read.table(filename,fill=TRUE,sep=delimit,header=TRUE,row.names = NULL,quote="\"",comment.char="")
   if(uniqreg){
     logWrite(paste(nrow(regdb),"lines loaded from",filename))
     #?# Reduce to unique SeqName, Start, End
-    regdb = regdb %>% select(headers) %>% distinct()
+    regdb = regdb %>% select(settings$reghead) %>% distinct()
     #logWrite(paste(nrow(regdb),"unique regions loaded from",filename))
     logWrite(paste('#REGION',nrow(regdb),"unique regions loaded from",filename))
   }else{
@@ -386,6 +394,14 @@ densModeZoom <- function(depvec,adjust=16,plotbase=NA,plotmain=NA){
       logWrite("NewVec length <1")
     }
     return(0)
+  }
+  #!# Add a temporary fudge for vary sparse and high copy regions
+  mindensn <- 10
+  if(length(newvec) < mindensn){
+    if(settings$debug){
+      logWrite('#DENS Fudging density calculation')
+    }
+    return(mean(depvec))
   }
   n = 2048
   while(max(newvec)*5 > n){
@@ -677,7 +693,14 @@ scdepth = as.numeric(settings$scdepth)
 if(file.exists(buscofile)){
   logWrite(paste("BUSCO Full File:",buscofile))
 }else{
-  logWrite(paste("SC Depth:",round(scdepth,2)))
+  if(buscofile != ""){
+    logWrite(paste("BUSCO Full File missing:",buscofile))
+  }
+  if(scdepth > 0){
+    logWrite(paste("SC Depth:",round(scdepth,2)))
+  }else{
+    stop("Cannot find BUSCO file and no SCDepth given.")
+  }
 }
 #i# Region file
 regfile <- settings$regfile
@@ -814,8 +837,16 @@ for(regfile in strsplit(settings$regfile,",",TRUE)[[1]]){
 	  }else{
 		reghead = settings$reghead  #x#strsplit(settings$reghead,",",TRUE)[[1]]
         #logWrite(paste('Region headers:',paste0(settings$reghead,collapse=", "),"->",paste0(reghead,collapse=", ")))
-		regdb = regionTable(regfile)
+		regdb <- regionTable(regfile)
 	  }
+	  if(length(nrow(regdb)<1) < 1 | nrow(regdb)<1){
+	    logWrite(paste('#ERROR Problem loading data from',regfile,'- check headers vs reghead and/or file content.'))
+	    regdb <- NULL
+	  }
+	}else{
+	  regdb <- NULL
+	}
+	if(file.exists(regfile) & ! is.null(regdb)){
       #i# 4. Calculate CN per region
 	  regdb <- regCN(regdb,buscoMean,buscoSD)
 

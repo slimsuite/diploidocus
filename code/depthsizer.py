@@ -141,6 +141,8 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Rationalise the log outputs etc.
     # [Y] : Add Lower output based solely on mapped reads (+/- Adjust)
     # [ ] : Add the sequence, window and chromcheck settings to DepthSizer. (Also available in DepthKopy.)
+    # [ ] : Check why genomesize is an option and possibly remove? (Legacy from Diploidocus origins?)
+    # [ ] : Add option to use complete genome rather than BUSCOs for the SC depth.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.

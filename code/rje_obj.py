@@ -136,7 +136,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Add self.tool list for {External tool:version} following checks.
     # [ ] : Add general code for checking external programs and populating self.tool with option warnings/exit.
     # [ ] : Add option to look for `module avail` output and load module if found.
-    #     : - string.split(os.popen('module avail samtools 2>&1').read())
+    #     : - rje.split(os.popen('module avail samtools 2>&1').read())
     '''
 #########################################################################################################################
 import glob, os, pickle, random, string, sys, time, traceback
@@ -457,7 +457,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         elif type == 'dict': att = self.dict
         elif type == 'obj': att = self.obj
         ### Return ###
-        if att.has_key(key): return att[key]
+        if key in att: return att[key]
         else: return default
 #########################################################################################################################
     def setAttribute(self,type,key,newvalue):    ### Sets object information of correct type from string
@@ -708,11 +708,11 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         '''
         if not width and line in '~-=': width = {'=':90,'-':75,'~':60}[line]
         strlist = [hash,line*minside,text,line*minside,hash]
-        while len(rje.jstring.join(strlist)) < width:
+        while len(rje.stringj.join(strlist)) < width:
             strlist[1] += line
             strlist[3] += line
-        if len(rje.jstring.join(strlist)) == width + 1 and len(strlist[1]) > minside: strlist[1] = strlist[1][:-1]
-        self.printLog('%s%s%s%s' % (hash,line,line,hash),rje.jstring.join(strlist))
+        if len(rje.stringj.join(strlist)) == width + 1 and len(strlist[1]) > minside: strlist[1] = strlist[1][:-1]
+        self.printLog('%s%s%s%s' % (hash,line,line,hash),rje.stringj.join(strlist))
 #########################################################################################################################
     def vPrint(self,text,v=1): return self.verbose(v,text=text)
 #########################################################################################################################
@@ -796,7 +796,8 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
             self.close()    # Cannot pickle file handles.
             ### ~ [2] ~ Pickle ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             self.progLog('#SAVE','Attempting to save %s to %s.' % (self.prog(),pfile))
-            pickle.dump(self,open(pfile,'w'))
+            try: pickle.dump(self,open(pfile,'w'))
+            except: pickle.dump(self,open(pfile,'wb'))
             self.printLog('\r#SAVE','%s Intermediate saved as %s (Python pickle).' % (self.prog(),pfile))
             ### ~ [3] ~ GZip and finish ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if not self.getBool('Win32') and gzip:
@@ -829,7 +830,8 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
                     except: self.errorLog('Cannot unzip %s' % (gzfile)); return None
             if os.path.exists(pfile):
                 self.printLog('\r#LOAD','Attempting to load %s.' % pfile,log=False)
-                newme = pickle.load(open(pfile,'r'))
+                try: newme = pickle.load(open(pfile,'r'))
+                except: newme = pickle.load(open(pfile,'rb'))
                 self.printLog('\r#LOAD','%s Intermediate loaded: %s.' % (self.prog(),pfile))
                 if not self.getBool('Win32'):
                     try:
@@ -1113,7 +1115,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
             return version
         except: raise
 #########################################################################################################################
-    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None,threaded=True):    ### Makes a system call, catching output in log file
+    def loggedSysCall(self,cmd,syslog=None,stderr=True,append=True,verbosity=1,nologline=None,threaded=True,slimfarmer=None):    ### Makes a system call, catching output in log file
         '''
         Makes a system call, catching output in log file.
         :param cmd:str = System call command to catch
@@ -1147,8 +1149,9 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
                 if self.v() >= verbosity: cmd = '{0} | tee {1}'.format(cmd,syslog)
                 else: cmd = '{0} > {1}'.format(cmd,syslog)
             ### ~ [2] ~ Process System Call ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            if self.dev() and self.getBool('UseQSub'):
+            if self.getBool('UseQSub') and slimfarmer:
                 if not rje.exists('tmp_qsub'): rje.mkDir(self,'tmp_qsub/',log=True)
+                mydir = os.path.abspath('.')
                 qbase = rje.baseFile(syslog)
                 ppn = self.threads()
                 vmem = self.getInt('QSubVMem')
@@ -1394,7 +1397,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         >> datadict = Dictionary of values to add to self.dict[dictkey]
         '''
         try:
-            if not self.dict.has_key(dictkey): self.dict[dictkey] = {}
+            if dictkey not in self.dict: self.dict[dictkey] = {}
             for key in datadict.keys(): self.dict[dictkey][key] = datadict[key]
         except: self.errorLog('Problem with setDictData()',True)
 #########################################################################################################################
@@ -1411,10 +1414,10 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         '''
         try:### ~ [0] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             dictlist = []
-            if self.dict.has_key('Data'): dictlist = [self.dict['Data']]
+            if 'Data' in self.dict: dictlist = [self.dict['Data']]
             ddict = {'str':self.str,'int':self.int,'num':self.num,'bool':self.bool}
             for dict in dlist:
-                if ddict.has_key(dict): dictlist.append(ddict[dict])
+                if dict in ddict: dictlist.append(ddict[dict])
                 else: dictlist.append(dict)
             ### ~ [1] ~ Look in dictionaries ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             data = default
@@ -1575,7 +1578,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         '''
         Scan through file to find line starting with word.
         >> key:str = self.file key.
-        >> wordlist:str = list of words to find at beginning of line using string.split()
+        >> wordlist:str = list of words to find at beginning of line using rje.split()
         >> asdict:bool [True] = return {word:line} dictionary (blank if missing). !!! Assumes unique line per word !!!
         >> wrap:bool [True] = Whether to scan whole file, jumping to start if end reached.
         >> chomp:bool [True] = Whether to strip /r and /n from end of line.

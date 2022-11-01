@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V1.1.4 Documentation"
+title: "Diploidocus V1.3.1 Documentation"
 author: "Richard J. Edwards"
-date: "2022-03-18"
+date: "2022-11-01"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -149,6 +149,7 @@ kmerreads=FILELIST : File of high quality reads for KAT kmer analysis []
 10xtrim=T/F     : Whether to trim 16bp 10x barcodes from Read 1 of Kmer Reads data for KAT analysis [False]
 minmedian=INT   : Minimum median depth coverage to avoid low coverage filter [3]
 minlen=INT      : Minimum scaffold length to avoid low quality filter [500]
+purgehap=X      : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
 phlow=INT       : Low depth cutoff for purge_haplotigs (-l X). Will use SCDepth/4 if zero. [0]
 phmid=INT       : Middle depth for purge_haplotigs (-m X). Will derive from SCDepth if zero. [0]
 phhigh=INT      : High depth cutoff for purge_haplotigs (-h X). Will use SCDepth x 2 if zero. [0]
@@ -167,6 +168,7 @@ telofwd=X       : Regex for 5' telomere sequence search [C{2,4}T{1,2}A{1,3}]
 telorev=X       : Regex for 5' telomere sequence search [T{1,3}A{1,2}G{2,4}]
 telosize=INT    : Size of terminal regions (bp) to scan for telomeric repeats [50]
 teloperc=PERC   : Percentage of telomeric region matching telomeric repeat to call as telomere [50]
+telonull=T/F    : Whether to output sequences without telomeres to telomere table [False]
 ### ~ VecScreen options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 screendb=FILE   : File of vectors/contaminants to screen out using blastn and VecScreen rules []
 screenmode=X    : Action to take following vecscreen searching (report/purge) [report]
@@ -696,6 +698,9 @@ Telomeres are marked if at least 50% (`teloperc=PERC`) of the terminal 50 bp (`t
 appropriate regex. If either end contains a telomere, the total percentage of the sequence matching either
 regex is calculated as `TelPerc`. Note that this number neither restricts matches to the termini, not includes
 sequences within predicted telomeres that do not match the regex.
+
+By default, only sequences with telomeres are output to the `*.telomeres.tdt` output, but
+switching `telonull=T` will output all sequences.
 
 ---
 

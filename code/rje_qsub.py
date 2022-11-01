@@ -114,7 +114,7 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         if not out: out = rje.Out()
         helpx = cmd_list.count('help') + cmd_list.count('-help') + cmd_list.count('-h')
         if helpx > 0:
-            print '\n\nHelp for %s %s: %s\n' % (info.program, info.version, time.asctime(time.localtime(info.start_time)))
+            rje.printf('\n\nHelp for {0} {1}: {2}\n'.format(info.program, info.version, time.asctime(time.localtime(info.start_time))))
             out.verbose(-1,4,text=__doc__)
             if rje.yesNo('Show general commandline options?'): out.verbose(-1,4,text=rje.__doc__)
             if rje.yesNo('Quit?'): sys.exit()
@@ -123,33 +123,30 @@ def cmdHelp(info=None,out=None,cmd_list=[]):   ### Prints *.__doc__ and asks for
         return cmd_list
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except: print 'Major Problem with cmdHelp()'
+    except: rje.printf('Major Problem with cmdHelp()')
 #########################################################################################################################
-def setupProgram(): ### Basic Setup of Program
+def setupProgram(): ### Basic Setup of Program when called from commandline.
     '''
-    Basic setup of Program:
+    Basic Setup of Program when called from commandline:
     - Reads sys.argv and augments if appropriate
     - Makes Info, Out and Log objects
     - Returns [info,out,log,cmd_list]
     '''
-    try:
-        ### Initial Command Setup & Info ###
-        info = makeInfo()
-        cmd_list = rje.getCmdList(sys.argv[1:],info=info)      ### Load defaults from program.ini
-        ### Out object ###
-        out = rje.Out(cmd_list=cmd_list)
-        out.verbose(2,2,cmd_list,1)
-        out.printIntro(info)
-        ### Additional commands ###
-        cmd_list = cmdHelp(info,out,cmd_list)
-        ### Log ###
-        log = rje.setLog(info=info,out=out,cmd_list=cmd_list)
-        return [info,out,log,cmd_list]
+    try:### ~ [1] ~ Initial Command Setup & Info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        info = makeInfo()                                   # Sets up Info object with program details
+        if len(sys.argv) == 2 and sys.argv[1] in ['version','-version','--version']: rje.printf(info.version); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['details','-details','--details']: rje.printf('{0} v{1}'.format(info.program,info.version)); sys.exit(0)
+        if len(sys.argv) == 2 and sys.argv[1] in ['description','-description','--description']: rje.printf('%s: %s' % (info.program,info.description)); sys.exit(0)
+        cmd_list = rje.getCmdList(sys.argv[1:],info=info)   # Reads arguments and load defaults from program.ini
+        out = rje.Out(cmd_list=cmd_list)                    # Sets up Out object for controlling output to screen
+        out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2
+        out.printIntro(info)                                # Prints intro text using details from Info object
+        cmd_list = cmdHelp(info,out,cmd_list)               # Shows commands (help) and/or adds commands from user
+        log = rje.setLog(info,out,cmd_list)                 # Sets up Log object for controlling log file output
+        return (info,out,log,cmd_list)                      # Returns objects for use in program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
-    except:
-        print 'Problem during initial setup.'
-        raise
+    except: rje.printf('Problem during initial setup.'); raise
 #########################################################################################################################
 ### END OF SECTION I                                                                                                    #
 #########################################################################################################################
@@ -225,7 +222,7 @@ class QSub(rje.RJE_Object):
                       'HPC':'IRIDIS4','DependHPC':'kman.restech.unsw.edu.au'})
         self.setStat({'Walltime':60,'Nodes':1,'PPN':12,'Pause':5,'VMem':48})
         self.setOpt({'JobWait':False,'Report':False,'MailStart':False,'ModPurge':True,'Monitor':False,'StartBash':False})
-        #self.list['Modules'] = string.split('blast+/2.2.30,clustalw,clustalo,fsa,mafft,muscle,pagan,R/3.1.1,fasttree,phylip',',')
+        #self.list['Modules'] = rje.split('blast+/2.2.30,clustalw,clustalo,fsa,mafft,muscle,pagan,R/3.1.1,fasttree,phylip',',')
 #########################################################################################################################
     def _cmdList(self):     ### Sets Attributes from commandline
         '''
@@ -255,7 +252,7 @@ class QSub(rje.RJE_Object):
             hr = int(self.stat['Walltime'])
             min = int((0.5+(self.stat['Walltime'] - hr)*60.0))
             if self.opt['Report']: return self.report()
-            jobstr = string.replace('%s.job' % self.info['Job'],'.job','')
+            jobstr = rje.replace('%s.job' % self.info['Job'],'.job','')
             jlist = ['#!/bin/bash',
                      '#PBS -N %s' % jobstr,  #,'#PBS -q batch',
                      '#PBS -l nodes=%d:ppn=%d' % (self.stat['Nodes'],self.stat['PPN']),
@@ -285,7 +282,7 @@ class QSub(rje.RJE_Object):
                 self.printLog('#MOD','Modules purged (modpurge=T)')
             for mod in self.list['Modules']:
                 if mod.lower() not in ['','none']: jlist.append('module add %s' % mod)
-            if self.list['Modules']: self.printLog('#MOD','Modules added: %s' % string.join(self.list['Modules'],'; '))
+            if self.list['Modules']: self.printLog('#MOD','Modules added: %s' % rje.join(self.list['Modules'],'; '))
             for pcall in self.list['PreCall']:
                 self.printLog('#PCALL',pcall)
                 jlist.append(pcall)
@@ -299,8 +296,8 @@ class QSub(rje.RJE_Object):
             jlist += ['','echo ---','qstat -f $PBS_JOBID','echo ---']
             jlist += ['','echo','echo Time is `date`','echo Job complete']
             ### Output and call ###
-            job = '{0}.job'.format(jobstr) #string.replace('%s.job' % self.info['Job'],'.job.job','.job')
-            open(job,'w').write(string.join(jlist,'\n'))
+            job = '{0}.job'.format(jobstr) #rje.replace('%s.job' % self.info['Job'],'.job.job','.job')
+            open(job,'w').write(rje.join(jlist,'\n'))
             self.printLog('#DIR',self.info['QPath'])
             self.printLog('#RUN',pcall)
             #qsub = 'qsub %s -S /bin/sh -l walltime=%d:%d:00,nodes=%d:ppn=2' % (job,hr,min,self.stat['Nodes'])
@@ -311,17 +308,17 @@ class QSub(rje.RJE_Object):
                 #for id in self.list['Depend']: qsub += ':%s.bio-server' % id
                 myhost = self.getStr('DependHPC')
                 if not self.getStrLC('DependHPC'):
-                    myhost = string.split(os.popen('hostname').read())[0]
+                    myhost = rje.split(os.popen('hostname').read())[0]
                 for id in self.list['Depend']: qsub += ':%s.%s' % (id,myhost)
             qsub += ' %s' % (job)
             self.printLog('#JOB',qsub)
             if self.test():
                 self.printLog('#TEST','Test mode: will not place job in queue.')
-                self.verbose(0,1,string.join(['>>>>>']+jlist+['<<<<<',''],'\n'))
+                self.verbose(0,1,rje.join(['>>>>>']+jlist+['<<<<<',''],'\n'))
                 return False
             qrun = os.popen(qsub).read()
             self.printLog('#QSUB',qrun)
-            qid = string.split(qrun,'.')[0]
+            qid = rje.split(qrun,'.')[0]
             showstart = 'qstat -T'
             if os.popen('hostname').read().startswith('katana.science.unsw.edu.au'):
                 showstart = 'showstart'
@@ -334,16 +331,16 @@ class QSub(rje.RJE_Object):
             if self.getBool('JobWait'):
                 if self.getBool('Monitor'): raise ValueError('Cannot run with wait=T and monitor=T')
                 self.printLog('#WAIT','Waiting for job {0} to finish'.format(qid))
-                ofile = '{0}.o{1}'.format(string.replace('%s.job' % self.info['Job'],'.job',''),qid)
+                ofile = '{0}.o{1}'.format(rje.replace('%s.job' % self.info['Job'],'.job',''),qid)
                 running = False
                 while not rje.exists(ofile):
-                    qstat = string.atoi( os.popen("qstat | grep '^{0}' -c".format(qid)).read().split()[0] )
+                    qstat = rje.atoi( os.popen("qstat | grep '^{0}' -c".format(qid)).read().split()[0] )
                     if not qstat:
                         self.printLog('#QSTAT','Job {0} disappeared from qstat'.format(qid))
                         break
                     elif not running:
                         try:
-                            qstat = string.split( os.popen("qstat | grep '^{0}'".format(qid)).read().split()[4] )
+                            qstat = rje.split( os.popen("qstat | grep '^{0}'".format(qid)).read().split()[4] )
                             if qstat == 'R':
                                 running = True
                                 self.printLog('#QSTAT','Job {0} running...'.format(qid))
@@ -397,11 +394,10 @@ class QSub(rje.RJE_Object):
 #########################################################################################################################
 def runMain():
     ### ~ [1] ~ Basic Setup of Program  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-    try: [info,out,mainlog,cmd_list] = setupProgram()
-    except SystemExit: return  
-    except:
-        print 'Unexpected error during program setup:', sys.exc_info()[0]
-        return 
+    try: (info,out,mainlog,cmd_list) = setupProgram()
+    except SystemExit: return
+    except: rje.printf('Unexpected error during program setup:', sys.exc_info()[0]); return
+
     ### ~ [2] ~ Rest of Functionality... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     try: QSub(mainlog,cmd_list).qsub()
     ### ~ [3] ~ End ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -412,7 +408,7 @@ def runMain():
 #########################################################################################################################
 if __name__ == "__main__":      ### Call runMain 
     try: runMain()
-    except: print 'Cataclysmic run error:', sys.exc_info()[0]
+    except: rje.printf('Cataclysmic run error: {0}'.format(sys.exc_info()[0]))
     sys.exit()
 #########################################################################################################################
 ### END OF SECTION III                                                                                                  #
