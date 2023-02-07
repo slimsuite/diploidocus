@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V1.3.1 Documentation"
+title: "Diploidocus V1.4.0 Documentation"
 author: "Richard J. Edwards"
-date: "2022-11-01"
+date: "2023-02-07"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -54,6 +54,7 @@ The different run modes are set using `runmode=X`:
 * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
 * `diphapnr` runs `sortnr` followed by `diphap`
 * `insilico` generates balanced diploid combined reads from two sequenced haploid parents
+* `summarise` just runs the seqin summarise code and then stops.
 
 See <https://slimsuite.github.io/diploidocus/> for details of each mode. General SLiMSuite run documentation can be
 found at <https://github.com/slimsuite/SLiMSuite>.

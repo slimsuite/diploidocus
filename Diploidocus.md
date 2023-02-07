@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v1.3.1
+Diploidocus v1.4.0
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -40,6 +40,7 @@ The different run modes are set using `runmode=X`:
 * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
 * `diphapnr` runs `sortnr` followed by `diphap`
 * `insilico` generates balanced diploid combined reads from two sequenced haploid parents
+* `summarise` just runs the seqin summarise code and then stops.
 
 See <https://slimsuite.github.io/diploidocus/> for details of each mode. General SLiMSuite run documentation can be
 found at <https://github.com/slimsuite/SLiMSuite>.

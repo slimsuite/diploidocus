@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.50.0
-Last Edit:    22/06/22
+Version:      1.50.1
+Last Edit:    06/02/23
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -261,6 +261,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.49.0 - Add full sequence name editing.
     # 1.49.1 - Minor bug fixes.
     # 1.50.0 - Updated gapfix to have a "wildcard" length of 0.
+    # 1.50.1 - Fixed the string.atol Python3 bug.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -290,7 +291,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.50.0', 'June 2022', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.50.1', 'February 2023', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -894,7 +895,8 @@ class SeqList(rje_obj.RJE_Object):
                 ipos = rje.posFromIndex(seq,INDEX,re_index='^(\S+)\s')
                 iline = rje.fileLineFromSeek(INDEX,ipos)
                 #self.deBug(iline)
-                fpos = string.atol(rje.split(rje.chomp(iline[0]))[1])
+                try: fpos = string.atol(rje.split(rje.chomp(iline[0]))[1])
+                except: fpos = int(rje.split(rje.chomp(iline[0]))[1])
                 #self.deBug('%s: %d' % (seq,fpos))
                 return self.getSeq(fpos,format,mode='file')
         except: self.errorLog('%s.getSeq(%s) error' % (self,type(seq))); return None
@@ -935,7 +937,8 @@ class SeqList(rje_obj.RJE_Object):
                 INDEX = self.INDEX()
                 ipos = rje.posFromIndex(seq,INDEX,re_index='^(\S+)\s')
                 iline = rje.fileLineFromSeek(INDEX,ipos)
-                fpos = string.atol(rje.split(rje.chomp(iline[0]))[1])
+                try: fpos = string.atol(rje.split(rje.chomp(iline[0]))[1])
+                except: fpos = int(rje.split(rje.chomp(iline[0]))[1])
             else: fpos = seq
             ## ~ [2b] ~ Read sequence name ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             SEQFILE = self.SEQFILE()
@@ -2126,7 +2129,8 @@ class SeqList(rje_obj.RJE_Object):
                         self.progLog('\r#SEQ','Loading seq from %s: %.2f%%' % (logseqfile,(100.0*fpos/fend)),rand=0.01,screen=screen)
                         line = rje.matchExp('^(\S+)\s+(\d+)',rje.chomp(SEQ.readline()))
                         if line:
-                            self.list['Seq'].append(string.atol(line[1])); sx += 1
+                            try: self.list['Seq'].append(string.atol(line[1])); sx += 1
+                            except: self.list['Seq'].append(int(line[1])); sx += 1
                             self.dict['SeqDict'][line[0]] = self.list['Seq'][-1]
                         fpos = SEQ.tell()
                     self.list['Seq'].sort()
@@ -3251,6 +3255,8 @@ class SeqList(rje_obj.RJE_Object):
         try:### ~ [0] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if not self.obj['DB']: self.obj['DB'] = rje_db.Database(self.log, self.cmd_list + ['tuplekeys=T'])
             db = self.db()
+            if not db.baseFile():
+                db.setBasefile(rje.baseFile(self.getStr('SeqIn')))
             gapdb = self.db('gaps') # ['seqname', 'start', 'end', 'seqlen', 'gaplen'], ['seqname', 'start', 'end']
             #self.debug(gapdb)
             #self.debug(gapdb.fields())

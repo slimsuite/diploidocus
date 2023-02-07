@@ -19,8 +19,8 @@
 """
 Module:       DepthKopy
 Description:  Single-copy read-depth and kmer based copy number analysis
-Version:      1.0.5
-Last Edit:    27/06/22
+Version:      1.1.0
+Last Edit:    01/11/22
 Citation:     Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
@@ -121,6 +121,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.0.3 : Fixed problem with only a single density point.
     # 1.0.4 : Fixed bug with missing BUSCOs.
     # 1.0.5 : Fixed problem with reghead and updated checkfields to use reghead=LIST too.
+    # 1.1.0 : Added depthcopyplot.R for (re)plotting data from XLSX output.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -137,11 +138,12 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [Y] : Change pngplots/ to $BASEFILE.pngplots/
     # [ ] : Improve software checks and file checks for re-running on pre-generated data without programs installed.
     # [Y] : Make full run docstring for docHTML.
+    # [ ] : Make program generate output from XLXS file if found and force=F.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('DepthKopy', '1.0.5', 'June 2022', '2021')
+    (program, version, last_edit, copy_right) = ('DepthKopy', '1.1.0', 'November 2022', '2021')
     description = 'Single-copy read-depth based copy number analysis'
     author = 'Dr Richard J. Edwards.'
     comments = ['Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -513,6 +515,15 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
 
         * `$REGIONS` is the type of region plotted (`BUSCO` complete, `Duplicated`, or assembly `Sequences`).
         * `$STAT` is the output statistic: `MeanX`, `MedX`, `ModeX` or `DensX`.
+
+        ### Re-running failed plots
+
+        If DepthKopy fails to run to completion, or you wish to change axes limits and/or edit out some of the features, you
+        can also generate plots from the `*.xlsx` output file using the `depthcopyplot.R` file:
+
+        ```
+        Rscript $CODEPATH/depthcopyplot.R basefile=$BASE [scdepth=NUM] [xlsx=FILE] [xsheets=LIST] [reghead=LIST] [pngdir=PATH] [cnmax=INT] [sigdif=T/F] [rdir=PATH]
+        ```
 
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###

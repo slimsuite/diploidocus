@@ -256,7 +256,7 @@ class Database(rje.RJE_Object):
         '''Sets basefile and cascades to daughter objects.'''
         if basefile: self.setStr({'Basefile':basefile})
         else: basefile = self.basefile()
-        for obj in self.obj.values() + self.list['Tables']:
+        for obj in list(self.obj.values()) + self.list['Tables']:
             try:
                 if obj and cascade and obj.basefile() != basefile: obj.setBasefile(basefile)
             except: pass

@@ -19,8 +19,8 @@
 """
 Module:       rje_readcore
 Description:  Read mapping and analysis core module
-Version:      0.8.1
-Last Edit:    27/06/22
+Version:      0.9.0
+Last Edit:    13/01/23
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -55,6 +55,7 @@ Commandline:
     depadjust=INT   : Advanced R density bandwidth adjustment parameter [12]
     seqstats=T/F    : Whether to output CN and depth data for full sequences as well as BUSCO genes [False]
     cnmax=INT       : Max. y-axis value for CN plot (and mode multiplier for related depth plots) [4]
+    fragmented=T/F  : Whether to use Fragmented as well as Complete BUSCO genes for SC Depth estimates [False]
     ### ~ System options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     forks=X         : Number of parallel sequences to process at once [0]
     killforks=X     : Number of seconds of no activity before killing all remaining forks. [36000]
@@ -97,6 +98,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.7.1 - Fixed readtype recycle bug.
     # 0.8.0 - Added bamcsi=T/F : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
     # 0.8.1 - Made reghead=LIST a synonym for checkfields=LIST.
+    # 0.9.0 - Fixed a problem with lack of Duplicated BUSCOs. Added fragmented=T option.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -115,7 +117,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('ReadMap', '0.8.1', 'June 2022', '2021')
+    (program, version, last_edit, copy_right) = ('ReadMap', '0.9.0', 'January 2023', '2021')
     description = 'Read mapping analysis module'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -189,6 +191,7 @@ class ReadCore(rje_obj.RJE_Object):
 
     Bool:boolean
     - BAMCSI=T/F : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
+    - Fragmented=T/F  : Whether to use Fragmented as well as Complete BUSCO genes for SC Depth estimates [False]
     - Minimap2        : Whether Minimap2 found on system
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
     - Rscript         : Whether Rscript found on system
@@ -224,7 +227,7 @@ class ReadCore(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','DepFile','PAF','RegFile','SeqIn','TmpDir']
-        self.boollist = ['BAMCSI','QuickDepth','SeqStats']
+        self.boollist = ['BAMCSI','Fragmented','QuickDepth','SeqStats']
         self.intlist = ['Adjust','CNMax']
         self.numlist = ['SCDepth']
         self.filelist = []
@@ -247,7 +250,7 @@ class ReadCore(rje_obj.RJE_Object):
         '''
         self.setStr({'BAM':'None','BUSCO':'None','DepFile':'None','PAF':'None','RegFile':'None','SeqIn':'None','TmpDir':'./tmpdir/',
                      'Minimap2':'minimap2','Samtools':'samtools'})
-        self.setBool({'BAMCSI':False,'QuickDepth':False,'SeqStats':False})
+        self.setBool({'BAMCSI':False,'Fragmented':False,'QuickDepth':False,'SeqStats':False})
         self.setInt({'Adjust':12,'CNMax':4})
         self.setNum({'AllBases':0,'CovBases':0,'MapAjust':0,'MapBases':0,'OldAdjust':0,'SCDepth':0})
         self.list['CheckFields'] = ['SeqName','Start','End']
@@ -269,7 +272,7 @@ class ReadCore(rje_obj.RJE_Object):
         self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
         self._cmdReadList(cmd,'str',['RegFile'])  # String representing directory path
         self._cmdReadList(cmd,'file',['BAM','BUSCO','DepFile','PAF','SeqIn'])  # String representing file path
-        self._cmdReadList(cmd,'bool',['BAMCSI','QuickDepth','SeqStats','Minimap2','Samtools','Rscript'])
+        self._cmdReadList(cmd,'bool',['BAMCSI','Fragmented','QuickDepth','SeqStats','Minimap2','Samtools','Rscript'])
         self._cmdReadList(cmd,'int',['Adjust','CNMax'])
         self._cmdReadList(cmd,'num',['SCDepth'])
         self._cmdReadList(cmd,'glist',['Reads'])
@@ -1154,6 +1157,7 @@ class ReadCore(rje_obj.RJE_Object):
                     options.append('{0}={1}'.format(lcmd.lower(), ','.join(self.list[lcmd])))
             if self.debugging(): options.append('debug=TRUE')
             if self.getBool('SeqStats'): options.append('seqstats=TRUE')
+            if self.getBool('Fragmented'): options.append('fragmented=TRUE')
             optionstr = ' '.join(options)
             return optionstr
         except: self.errorLog('%s.callRscript error' % self.prog())

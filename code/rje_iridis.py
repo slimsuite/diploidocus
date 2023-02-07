@@ -73,7 +73,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../lib
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../tools/'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../legacy/'))
 ### User modules - remember to add *.__doc__ to cmdHelp() below ###
-import rje, rje_seq, rje_slimlist, rje_uniprot, rje_zen
+import rje, rje_zen
+try: import rje_seq, rje_slimlist, rje_uniprot
+except: pass
 try:
     import gopher_V2 as gopher
 except: gopher = None

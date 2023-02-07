@@ -1,5 +1,5 @@
 #~~#	#~+~~+~#	#~~#
-#LOG	00:00:00	Activity Log for Diploidocus V1.3.1: Tue Nov  1 13:24:48 2022
+#LOG	00:00:00	Activity Log for Diploidocus V1.4.0: Tue Feb  7 21:15:14 2023
 #WARN	00:00:00	Python 3.x detected but not fully supported. Please report odd behaviour.
 #DIR	00:00:00	Run from directory: /Users/redwards/Library/CloudStorage/OneDrive-UNSW/code/diploidocus/docs
 #ARG	00:00:00	Commandline arguments: i=-1 dochtml newlog
@@ -9,6 +9,6 @@
 #BASE	00:00:00	Output file basename: diploidocus
 #RMD	00:00:00	RMarkdown Diploidocus documentation output to diploidocus.docs.Rmd
 #RCMD	00:00:00	Rscript -e 'library(rmarkdown); rmarkdown::render("diploidocus.docs.Rmd", "html_document")'
-#RCMD	00:00:01	diploidocus.docs.html generated from diploidocus.docs.Rmd
-#WARN	00:00:01	1 warning messages: check log for details.
-#LOG	00:00:01	Diploidocus V1.3.1 End: Tue Nov  1 13:24:50 2022
+#RCMD	00:00:15	diploidocus.docs.html generated from diploidocus.docs.Rmd
+#WARN	00:00:15	1 warning messages: check log for details.
+#LOG	00:00:15	Diploidocus V1.4.0 End: Tue Feb  7 21:15:29 2023

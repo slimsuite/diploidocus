@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.3.1
-Last Edit:    11/05/22
+Version:      1.4.0
+Last Edit:    06/02/23
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -62,6 +62,7 @@ Function:
     * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
     * `diphapnr` runs `sortnr` followed by `diphap`
     * `insilico` generates balanced diploid combined reads from two sequenced haploid parents
+    * `summarise` just runs the seqin summarise code and then stops.
 
     See <https://slimsuite.github.io/diploidocus/> for details of each mode. General SLiMSuite run documentation can be
     found at <https://github.com/slimsuite/SLiMSuite>.
@@ -544,6 +545,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.2.0 - Altered telomere output table to use SeqName not Name, for ChromSyn compatibility. Added telonull=T/F.
     # 1.3.0 - Added Rscript replacement for purge_haplotigs purgehap=X : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
     # 1.3.1 - Fixed purge_hap triggering bug.
+    # 1.4.0 - Added summarise mode to Diploidocus.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -610,7 +612,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.3.1', 'May 2022', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.4.0', 'February 2023', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -843,6 +845,9 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 #self._cmdReadList(cmd,'cdict',['Att']) # Splits comma separated X:Y pairs into dictionary
                 #self._cmdReadList(cmd,'cdictlist',['Att']) # As cdict but also enters keys into list
             except: self.errorLog('Problem with cmd:%s' % cmd)
+        if self.getStrLC('RunMode') == 'diploidocus' and sys.argv[1] in ['summarise']:
+            self.setStr({'RunMode':'summarise'})
+            self.printLog('#RUN','Run mode set to first argument: {0}'.format(self.getStrLC('RunMode')))
         if self.getStrLC('GenomeSize'):
             try: self.setInt({'GenomeSize':rje_seqlist.bpFromStr(self.getStrLC('GenomeSize'))})
             except:
@@ -886,6 +891,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         * `diphap` splits a pseudodiploid assembly into primary and alternative scaffolds
         * `diphapnr` runs `sortnr` followed by `diphap`
         * `insilico` generates balanced diploid combined reads from two sequenced haploid parents
+        * `summarise` just runs the seqin summarise code and then stops.
 
         See <https://slimsuite.github.io/diploidocus/> for details of each mode. General SLiMSuite run documentation can be
         found at <https://github.com/slimsuite/SLiMSuite>.
@@ -1890,6 +1896,10 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 depcmd = ['winsize=0'] + self.cmd_list + ['regfile={0}'.format(self.getStr('RegCheck'))]
                 depcmd += ['checkfields={0}'.format(','.join(self.list['CheckFields']))]
                 if not depthkopy.DepthKopy(self.log,depcmd).run(): raise ValueError('DepthKopy failed')
+                return True
+            elif self.getStrLC('RunMode') in ['summarise','summary','gapstats']:
+                self.infoLog('Running SeqIn summarise only (legacy=F)')
+                seqlist = self.seqinObj(summarise=True)
                 return True
             else: raise ValueError('RunMode="%s" not recognised!' % self.getStrLC('RunMode'))
         except:

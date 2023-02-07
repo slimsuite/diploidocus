@@ -60,7 +60,9 @@ slimsuitepath = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__
 sys.path.append(os.path.join(slimsuitepath,'libraries/'))
 sys.path.append(os.path.join(slimsuitepath,'tools/'))
 ### User modules - remember to add *.__doc__ to cmdHelp() below ###
-import rje, rje_obj, rje_seq
+import rje, rje_obj
+try: import rje_seq
+except: pass
 #########################################################################################################################
 def history():  ### Program History - only a method for PythonWin collapsing! ###
     '''

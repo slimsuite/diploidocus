@@ -1,7 +1,7 @@
 ########################################################
 ### DepthCopy SC depth functions               ~~~~~ ###
-### VERSION: 1.0.5                             ~~~~~ ###
-### LAST EDIT: 27/06/22                        ~~~~~ ###
+### VERSION: 1.1.0                             ~~~~~ ###
+### LAST EDIT: 03/02/23                        ~~~~~ ###
 ### AUTHORS: Richard Edwards 2021              ~~~~~ ###
 ### CONTACT: richard.edwards@unsw.edu.au       ~~~~~ ###
 ########################################################
@@ -35,7 +35,8 @@
 # v1.0.3 : Fixed problem with only a single density point.
 # v1.0.4 : Added catching of missing BUSCO file if scdepth not given.
 # v1.0.5 : Added some additional bug catching for bad region file headers.
-version = "v1.0.5"
+# v1.1.0 : Fixed a problem with lack of Duplicated BUSCOs. Added fragmented=T option. Fixed BUSCO header issue.
+version = "v1.1.0"
 
 ####################################### ::: USAGE ::: ############################################
 # Example use:
@@ -55,6 +56,7 @@ version = "v1.0.5"
 # : scdepth=NUM = Single copy read depth to use in place of BUSCO-derived depth
 # : buscocn=T/F = Whether to use the BUSCO-derived CN setting if possible to calculate.
 # : threads=NUM = Number of threads to use. [0 will use detectCores() - 1]
+# : fragmented=T/F = Whether to use the BUSCO-derived CN setting if possible to calculate.
 
 #i# Python code:
 # slimsuitepath = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../')) + os.path.sep
@@ -87,7 +89,7 @@ defaults = list(adjust=12,scdepth=0,busco="",depfile="",regfile="",threads=0,
                 katfile='None', katself='None', homfile='None',
                 seqstats=FALSE,sigdif=FALSE,seqnames=vector(),
                 pngwidth=1200,pngheight=900,pointsize=16,pngdir="pngplots",
-                basefile="depthcopy",buscocn=TRUE,
+                basefile="depthcopy",buscocn=TRUE,fragmented=FALSE,
                 gfftype="gene",reghead="SeqName,Start,End",outlog=stdout())
 settings <- defaults
 argvec = commandArgs(TRUE)
@@ -215,7 +217,16 @@ v3head = c("BuscoID","Status","Contig","Start","End","Score","Length")
 v5head = c("BuscoID","Status","Contig","Start","End","Strand","Score","Length","OrthoDBURL","Description")
 #i# NOTE: URL and Description not always there.
 buscoTable <- function(filename){
-  buscodb = read.table(filename,fill=TRUE,row.names = NULL,sep="\t",quote="")
+  # Check the header for BUSCO v5
+  con <- file(filename,"r")
+  bv5 <- startsWith(readLines(con,n=1),"# BUSCO version is: 5")
+  close(con)
+  if(bv5){
+    buscodb = read.table(filename,fill=TRUE,row.names = NULL,col.names=v5head,sep="\t",quote="")
+  }else{
+    buscodb = read.table(filename,fill=TRUE,row.names = NULL,sep="\t",quote="")
+  }
+  # Load with the relevant headers
   if(ncol(buscodb) > length(v3head)){
     logWrite(paste("#BUSCOV BUSCO v5 format"))
     colnames(buscodb) = v5head[1:ncol(buscodb)]
@@ -224,8 +235,14 @@ buscoTable <- function(filename){
     colnames(buscodb) = v3head
   }
   buscodb$Contig = as.character(buscodb$Contig)
-  buscodb <- buscodb[buscodb$Status == "Complete",]
-  logWrite(paste('#BUSCO',nrow(buscodb),"Complete BUSCO genes loaded from",filename))
+  if(settings$fragmented){
+    buscodb <- buscodb[buscodb$Status %in% c("Complete","Fragmented"),]
+    logWrite(paste('#BUSCO',nrow(buscodb[buscodb$Status == "Complete",]),"Complete BUSCO genes loaded from",filename))
+    logWrite(paste('#BUSCO',nrow(buscodb),"Complete & Fragmented BUSCO genes loaded from",filename))
+  }else{
+    buscodb <- buscodb[buscodb$Status == "Complete",]
+    logWrite(paste('#BUSCO',nrow(buscodb),"Complete BUSCO genes loaded from",filename))
+  }
   if(length(settings$seqnames) > 0){
     #buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
     buscodb <- buscodb[buscodb$Contig %in% settings$seqnames,]
@@ -235,7 +252,16 @@ buscoTable <- function(filename){
 }
 #i# dupdb = buscoDupTable(filename)
 buscoDupTable <- function(filename){
-  buscodb = read.table(filename,fill=TRUE,row.names = NULL,sep="\t",quote="")
+  # Check the header for BUSCO v5
+  con <- file(filename,"r")
+  bv5 <- startsWith(readLines(con,n=1),"# BUSCO version is: 5")
+  close(con)
+  if(bv5){
+    buscodb = read.table(filename,fill=TRUE,row.names = NULL,col.names=v5head,sep="\t",quote="")
+  }else{
+    buscodb = read.table(filename,fill=TRUE,row.names = NULL,sep="\t",quote="")
+  }
+  # Load with the relevant headers
   if(ncol(buscodb) > length(v3head)){
     #logWrite(paste("#BUSCOV BUSCO v5 format"))
     colnames(buscodb) = v5head[1:ncol(buscodb)]
@@ -247,7 +273,7 @@ buscoDupTable <- function(filename){
   buscodb = buscodb[buscodb$Status == "Duplicated",]
   #logWrite(paste(nrow(buscodb),"Duplicated BUSCO genes loaded from",filename))
   logWrite(paste('#BUSCO',nrow(buscodb),"Duplicated BUSCO genes loaded from",filename))
-  if(length(settings$seqnames) > 0){
+  if(length(settings$seqnames) > 0 & nrow(buscodb) > 0){
     #buscodb <- buscodb %>% filter(Contig %in% settings$seqnames)
     buscodb <- buscodb[buscodb$Contig %in% settings$seqnames,]
     logWrite(paste('#BUSCO',nrow(buscodb),"Duplicated BUSCO genes following filtering to",length(settings$seqnames),"sequences."))
@@ -804,14 +830,14 @@ if(file.exists(buscofile)){
   ### ~ Duplicated BUSCO genes ~~~~~~~~~~~~~~~~~~~~~~~~ ###
   dupdb = buscoDupTable(buscofile)
   #i# Calculate CN per gene
-  reghead <- c("Contig","Start","End")
-  dupdb <- regCN(as.data.frame(dupdb),buscoMean,buscoSD)
-  reglist$Duplicated = dupdb
-  logWrite(paste('Reverted region headers:',paste0(reghead,collapse=", ")))
+  if(nrow(dupdb) > 0){
+    reghead <- c("Contig","Start","End")
+    dupdb <- regCN(as.data.frame(dupdb),buscoMean,buscoSD)
+    reglist$Duplicated = dupdb
+    logWrite(paste('Reverted region headers:',paste0(reghead,collapse=", ")))
   ### ~ Save CN table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
   #i# Output table to with CN data
-  outfile = paste(settings$basefile,"busco.dupcnv.tsv",sep=".",collapse=".")
-  if(nrow(dupdb) > 0){
+    outfile = paste(settings$basefile,"busco.dupcnv.tsv",sep=".",collapse=".")
     logWrite(paste("#SAVE",nrow(dupdb),"Duplicated BUSCO genes output to",outfile))
     write.table(tidyTable(dupdb),outfile,sep="\t",quote=FALSE,row.names=FALSE)
   }else{
