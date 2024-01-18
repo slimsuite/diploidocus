@@ -19,8 +19,8 @@
 """
 Module:       rje_seqlist
 Description:  RJE Nucleotide and Protein Sequence List Object (Revised)
-Version:      1.50.1
-Last Edit:    06/02/23
+Version:      1.50.4
+Last Edit:    05/06/23
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -262,6 +262,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.49.1 - Minor bug fixes.
     # 1.50.0 - Updated gapfix to have a "wildcard" length of 0.
     # 1.50.1 - Fixed the string.atol Python3 bug.
+    # 1.50.2 - More Py3 bug fixes.
+    # 1.50.3 - Added bug that was leaving out last fastq sequence from summarise etc.
+    # 1.50.4 - Added gensize=NUM alias for genomesize=NUM
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -291,7 +294,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SeqList', '1.50.1', 'February 2023', '2011')
+    (program, version, last_edit, copy_right) = ('SeqList', '1.50.4', 'June 2023', '2011')
     description = 'RJE Nucleotide and Protein Sequence List Object (Revised)'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_zen.Zen().wisdom()]
@@ -491,6 +494,7 @@ class SeqList(rje_obj.RJE_Object):
                 self._cmdReadList(cmd,'path',['TmpDir'])
                 self._cmdReadList(cmd,'int',['AddFlanks','FracStep','MinGap','MinLen','MaxLen','MinORF','RFTran','TerMinORF','Tile','TileStep'])
                 self._cmdReadList(cmd,'num',['GenomeSize','MinTile'])
+                self._cmdRead(cmd,type='num',att='GenomeSize',arg='gensize')
                 self._cmdReadList(cmd,'list',['PosFields'])
                 self._cmdReadList(cmd,'ilist',['LenStats'])
                 self._cmdReadList(cmd,'nlist',['Sampler'])
@@ -866,12 +870,12 @@ class SeqList(rje_obj.RJE_Object):
                 SEQFILE = self.SEQFILE()
                 SEQFILE.seek(seq)
                 name = rje.chomp(SEQFILE.readline())
+                quality = ''
                 if name[:1] == '@': # FASTQ
                     name = name[1:]
-                    sequence = ''; line = rje.chomp(SEQFILE.readline())
-                    while line and line[:1] != '+':
-                        sequence += line
-                        line = rje.chomp(SEQFILE.readline())
+                    sequence = rje.chomp(SEQFILE.readline())
+                    line = rje.chomp(SEQFILE.readline())
+                    quality = rje.chomp(SEQFILE.readline())
                 elif name[:1] == '>':
                     name = name[1:]
                     sequence = ''; line = rje.chomp(SEQFILE.readline())
@@ -887,6 +891,7 @@ class SeqList(rje_obj.RJE_Object):
                     if case: return {'Name':name,'Sequence':sequence}
                     else: return {'Name':name,'Sequence':sequence.upper()}
                 elif format == 'short': return rje.split(name)[0]
+                elif format == 'fastq': return (name,sequence,quality)
                 else:
                     if case: return (name,sequence)
                     else: return (name,sequence.upper())
@@ -1170,7 +1175,7 @@ class SeqList(rje_obj.RJE_Object):
             meansplit = rje.split('%.2f' % meanlen,'.')
             self.printLog('#SUM','Mean length of sequences: %s.%s' % (rje.iStr(meansplit[0]),meansplit[1]))
             seqdata['MeanLength'] = meanlen
-            if rje.isOdd(len(seqlen)): median = seqlen[len(seqlen)/2]
+            if rje.isOdd(len(seqlen)): median = seqlen[len(seqlen)//2]
             else: median = sum(seqlen[(len(seqlen)//2)-1:][:2]) / 2.0
             self.printLog('#SUM','Median length of sequences: %s' % (rje.iStr(median)))
             seqdata['MedLength'] = median
@@ -1945,7 +1950,7 @@ class SeqList(rje_obj.RJE_Object):
                 if len(forklist) != len(forks):
                     #self.verbose(1,2,' => %d of %d forks finished!' % (len(forks) - len(forklist),len(forks)),1)
                     forks = forklist[0:]
-                    for pid in forked.keys():   # Go through current forks
+                    for pid in list(forked.keys()):   # Go through current forks
                         if pid not in forks:
                             sname = forked.pop(pid)
                             sfile = '%s%s.nr' % (tmpdir,sname)
@@ -2152,6 +2157,7 @@ class SeqList(rje_obj.RJE_Object):
                         fprev = fpos; sx += 1
                     elif line: raise ValueError('Unexpected fastq line where shoud be sequence name: "%s"' % line)
                     fpos = SEQ.tell()
+                if sequence and name: self._addSeq(name, sequence, fprev, makeindex, nodup=nodup)  # Previous Sequence to Add
             ##  ~ [2b] ~ Phylip Format ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             elif filetype == 'phy':
                 self.printLog('#SEQ','Phylip format not currently supported. Please use rje_seq to reformat first.')
@@ -2413,7 +2419,7 @@ class SeqList(rje_obj.RJE_Object):
             simplefilter = self.mode() == 'file' and self.dict['SeqDict'] and not seqfilter and self.getStr('SeqDictType') in ['short','name']
             if simplefilter:
                 sx = 0.0; stot = len(self.dict['SeqDict'])
-                for name in self.dict['SeqDict'].keys()[0:]:
+                for name in list(self.dict['SeqDict'].keys())[0:]:
                     if screen: self.progLog('\r#FILT','Filtering sequences %.2f%%' % (sx/stot),rand=0.01); sx += 100
                     ok = True
                     if self.list['GoodSeq'] and rje.split(name)[0] not in self.list['GoodSeq']: self.dict['Filter']['GoodSeq'] += 1; ok = False
@@ -2477,7 +2483,7 @@ class SeqList(rje_obj.RJE_Object):
                     filtered = True
             if filtered:
                 if simplefilter:
-                    goodseq = self.dict['SeqDict'].values()
+                    goodseq = list(self.dict['SeqDict'].values())
                     goodseq.sort()
                 self.list['Seq'] = goodseq
                 #self.debug(goodseq)
@@ -2543,8 +2549,8 @@ class SeqList(rje_obj.RJE_Object):
                     sequence = sequence[:cstart-1] + 'N' * (cend-cstart+1) + sequence[cend:]
                     if len(sequence) != seqlen: raise ValueError('Masking problem!')
                     sname = '%s (masked %s-%s)' % (sname,rje.iStr(cstart),rje.iStr(cend))
-                    self.list['Seq'][i] = (seqname, sequence)
-                    masked.append(i)
+                    self.list['Seq'][seqi] = (seqname, sequence)
+                    masked.append(seqi)
                 else:
                     sequence = sequence[cstart-1:cend]
                     sname = '%s (region %s-%s)' % (sname,rje.iStr(cstart),rje.iStr(cend))
@@ -3247,7 +3253,7 @@ class SeqList(rje_obj.RJE_Object):
             else: self.printLog('#SAMPLE','%s sequences output to %s.' % (rje.iStr(self.list['Sampler'][0]),rfile))
         except: self.errorLog("Problem with SeqList.sampler()"); raise
 #########################################################################################################################
-    def contigsTable(self,save=True):   ### Generate table of contig positions (SeqName, Start, End)
+    def contigsTable(self,save=True,outbase=None):   ### Generate table of contig positions (SeqName, Start, End)
         '''
         Generate table of contig positions (SeqName, Start, End, CtgLen)
         >> save:bool [True] = Whether to save table to *.contigs.tdt
@@ -3296,7 +3302,11 @@ class SeqList(rje_obj.RJE_Object):
                     seqlen = self.seqLen(seq)
                     centry = {'seqname':seqname,'start':1,'end':seqlen,'ctglen':seqlen}
                     cdb.addEntry(centry); sx += 1
-            cdb.saveToFile()
+            seqbase = rje.baseFile(self.getStr('SeqIn'),strip_path=True)
+            if self.getStrLC('SeqOut'):
+                seqbase = rje.baseFile(self.getStr('SeqOut'),strip_path=True)
+            if not self.getStrLC('SeqIn'): seqbase = self.getStr('Basefile')
+            cdb.saveToFile('%s.contigs.tdt' % seqbase)
         except: self.errorLog("Problem with SeqList.contigsTable()")
 #########################################################################################################################
      ### <6> ### Menu-based Sequence Editing                                                                            #
@@ -3727,8 +3737,8 @@ class SeqList(rje_obj.RJE_Object):
                 else:
                     self.printLog('#GAPFIX', 'Converting gaps: {0}bp -> {1}bp'.format(gaplen, gapfix[gaplen]))
             mingap = self.getInt('MinGap')
-            if mingap > min(gapfix.keys()) > 0:
-                mingap = min(gapfix.keys())
+            if mingap > min(list(gapfix.keys())) > 0:
+                mingap = min(list(gapfix.keys()))
                 self.printLog('#MINGAP','Min. gap length adjusted for gap fix -> {0}bp'.format(mingap))
             gapre = re.compile('N{%d,}' % mingap)
             ### ~ [1] ~ Convert gaps ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
@@ -3852,10 +3862,10 @@ def batchSummarise(callobj,seqfiles,save=True,overwrite=False,seqcmd=[]):   ### 
                 seqdata['MeanLength'] = '%.1f' % seqdata['MeanLength']
                 for field in rje.split('SeqNum, TotLength, MinLength, MaxLength, MeanLength, MedLength, N50Length, L50Count, CtgNum, N50Ctg, L50Ctg, NG50Length, LG50Count, GapLength, GapPC, GCPC',', '):
                     if field in seqdata and field not in sdb.fields(): sdb.addField(field)
-                for field in seqdata.keys():
+                for field in list(seqdata.keys()):
                     if field not in sdb.fields(): sdb.addField(field)
                 sdb.addEntry(seqdata)
-            else: callobj.errorLog('Summarise failed for %s' % file,printerror=False)
+            else: callobj.printLog('#NOSUM','Summarise failed for %s' % file)
         ### ~ [3] Output Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         if save: sdb.saveToFile()
         return sdb

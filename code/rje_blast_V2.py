@@ -2625,7 +2625,7 @@ class BLASTRun(rje_obj.RJE_Object):
             cigel = [0,'']  # [Element,count] of current CIGAR element to be considered.
             cigar = ''
             ### ~ [1] Generate ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-            for i in xrange(len(qryseq)):
+            for i in range(len(qryseq)):
                 qi = qryseq[i].upper()
                 ti = trgseq[i].upper()
                 if qi == ti: ci = '='

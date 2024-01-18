@@ -19,8 +19,8 @@
 """
 Module:       rje_db
 Description:  R Edwards Relational Database module
-Version:      1.10.0
-Last Edit:    21/08/20
+Version:      1.10.2
+Last Edit:    21/08/23
 Copyright (C) 2007  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -84,6 +84,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.9.2 - Tweaked entrySummary - added collapse=True.
     # 1.9.3 - Added highest tied ranking.
     # 1.10.0 - Initial Python3 code conversion.
+    # 1.10.1 - Py3 bug fixing.
+    # 1.10.2 - Updated to deal with lowercase dictionary entries for CamelCase fields.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -102,7 +104,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, copy_right) = ('RJE_DB', '1.10.0', 'August 2020', '2008')
+    (program, version, last_edit, copy_right) = ('RJE_DB', '1.10.2', 'August 2023', '2008')
     description = 'R Edwards Relational Database module'
     author = 'Dr Richard J. Edwards.'
     comments = ['Please report bugs to Richard.Edwards@UNSW.edu.au']
@@ -532,7 +534,7 @@ class Database(rje.RJE_Object):
                 self.bugPrint(jtable.name())
                 jfield = joins[1]
                 (olddata,newdata,tmpx) = (newdata,{},0)
-                icheck = jtable.dict['Index'][jfield].keys()[0:]
+                icheck = list(jtable.dict['Index'][jfield].keys())[0:]
                 jx += 1; tx = 0.0; txx = len(olddata)
                 for tkey in rje.sortKeys(olddata):
                     self.progLog('\r#JOIN','Joining table %d of %d: %.2f%%  ' % (jx,len(join),tx/txx)); tx += 100.0
@@ -815,7 +817,7 @@ class Table(rje.RJE_Object):
         return self.entries(keys,sorted=True)
     def entries(self,keys=None,sorted=False):
         '''Returns all entries as a list.'''
-        if not keys and not sorted: return self.dict['Data'].values()
+        if not keys and not sorted: return list(self.dict['Data'].values())
         if sorted and not keys: return self.entryList(self.datakeys())
         if type(keys) != list and keys in self.dict['Data']: return self.dict['Data'][keys]
         return self.entryList(keys)
@@ -891,7 +893,9 @@ class Table(rje.RJE_Object):
     def addEntry(self,entry,warn=True,overwrite=True,splitchar=None,remake=True): ### Adds entry to self.dict['Data']
         '''Adds entry to self.dict['Data']. Makes key using self.makeKey().'''
         for f in self.fields():
-            if f not in entry: entry[f] = ''
+            if f not in entry: 
+                entry[f] = ''
+                if f.lower() in entry: entry[f] = entry.pop(f.lower())
         ekey = self.makeKey(entry)
         if ekey in self.dict['Data']:
             if not overwrite: return None
@@ -905,7 +909,7 @@ class Table(rje.RJE_Object):
             entry = newentry
             self.dict['Data'][ekey] = entry
         else: self.dict['Data'][ekey] = entry
-        for ikey in self.dict['Index'].keys():
+        for ikey in list(self.dict['Index'].keys()):
             try:
                 idata = entry[ikey]
                 if splitchar:
@@ -1837,7 +1841,7 @@ class Table(rje.RJE_Object):
                 return
             for ekey in self.dict['Data']:
                 if self.dict['Data'][ekey] == entry: break
-        for ikey in self.dict['Index'].keys():
+        for ikey in list(self.dict['Index'].keys()):
             try:
                 self.dict['Index'][ikey][entry[ikey]].remove(ekey)
                 if not self.dict['Index'][ikey][entry[ikey]]: self.dict['Index'][ikey].pop(entry[ikey])

@@ -400,7 +400,7 @@ def docHTML(self):  ### Generate Rmd and HTML documents from main run() method d
         rtxt = rmd.rmdHead(title='%s Documentation' % prog,author='Richard J. Edwards',setup=True)
         #!# Replace this with documentation text?
         rtxt += rje.replace(self.run.__doc__,'\n        ','\n')
-        rtxt += '\n\n<br>\n<small>&copy; 2021 Richard Edwards | richard.edwards@unsw.edu.au</small>\n'
+        rtxt += '\n\n<br>\n<small>&copy; 2023 Richard Edwards | rich.edwards@uwa.edu.au</small>\n'
         rmdfile = '%s.docs.Rmd' % self.baseFile()
         open(rmdfile,'w').write(rtxt)
         self.printLog('#RMD','RMarkdown %s documentation output to %s' % (prog,rmdfile))

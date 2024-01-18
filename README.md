@@ -1,7 +1,7 @@
 # Diploidocus: Diploid genome assembly analysis toolkit.
 
 ```
-Diploidocus v1.4.0
+Diploidocus v1.5.1
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/diploidocus.docs.html`](./docs/diploidocus.docs.html), or visit <https://slimsuite.github.io/diploidocus/>.
@@ -121,6 +121,7 @@ summarise=T/F   : Whether to generate and output summary statistics sequence dat
 genomesize=INT  : Haploid genome size (bp) [0]
 scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
 bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
+bamcsi=T/F      : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
 reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
 readtype=LIST   : List of ont/pb/hifi file types matching reads for minimap2 mapping [ont]
 dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]

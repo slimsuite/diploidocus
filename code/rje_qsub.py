@@ -19,8 +19,8 @@
 """
 Module:       rje_qsub
 Description:  QSub Generating module
-Version:      1.11.1
-Last Edit:    28/05/20
+Version:      1.12.0
+Last Edit:    13/02/23
 Copyright (C) 2006  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -90,6 +90,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.10.2 - Added notification that job is running when jobwait=T.
     # 1.11.0 - Added output of date and time at end of job script too. (Gives a record of total time running.)
     # 1.11.1 - Added job run summary output to end of stdout.
+    # 1.12.0 - Updated for new katana OS and qsub. Dropped vmem again. Switched nodes/ppn for select/ncpus.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -101,7 +102,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, copy_right) = ('RJE_QSUB', '1.11.1', 'May 2020', '2006')
+    (program, version, last_edit, copy_right) = ('RJE_QSUB', '1.12.0', 'February 2023', '2006')
     description = 'QSub Generating module'
     author = 'Dr Richard J. Edwards.'
     comments = [rje_zen.Zen().wisdom()]
@@ -255,9 +256,8 @@ class QSub(rje.RJE_Object):
             jobstr = rje.replace('%s.job' % self.info['Job'],'.job','')
             jlist = ['#!/bin/bash',
                      '#PBS -N %s' % jobstr,  #,'#PBS -q batch',
-                     '#PBS -l nodes=%d:ppn=%d' % (self.stat['Nodes'],self.stat['PPN']),
+                     '#PBS -l select=%d:ncpus=%d' % (self.stat['Nodes'],self.stat['PPN']),
                      '#PBS -l walltime=%d:%s:00' % (hr,rje.preZero(min,60)),
-                     '#PBS -l vmem=%dgb' % self.getInt('VMem'),
                      '#PBS -l mem=%dgb' % self.getInt('VMem'),
                      '']     #10
             #if not os.popen('hostname').read().startswith('katana.science.unsw.edu.au'):
@@ -276,7 +276,7 @@ class QSub(rje.RJE_Object):
                       'echo This jobs runs on the following processors:','echo `cat $PBS_NODEFILE`','',                #5
                       'echo This job has allocated $NPROCS cpus','']
             self.printLog('#PPN','%d Node(s) requested: %d PPN.' % (self.getInt('Nodes'),self.getInt('PPN')))
-            self.printLog('#VMEM','%s GB VMem requested.' % (self.getStat('VMem')))
+            self.printLog('#MEM','%s GB Mem requested.' % (self.getStat('VMem')))
             if self.getBool('ModPurge'):
                 jlist.append('module purge')
                 self.printLog('#MOD','Modules purged (modpurge=T)')

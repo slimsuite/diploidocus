@@ -19,8 +19,8 @@
 """
 Module:       DepthKopy
 Description:  Single-copy read-depth and kmer based copy number analysis
-Version:      1.1.0
-Last Edit:    01/11/22
+Version:      1.3.0
+Last Edit:    06/09/23
 Citation:     Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
@@ -66,6 +66,7 @@ Commandline:
     basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
     scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
+    bamcsi=T/F      : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
     reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
     readtype=LIST   : List of ont/pb/hifi file types matching reads for minimap2 mapping [ont]
     dochtml=T/F     : Generate HTML DepthKopy documentation (*.docs.html) instead of main run [False]
@@ -81,6 +82,9 @@ Commandline:
     winstep=NUM     : Generate window every NUM bp (or fraction of winsize=INT if <=1) [1]
     chromcheck=LIST : Output separate window analysis violin plots for listed sequences (or min size) + 'Other' []
     seqstats=T/F    : Whether to output CN and depth data for full sequences as well as BUSCO genes [True]
+    ### ~ Rscript options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+    outdir=PATH     : Redirect the outputs of the depthcopy.R script into outdir [./]
+    pointsize=INT   : Rescale the font size for the DepthKopy plots [24]
     ### ~ KAT kmer options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     kmerself=T/F        : Whether to perform additional assembly kmer analysis [True]
     kmerreads=FILELIST  : File of high quality reads for KAT kmer analysis []
@@ -122,6 +126,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.0.4 : Fixed bug with missing BUSCOs.
     # 1.0.5 : Fixed problem with reghead and updated checkfields to use reghead=LIST too.
     # 1.1.0 : Added depthcopyplot.R for (re)plotting data from XLSX output.
+    # 1.2.0 : Added Duplicated BUSCO rating. Fixed problem with reading in CSV regfile data.
+    # 1.3.0 : Modified the font size and mean box labels for the default plots and added output options.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -139,11 +145,14 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Improve software checks and file checks for re-running on pre-generated data without programs installed.
     # [Y] : Make full run docstring for docHTML.
     # [ ] : Make program generate output from XLXS file if found and force=F.
+    # [Y] : Add BuscoDup report output.
+    # [ ] : Add chrom=LIST setting that will divide windows (and contigs?) between chrom and unplaced.
+    # [ ] : Add contigs=T setting that will check/generate contigs table and then add contigs to regfile list.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('DepthKopy', '1.1.0', 'November 2022', '2021')
+    (program, version, last_edit, copy_right) = ('DepthKopy', '1.3.0', 'September 2023', '2021')
     description = 'Single-copy read-depth based copy number analysis'
     author = 'Dr Richard J. Edwards.'
     comments = ['Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -209,6 +218,7 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
     - BAM=FILE        : BAM file of reads mapped onto assembly [$BASEFILE.bam]
     - BUSCO=TSVFILE   : BUSCO full table [full_table_$BASEFILE.busco.tsv]
     - HomFile=FILE    : Precomputed homology depth file (*.fasthom) to use [None]
+    - OutDir=PATH     : Redirect the outputs of the depthcopy.R script into outdir [./]
     - PAF=FILE        : PAF file of reads mapped onto assembly [$BASEFILE.paf]
     - RegFile=FILE    : File of SeqName, Start, End positions (or GFF) for read coverage checking [None]
     - SeqIn=FILE      : Input sequence assembly (sortnr/diphap modes) []
@@ -220,6 +230,7 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
 
     Int:integer
     - DepAdjust=INT   : Advanced R density bandwidth adjustment parameter [8]
+    - PointSize=INT   : Rescale the font size for the DepthKopy plots [24]
     - WinSize=INT     : Generate additional window-based depth and CN profiles of INT bp (0 to switch off) [100000]
 
     Num:float
@@ -245,9 +256,9 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['HomFile']
+        self.strlist = ['HomFile','OutDir']
         self.boollist = ['KmerSelf','DocHTML']
-        self.intlist = ['WinSize']
+        self.intlist = ['PointSize','WinSize']
         self.numlist = ['WinStep']
         self.filelist = []
         self.listlist = ['ChromCheck']
@@ -259,7 +270,7 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
         self._setKatAttributes()        # See rje_kat
         self.setStr({})
         self.setBool({'KmerSelf':True,'SeqStats':True})
-        self.setInt({'WinSize':100000})
+        self.setInt({'PointSize':24,'WinSize':100000})
         self.setNum({'WinStep':1})
         ### ~ Other Attributes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setForkAttributes()   # Delete if no forking
@@ -278,11 +289,11 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
                 ### Class Options (No need for arg if arg = att.lower()) ### 
                 #self._cmdRead(cmd,type='str',att='Att',arg='Cmd')  # No need for arg if arg = att.lower()
                 #self._cmdReadList(cmd,'str',['Att'])   # Normal strings
-                #self._cmdReadList(cmd,'path',['Att'])  # String representing directory path 
+                self._cmdReadList(cmd,'path',['OutDir'])  # String representing directory path 
                 self._cmdReadList(cmd,'file',['HomFile'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
                 self._cmdReadList(cmd,'bool',['KmerSelf','DocHTML'])  # True/False Booleans
-                self._cmdReadList(cmd,'int',['WinSize'])   # Integers
+                self._cmdReadList(cmd,'int',['PointSize','WinSize'])   # Integers
                 self._cmdReadList(cmd,'float',['WinStep']) # Floats
                 #self._cmdReadList(cmd,'min',['Att'])   # Integer value part of min,max command
                 #self._cmdReadList(cmd,'max',['Att'])   # Integer value part of min,max command
@@ -385,6 +396,7 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
         basefile=FILE   : Root of output file names [diploidocus or $SEQIN basefile]
         scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
         bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
+        bamcsi=T/F      : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
         reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
         readtype=LIST   : List of ont/pb/hifi file types matching reads for minimap2 mapping [ont]
         dochtml=T/F     : Generate HTML DepthKopy documentation (*.docs.html) instead of main run [False]
@@ -400,6 +412,9 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
         winstep=NUM     : Generate window every NUM bp (or fraction of winsize=INT if <=1) [1]
         chromcheck=LIST : Output separate window analysis violin plots for listed sequences (or min size) + 'Other' []
         seqstats=T/F    : Whether to output CN and depth data for full sequences as well as BUSCO genes [True]
+        ### ~ Rscript options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+        outdir=PATH     : Redirect the outputs of the depthcopy.R script into outdir [./]
+        pointsize=INT   : Rescale the font size for the DepthKopy plots [24]
         ### ~ KAT kmer options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         kmerself=T/F        : Whether to perform additional assembly kmer analysis [True]
         kmerreads=FILELIST  : File of high quality reads for KAT kmer analysis []
@@ -619,7 +634,7 @@ class DepthKopy(rje_readcore.ReadCore,rje_kat.KAT):
         try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             options = ['pngdir={0}.plots'.format(self.baseFile()),'buscocn=FALSE']
             for cmd in ['depfile','busco','scdepth','regfile','winsize','winstep','adjust','cnmax','basefile',
-                        'katfile', 'katself', 'homfile']:
+                        'katfile', 'katself', 'homfile','outdir','pointsize']:
                 val =  self.getData(cmd)
                 if val and val != 'None':
                     options.append('{0}={1}'.format(cmd,val))

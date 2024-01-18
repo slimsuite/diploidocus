@@ -19,8 +19,8 @@
 """
 Module:       rje_zen
 Description:  Random Zen Wisdom Generator
-Version:      1.4.3
-Last Edit:    14/03/22
+Version:      1.4.4
+Last Edit:    24/02/23
 Copyright (C) 2007  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -56,7 +56,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.4.0 - Added some more words and "They fight crime!" structure.
     # 1.4.1 - Added some more words and started reformatting for Python3 compatibility.
     # 1.4.2 - Fixed formatting for Python 2.6 back compatibility for servers.
-    # 1.4.3 - Add some more words.
+    # 1.4.3 - Added some more words.
+    # 1.4.4 - Added some more words.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -68,7 +69,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo():     ### Makes Info object
     '''Makes rje.Info object for program.'''
-    (program, version, last_edit, cyear) = ('RJE_ZEN', '1.4.3', 'March 2022', '2007')
+    (program, version, last_edit, cyear) = ('RJE_ZEN', '1.4.4', 'February 2023', '2007')
     description = 'Random Zen Wisdom Generator'
     author = 'Dr Richard J. Edwards.'
     comments = ['WARNING: These wisdoms are computer-generated garbage.', 'Heed them at your own peril.']
@@ -321,22 +322,23 @@ class Zen(rje.RJE_Object):
         '''Returns a random noun.'''
         nlist = ['annotator','ant', 'atheist', 'athelete','armadillo','assassin','Academic','anti-vaxxer','antibody',
                  'badger', 'beetle', 'Bishop', 'boy', 'bushbaby', 'butterfly','cheerleader','billionaire','bilby',
-                 'bull','brown snake',
+                 'bull','brown snake','bony fish',
                  'cat','cheese', 'chemist','child','child','child', 'cloud', 'communist', 'computer scientist','Creationist',
-                 'cow','chatbot','curator','conspiracy theorist',
+                 'cow','chatbot','curator','conspiracy theorist','clownfish',
                  'Donald',
-                 'diplomat', 'doctor', 'dragon', 'duck','elf', 'firefly',
-                 'fish', 'fool', 'freak','fruit','fruitfly', 'fungus','Flat Earther',
+                 'diplomat', 'doctor', 'dragon', 'duck','elf','emperor', 'firefly',
+                 'fish', 'fish','fish','fool', 'freak','fruit','fruitfly', 'fungus','Flat Earther','frogfish',
                  'girl', 'ghost', 'heretic','hound', 'jellyfish', 'kangaroo', 'knight', 'lady', 'ladybird',
-                 'ladyboy','lion','kitten','kingfisher','king','killer','kitty',
+                 'ladyboy','lion','lungfish',
+                 'kitten','kingfisher','king','killer','kitty',
                  'journalist',
                  'marsupial', 'mind', 'monkey', 'monster', 'mosquito', 'misogynist', 'nazi',
-                 'philosopher', 'pig','pirate','postgrad','puppy',
+                 'philosopher', 'pig','pirate','postgrad','puppy','parrotfish',
                  'President','Professor','priest', 'prince', 'princess', 'programmer','python',
                  'queen', 'quokka',
-                 'rabbit', 'Republican','runner','rodent',
-                 'samurai', 'scientist', 'shrew', 'slug', 'snail','sparrow',
-                 'snake', 'soldier', 'spider', 'student', 'syntax error','smuggler',
+                 'rabbit', 'Republican','runner','rodent','ray',
+                 'samurai', 'scientist', 'shark', 'shrew', 'slug', 'snail','sparrow','snailfish','sea urchin',
+                 'snake', 'soldier', 'spider', 'stingray', 'student', 'syntax error','smuggler','snapper',
                  'teapot', 'teenager', 'termite', 'theologian','theoretical physicist', 'Thespian','tiger','tiger snake',
                  'toddler',
                  'wallaby','wombat','waster',
@@ -348,7 +350,7 @@ class Zen(rje.RJE_Object):
         if ztype == 'Z': return rje.stringj.join([rje.randomList(['A','The'])[0].lower(),rje.randomList([self._adjective('A'),self._adverb('A'),''])[0], self._noun('A')])
         if ztype == 'of' or (ztype in ['A','B'] and random.random() < 0.2):
             nlist = nlist + ['shroom','pie','wine','gravy','egg','chocolate','cheese','conspiracy theory',
-                             'banana','stool','horn','custard','drug',
+                             'banana','stool','horn','custard','drug','school','coral reef',
                              'tea','teacup','mug','motif', 'gene','genome', 'bucket','bucket','bucket','genome assembly',
                              'kebab','fruit','falafel','teapot','transcriptome','vase','vaccine',
                              'coffee','river','cake','cookie','sponge','abundance','repository','collection','library'] * 2
@@ -364,7 +366,7 @@ class Zen(rje.RJE_Object):
         #x#if ztype == 'B': zlist
         if ztype == 'C': zlist += ['leads to','leads to','shows','bamboozles','deceives','annotates',
                                    'enlightens','enlightens','enriches','enriches','exemplifies',
-                                   'compresses','guzzumps','scoops','trickles',
+                                   'compresses','guzzumps','scoops','trickles','expands','denies','develops',
                                    'invigorates','invites','rains on','shatters','tweaks','destroys','disturbs',
                                    'promotes','chastens','mocks','rejects','surprises','tests','unlocks','unravels',
                                    'juggles']

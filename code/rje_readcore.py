@@ -19,8 +19,8 @@
 """
 Module:       rje_readcore
 Description:  Read mapping and analysis core module
-Version:      0.9.0
-Last Edit:    13/01/23
+Version:      0.9.2
+Last Edit:    19/05/23
 Copyright (C) 2021  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -55,6 +55,7 @@ Commandline:
     depadjust=INT   : Advanced R density bandwidth adjustment parameter [12]
     seqstats=T/F    : Whether to output CN and depth data for full sequences as well as BUSCO genes [False]
     cnmax=INT       : Max. y-axis value for CN plot (and mode multiplier for related depth plots) [4]
+    reduced=T/F     : Only generate/use fastmp for BUSCO-containing sequences (*.busco.fastmp) [True]
     fragmented=T/F  : Whether to use Fragmented as well as Complete BUSCO genes for SC Depth estimates [False]
     ### ~ System options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
     forks=X         : Number of parallel sequences to process at once [0]
@@ -99,6 +100,8 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.8.0 - Added bamcsi=T/F : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
     # 0.8.1 - Made reghead=LIST a synonym for checkfields=LIST.
     # 0.9.0 - Fixed a problem with lack of Duplicated BUSCOs. Added fragmented=T option.
+    # 0.9.1 - Tweaks for Python3.
+    # 0.9.2 - Added recognition of pacb.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -113,11 +116,12 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Add NGMLR to mappers.
     # [Y] : Try using total sequence length not covbases (samtools coverage $3 not $5) for CovBases calculation.
     # [Y] : Add bamcsi=T/F : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
+    # [ ] : Add ilmn read type and mapping with BWA.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('ReadMap', '0.9.0', 'January 2023', '2021')
+    (program, version, last_edit, copy_right) = ('ReadMap', '0.9.2', 'May 2023', '2021')
     description = 'Read mapping analysis module'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -194,6 +198,7 @@ class ReadCore(rje_obj.RJE_Object):
     - Fragmented=T/F  : Whether to use Fragmented as well as Complete BUSCO genes for SC Depth estimates [False]
     - Minimap2        : Whether Minimap2 found on system
     - QuickDepth=T/F  : Whether to use samtools depth in place of mpileup (quicker but underestimates?) [False]
+    - Reduced=T/F     : Only generate/use fastmp for BUSCO-containing sequences (*.busco.fastmp) [True]
     - Rscript         : Whether Rscript found on system
     - Samtools        : Whether Samtools found on system
     - SeqStats=T/F    : Whether to output CN and depth data for full sequences as well as BUSCO genes [False]
@@ -227,7 +232,7 @@ class ReadCore(rje_obj.RJE_Object):
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self.strlist = ['BAM','BUSCO','DepFile','PAF','RegFile','SeqIn','TmpDir']
-        self.boollist = ['BAMCSI','Fragmented','QuickDepth','SeqStats']
+        self.boollist = ['BAMCSI','Fragmented','QuickDepth','Reduced','SeqStats']
         self.intlist = ['Adjust','CNMax']
         self.numlist = ['SCDepth']
         self.filelist = []
@@ -258,7 +263,7 @@ class ReadCore(rje_obj.RJE_Object):
         self.list['Reads'] = []
         self.list['ReadType'] = ['ont']
         #i# Check for core programs
-        self.setBool({'Minimap2':True,'Samtools':True,'Rscript':True})
+        self.setBool({'Minimap2':True,'Samtools':True,'Rscript':True,'Reduced':False})
         #i# Set up Database object
         self.obj['DB'] = rje_db.Database(self.log, self.cmd_list + ['tuplekeys=T'])
         self.obj['SeqIn'] = None
@@ -272,7 +277,7 @@ class ReadCore(rje_obj.RJE_Object):
         self._cmdReadList(cmd,'path',['TmpDir'])  # String representing directory path
         self._cmdReadList(cmd,'str',['RegFile'])  # String representing directory path
         self._cmdReadList(cmd,'file',['BAM','BUSCO','DepFile','PAF','SeqIn'])  # String representing file path
-        self._cmdReadList(cmd,'bool',['BAMCSI','Fragmented','QuickDepth','SeqStats','Minimap2','Samtools','Rscript'])
+        self._cmdReadList(cmd,'bool',['BAMCSI','Fragmented','QuickDepth','SeqStats','Minimap2','Samtools','Rscript','Reduced'])
         self._cmdReadList(cmd,'int',['Adjust','CNMax'])
         self._cmdReadList(cmd,'num',['SCDepth'])
         self._cmdReadList(cmd,'glist',['Reads'])
@@ -393,9 +398,22 @@ class ReadCore(rje_obj.RJE_Object):
             seqin = self.seqinObj()
             bamfile = self.getBAMFile()
             self.printLog('#BAM','BAM File for read depth extraction: {0}'.format(bamfile))
-            fastdep = '{0}.fastmp'.format(bamfile)
+            bampref = bamfile
+            buscoseq = []
+            if self.getBool('Reduced'):
+                bampref = '{0}.busco'.format(bamfile)
+                buscoseq = os.popen('awk \'$2 == "Complete" || $2 == "Duplicated" || $2 == "Fragmented" {print $3;}\' %s | sort -u' % (self.getStr('BUSCO'))).read()
+                buscoseq = buscoseq.split()
+                self.printLog('#BUSCO','{0} BUSCO-containing sequence IDs read from {1}'.format(rje.iLen(buscoseq),self.getStr('BUSCO')))
+                snames = seqin.names()
+                nameshare = rje.listIntersect(snames,buscoseq)
+                if nameshare:
+                    self.printLog('#BUSCO','{0} of {1} sequences have BUSCO hits.'.format(rje.iLen(nameshare),rje.iLen(snames)))
+                else:
+                    raise ValueError('No input sequence names found in BUSCO results file!')
+            fastdep = '{0}.fastmp'.format(bampref)
             if self.getBool('QuickDepth'):
-                fastdep = '{0}.fastdep'.format(bamfile)
+                fastdep = '{0}.fastdep'.format(bampref)
             if not self.force() and not self.needToRemake(fastdep,bamfile):
                 self.printLog('#DEP','Existing {0} file found (force=F)'.format(fastdep))
                 self.setStr({'DepFile': fastdep})
@@ -404,12 +422,13 @@ class ReadCore(rje_obj.RJE_Object):
             self.headLog('Generating depth file', line='-')
             #!# Add forking via temp files.
             rje.backup(self,fastdep)
-            if self.threads() > 1: return self.forkDepth(bamfile,fastdep)
+            if self.threads() > 1: return self.forkDepth(bamfile,fastdep,buscoseq=buscoseq)
             self.printLog('#FORK', 'Note: program can be accelerated using forks=INT.')
             OUT = open(fastdep,'w')
             ox = 0.0; otot = seqin.seqNum()
             for seq in seqin.seqs():
                 sname = seqin.shortName(seq)
+                if buscoseq and sname not in buscoseq: otot -= 1; continue
                 seqlen = seqin.seqLen(seq)
                 self.progLog('\r#DEP','Generating depth file "{0}": {1:.1f}%'.format(fastdep,ox/otot)); ox += 100.0
                 depcmd = 'samtools view -b -h -F 0x100 {0} {1} | '.format(bamfile,sname)
@@ -432,9 +451,9 @@ class ReadCore(rje_obj.RJE_Object):
             self.setStr({'DepFile':fastdep})
             return fastdep
         except:
-            self.errorLog('{0}.getFastDep() error'.format(self.prog())); return None
+            self.errorLog('{0}.getFastDep() error'.format(self.prog())); raise
 #########################################################################################################################
-    def forkDepth(self,bamfile,fastdep,secondary=False,setstr=True):    ### Generates the fast depth file using forks and temp directory.
+    def forkDepth(self,bamfile,fastdep,secondary=False,setstr=True,buscoseq=[]):    ### Generates the fast depth file using forks and temp directory.
         '''
         Generates the fast depth file using forks and temp directory.
         >> bamfile:str = Source BAM file for depth parsing
@@ -463,6 +482,7 @@ class ReadCore(rje_obj.RJE_Object):
             cleanup = 0; skipped = 0
             forker.list['ToFork'] = []
             for sname in seqin.names():
+                if buscoseq and sname not in buscoseq: continue
                 tmpfile = '{}{}.{}.{}.tmp'.format(tmpdir,basefile,sname,depmethod)
                 if rje.exists(tmpfile):
                     #?# Add checking for completeness #?#
@@ -506,6 +526,7 @@ class ReadCore(rje_obj.RJE_Object):
             otot = seqin.seqNum()
             for seq in seqin.seqs():
                 sname = seqin.shortName(seq)
+                if buscoseq and sname not in buscoseq: otot -= 1; continue
                 seqlen = seqin.seqLen(seq)
                 self.progLog('\r#DEP', 'Generating depth file "{0}": {1:.1f}%'.format(fastdep, ox / otot))
                 ox += 100.0
@@ -543,9 +564,9 @@ class ReadCore(rje_obj.RJE_Object):
         '''
         try:### ~ [1] ~ Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if not self.obj['SeqIn']:
-                seqcmd = self.cmd_list
-                if summarise: seqcmd = ['summarise=T']+self.cmd_list
-                self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,seqcmd+['autoload=T','seqmode=file','autofilter=F'])
+                seqcmd = self.cmd_list + ['autoload=T','seqmode=file','autofilter=F','seqout=None']
+                if summarise: seqcmd = ['summarise=T'] + seqcmd
+                self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,seqcmd)
                 sx = 0.0; stot = self.obj['SeqIn'].seqNum()
                 for seq in self.obj['SeqIn'].seqs():
                     self.progLog('\r#CHECK','Checking sequences names: %.1f%%' % (sx/stot)); sx += 100.0
@@ -569,6 +590,7 @@ class ReadCore(rje_obj.RJE_Object):
         '''
         try:### ~ [1] Setup ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             db = self.db()
+            busco = busco or self.getBool('Reduced')
             #i# Files to check are:
             # - BUSCO
             # - RegFile
@@ -798,7 +820,7 @@ class ReadCore(rje_obj.RJE_Object):
             bamlist = []; rx = 0
             for readfile in self.list['Reads']:
                 rtype = self.list['ReadType'][rx]; rx +=1
-                if rtype in ['pacbio','pac']: rtype = 'pb'
+                if rtype in ['pacbio','pac','pacb','clr']: rtype = 'pb'
                 if rtype in ['hifi','ccs']: rtype = 'hifi'
                 if rtype not in ['ont','pb','hifi']:
                     self.warnLog('Read Type "%s" not recognised (pb/ont): check readtype=LIST. Will use "ont".' % rtype)
@@ -1205,12 +1227,12 @@ class ReadCore(rje_obj.RJE_Object):
         try:### ~ [0] Set up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             self.headLog('Calculate Genome Size', line='-')
             readbp = self.baseCount()
-            if adjust == 'None': adjust = None
             gdb = self.db('gensize')
+            if not adjust or adjust.lower() == 'none': adjust = 'None'
             if not gdb: gdb = self.db().addEmptyTable('gensize',['SeqFile','DepMethod','Adjust','ReadBP','MapAdjust','SCDepth','EstGenomeSize'],['SeqFile','DepMethod','Adjust'])
             depmethod = 'mpileup'
             if self.getBool('QuickDepth'): depmethod = 'depth'
-            adjustments = [None,'IndelRatio','MapAdjust','MapRatio','CovBases','OldAdjust','AllBases','MapBases','OldCovBases']
+            adjustments = ['None','IndelRatio','MapAdjust','MapRatio','CovBases','OldAdjust','AllBases','MapBases','OldCovBases']
             if self.getNum('IndelRatio') and self.getNum('MapBases'):
                 mapadjust = self.getNum('MapBases') / self.getNum('IndelRatio')
                 self.setNum({'MapRatio':mapadjust})
@@ -1230,10 +1252,10 @@ class ReadCore(rje_obj.RJE_Object):
             scdepth = self.getSCDepth()
             ### ~ [1] Calculate genome size ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             for nkey in adjustments:
-                if nkey and not self.getNum(nkey): continue
+                if nkey and nkey != 'None' and not self.getNum(nkey): continue
                 mapadjust = 1.0
                 desc = 'Unadjusted'
-                if nkey:
+                if nkey != 'None':
                     mapadjust = self.getNum(nkey)
                     desc = nkey
                 if nkey in ['CovBases','AllBases','MapBases','MapRatio']:
@@ -1250,7 +1272,7 @@ class ReadCore(rje_obj.RJE_Object):
                     mapadjust = 1.0
                 else:
                     adjreadbp = readbp * mapadjust
-                if nkey:
+                if nkey != 'None':
                     self.printLog('#READBP', 'Total base count ({0} adjusted): {1}'.format(nkey,rje.iStr(adjreadbp)))
                 estgensize = int(0.5+(float(adjreadbp) / scdepth))
                 scprint = rje.dp(scdepth, 2)
@@ -1261,9 +1283,7 @@ class ReadCore(rje_obj.RJE_Object):
                 gdb.addEntry({'SeqFile':os.path.basename(self.getStr('SeqIn')),'DepMethod':depmethod,
                                   'Adjust':akey,'ReadBP':readbp,'MapAdjust':mapadjust,
                                   'SCDepth':scprint,'EstGenomeSize':estgensize})
-                if not nkey and not adjust:
-                    self.setInt({'EstGenomeSize':estgensize})
-                elif nkey and nkey.lower() == adjust.lower():
+                if nkey.lower() == adjust.lower():
                     self.setInt({'EstGenomeSize':estgensize})
             if save: gdb.saveToFile()
             return self.getInt('EstGenomeSize')

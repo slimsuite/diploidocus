@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.4.0
-Last Edit:    06/02/23
+Version:      1.5.1
+Last Edit:    29/06/23
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -390,6 +390,7 @@ Commandline:
     genomesize=INT  : Haploid genome size (bp) [0]
     scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
     bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
+    bamcsi=T/F      : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
     paf=FILE        : PAF file of long reads mapped onto assembly [$BASEFILE.paf]
     reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
     readtype=LIST   : List of ont/pb/hifi file types matching reads for minimap2 mapping [ont]
@@ -546,6 +547,9 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.3.0 - Added Rscript replacement for purge_haplotigs purgehap=X : Purge_haplotigs method (purgehap/diploidocus) [purgehap]
     # 1.3.1 - Fixed purge_hap triggering bug.
     # 1.4.0 - Added summarise mode to Diploidocus.
+    # 1.4.1 - Fixed Python3 vecscreen bug.
+    # 1.5.0 - Added summarise tabular output to dipcycle mode and Set to ratings output.
+    # 1.5.1 - Fixed purgehap=diploidocus bug.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -596,7 +600,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     # [ ] : Split out code to DepthSizer etc. so they don't all need all Diploidocus dependencies.
     # [ ] : Update docs to point to individual programs.
     # [Y] : Add purgecyc=INT : Minimum number of purged sequences to trigger next round of dipcycle [2]
-    # [ ] : Add final output of input and output to *.tdt (rather than having to run summarise again).
+    # [Y] : Add final output of input and output to *.tdt (rather than having to run summarise again).
     # [ ] : Add optional additional BAM files to collate depth stats for (e.g. short reads)
     # [ ] : Replace PurgeHaplotigs so that CSI indexing is OK.
     # [ ] : Add DensK and DensDep statistics for each sequence, using new DepthCopy code.
@@ -608,11 +612,13 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     #       max_match_coverage: This is the total % of alignments between the suspect contig and its two top hit contigs
     #      (e.g. if it totally aligns to both the hit contigs then the max_match_coverage will be ~ 200 %). This is mostly depreciated, especially if you supply repeat annotations, however, it may be useful in identifying repeat-rich contigs.
     #      NB. Not sure if this is actually right but becomes MaxHitCov = assumed to be summed coverage across all hits -> Sum local hits?
+    # [Y] : Add the fileset to *.ratings.tdt
+    # [ ] : Check whether the BUSCO file exists at the start of the run.
     '''
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.4.0', 'February 2023', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.5.1', 'June 2023', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -972,6 +978,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
         genomesize=INT  : Haploid genome size (bp) [0]
         scdepth=NUM     : Single copy ("diploid") read depth. If zero, will use SC BUSCO mode [0]
         bam=FILE        : BAM file of long reads mapped onto assembly [$BASEFILE.bam]
+        bamcsi=T/F      : Use CSI indexing for BAM files, not BAI (needed for v long scaffolds) [False]
         reads=FILELIST  : List of fasta/fastq files containing reads. Wildcard allowed. Can be gzipped. []
         readtype=LIST   : List of ont/pb/hifi file types matching reads for minimap2 mapping [ont]
         dochtml=T/F     : Generate HTML Diploidocus documentation (*.docs.html) instead of main run [False]
@@ -1962,7 +1969,8 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     break
                 # Check purgecycle
                 if self.getInt('PurgeCyc') > 0 and prevseqx:
-                    purgex = (seqlist.seqNum() - prevseqx)
+                    purgex = (prevseqx - seqlist.seqNum())
+                    self.printLog('#PURGE','{0} sequences purged.'.format(purgex))
                     if purgex < self.getInt('PurgeCyc'):
                         self.printLog('#CYCLE','Min sequence purging not exceeded (purgecycle={}). Finishing run.'.format(self.getInt('PurgeCyc')))
                         purgestop = True
@@ -1989,7 +1997,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     info = makeInfo()
                     cyccmd = ['i=-1']+self.cmd_list+['basefile={}'.format(newbase),'runmode=diploidocus','seqin=%s' % seqin]
                     if self.debugging(): cyccmd.append('i=1')
-                    #i# Do not perform veccheck if already been performed! (Potentially, some
+                    #i# Do not perform veccheck if already been performed!
                     if self.getBool('PreTrim') or cycle > 1:
                         if self.getBool('VecCheck'):
                             cyccmd.append('veccheck=F')
@@ -2015,16 +2023,17 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                     raise IOError('Expected %s output for Cycle %s not found! Check %s.log. Aborting run.' % (seqout,cycle,newbase))
                 self.printLog('#CYCLE','Cycle {} complete. See {}.log for details.'.format(cycle,newbase))
                 seqin = seqout
+                self.printLog('#SEQN','{0} sequences at start of purgecycle {1}.'.format(prevseqx,cycle))
                 seqlist = self.obj['SeqIn'] = rje_seqlist.SeqList(self.log,['summarise=T']+self.cmd_list+['autoload=T','seqmode=file','seqin=%s' % seqin,'autofilter=F'])
 
             ### ~ [3] Tidy up ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if maxstop:
-                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached?'):
+                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached? (No resume.)',default='Y'):
                     self.warnLog('Cycle data not tidied: re-run with higher maxcycle=INT to resume')
                     return True
                 self.warnLog('#Cycling terminated: re-run on {}.diploidocus.fasta output to resume tidying'.format(basefile))
             elif purgestop:
-                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached?'):
+                if self.i() >= 0 and not rje.yesNo('Tidy up run as if convergence reached? (No resume.)',default='Y'):
                     self.warnLog('Cycle data not tidied: re-run with lower purgecyc=INT to resume')
                     return True
                 self.warnLog('#Cycling terminated: re-run on {}.diploidocus.fasta output to resume tidying'.format(basefile))
@@ -2036,7 +2045,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             # are saved as primary $BASFILE.* output.
             dipdb.baseFile(basefile)
             dipdb.saveToFile(sfdict={'LowPerc':4, 'HapPerc':4, 'DipPerc':4, 'HighPerc':4})
-            dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Cycle'])
+            dipdb.saveToFile(filename='%s.ratings.tdt' % basefile, savefields=['SeqName','SeqLen','ScreenPerc','Class','Rating','Cycle','Set'])
             for ext in ['diploidocus.fasta','core.fasta','repeats.fasta']:
                 if rje.exists('{}.{}'.format(newbase,ext)):
                     rje.backup(self,'{}.{}'.format(basefile,ext))
@@ -2061,12 +2070,22 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
 
             ### ~ [4] Summarise ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
             if seqlist.getBool('Summarise'):
+                seqfiles = []
                 for seqset in ['diploidocus','core','repeats','quarantine','junk']:
                     setfas = '%s.%s.fasta' % (basefile,seqset)
                     if not rje.baseFile(setfas): continue
-                    seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']
-                    rje_seqlist.SeqList(self.log,seqcmd)
-
+                    #seqcmd = self.cmd_list + ['seqmode=file','autoload=T','summarise=T','seqin=%s' % setfas,'autofilter=F']
+                    #rje_seqlist.SeqList(self.log,seqcmd)
+                    seqfiles.append(setfas)
+                if seqfiles:
+                    rje_seqlist.batchSummarise(self, [self.getStr('SeqIn')] + seqfiles, save=True, overwrite=self.force())
+                # New seqlist with new Database oject and basefile
+                dipfiles = glob.glob('{0}*.fasta'.format(cycdir))
+                if dipfiles:
+                    mydb = seqlist.obj['DB']
+                    seqlist.obj['DB'] = rje_db.Database(self.log, self.cmd_list+['basefile={0}.dipcycle'.format(self.baseFile())])
+                    rje_seqlist.batchSummarise(self, dipfiles, save=True, overwrite=self.force())
+                    seqlist.obj['DB'] = mydb
 
         except:
             self.errorLog(self.zen())
@@ -2121,6 +2140,8 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 self.printLog('#SCDEP','Single copy read depth (scdepth=NUM) = {0:.2f}X'.format(self.getNum('SCDepth')))
             if self.getInt('GenomeSize'):
                 self.printLog('#GSIZE','Genome size (genomesize=INT) = {0}'.format(rje_seqlist.dnaLen(self.getInt('GenomeSize'))))
+            #!# Work out whether BUSCO file is needed and check for it.
+
             return True     # Setup successful
         except: self.errorLog('Problem during %s setup.' % self.prog()); return False  # Setup failed
 #########################################################################################################################
@@ -2730,9 +2751,11 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 #self.printLog('#EFDR','Filtering entries with eFDR<{}'.format(self.getNum('eFDR')))
                 #vecdb.dropEntries('eFDR<{}'.format(self.getNum('eFDR')))
                 ex = 0.0; etot = vecdb.entryNum()
+                filtvec = []
                 for ekey, data in vecdb.data().items():
                     self.progLog('\r#EFDR','Filtering entries with eFDR>{}: {:.2f}%'.format(self.getNum('eFDR'),ex/etot)); ex += 100.0
-                    if data['eFDR'] > self.getNum('eFDR'): vecdb.data().pop(ekey)
+                    if data['eFDR'] > self.getNum('eFDR'): filtvec.append(ekey)
+                for ekey in filtvec: vecdb.data().pop(ekey)
                     #else: self.debug(data)
                 self.printLog('\r#EFDR','Filtered entries with eFDR<{}: {} -> {} entries'.format(self.getNum('eFDR'),rje.iStr(etot),rje.iStr(vecdb.entryNum())))
             if self.getNum('MinVecHit') > 0 or self.getNum('MinIDHit') > 0:
@@ -2740,11 +2763,13 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 idx = 0
                 vecx = 0
                 prex = vecdb.entryNum()
+                filtvec = []
                 for vkey, ventry in vecdb.data().items():
                     if ventry['Length'] < self.getInt('MinIDHit'):
-                        vecdb.dict['Data'].pop(vkey); idx += 1
+                        filtvec.append(vkey); idx += 1
                     elif ventry['Identity'] != ventry['Length'] and ventry['Length'] < self.getInt('MinVecHit'):
-                        vecdb.dict['Data'].pop(vkey); vecx += 1
+                        filtvec.append(vkey); vecx += 1
+                for ekey in filtvec: vecdb.dict['Data'].pop(ekey)
                 if idx or vecx: vecdb.dict['Index'] = {}
                 self.printLog('#DROP','Length filtering: %s vecscreen entries reduced to %s entries' % (rje.integerString(prex),rje.integerString(vecdb.entryNum())))
                 #x#vecdb.dropEntries('Length<{}'.format(self.getInt('MinVecHit')))
@@ -2787,6 +2812,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
             vecdb.addField('Internal',evalue='None')
             ## ~ [3b] Filter < Weak matches ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
             for ventry in vecdb.entries():
+                ventry['Score'] = float(ventry['Score'])
                 if ventry['Score'] >= 30: ventry['Internal'] = 'Strong'
                 elif ventry['Score'] >= 25: ventry['Internal'] = 'Moderate'
                 elif ventry['Score'] >= 23: ventry['Internal'] = 'Weak'
@@ -4548,7 +4574,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 purgefiles = [gencov, covstats, purge]
             else:
                 covstats = purge = '{}.deppurgehap.tsv'.format(basefile)
-                purgefiles = [gencov, purge]
+                purgefiles = [purge]
             if not rje.checkForFiles(filelist=purgefiles,basename='',log=self.log,cutshort=False,ioerror=False,missingtext='Not found: failed!'):
                 phdir = 'purge_{}/'.format(basefile)
                 raise IOError('Cannot find purge_haplotigs output. Check {}'.format(phdir))
@@ -4640,7 +4666,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 busdb.dropField('#')
                 missing = 0
                 trimmed = 0
-                for bentry in busdb.entries():
+                for bentry in list(busdb.entries()):
                     if bentry['Contig'] not in seqdict:
                         contigx = bentry['Contig'] + 'X'
                         if self.getBool('PreTrim') and contigx in seqdict:
@@ -4821,7 +4847,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                         bpbins = [zerobp + (norm * d['LowPerc']), norm * d['HapPerc'], norm * d['DipPerc'], norm * d['HighPerc']]
                     except:
                         self.debug(d)
-                        self.errorLog(self.wisdom())
+                        self.errorLog('Problem processing PurgeHaplotigs data. Check for re-runs with different inputs.')
                     newsum = sum(bpbins)
                     norm = 100.0 / newsum
                     d['LowPerc'] = norm * bpbins[0]

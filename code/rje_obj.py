@@ -19,8 +19,8 @@
 """
 Module:       rje_obj
 Description:  Contains revised General Object templates for Rich Edwards scripts and bioinformatics programs
-Version:      2.9.0
-Last Edit:    19/11/21
+Version:      2.10.0
+Last Edit:    29/05/23
 Copyright (C) 2011  Richard J. Edwards - See source code for GNU License Notice
 
 Function:
@@ -126,6 +126,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 2.8.0 - Added recognition of -cmd=ARG arguments.
     # 2.8.1 - Fixed ignoredate bug.
     # 2.9.0 - Expanded checkForProgram() method to
+    # 2.10.0- Added compressionScore() function
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -139,7 +140,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
     #     : - rje.split(os.popen('module avail samtools 2>&1').read())
     '''
 #########################################################################################################################
-import glob, os, pickle, random, string, sys, time, traceback
+import glob, os, pickle, random, string, sys, time, traceback, zlib
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../libraries/'))
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'../tools/'))
 import rje, rje_html, rje_zen
@@ -298,6 +299,7 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
     def warn(self): return self.getBool('Warn') and not self.getBool('Silent')
     def dev(self): return self.getBool('Dev')
     def zen(self): return rje_zen.Zen().wisdom()
+    def wisdom(self): return rje_zen.Zen().wisdom()
     def debugging(self): return self.getBool('DeBug')
     def win32(self): return self.getBool('Win32')
     def osx(self): return self.getBool('OSX')
@@ -321,13 +323,13 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         '''Returns string attribute.'''
         try:
             if not key: return self.str
-            if key in self.str: return self.str[key]
+            if key in self.str: return str(self.str[key])
         except:
             if not key: return self.info
-            if key in self.info: return self.info[key]
-        if checkdata and 'Data' in self.dict and key in self.dict['Data']: return self.dict['Data'][key]
+            if key in self.info: return str(self.info[key])
+        if checkdata and 'Data' in self.dict and key in self.dict['Data']: return str(self.dict['Data'][key])
         elif self.obj['Parent']: return self.obj['Parent'].getStr(key,default,checkdata)
-        else: return default
+        else: return str(default)
 #########################################################################################################################
     def getStrBase(self,key=None,default='',checkdata=False,strip_path=False,extlist=[]):   ### Returns file without extension, with or without path):    ### Returns string attribute
         '''Returns basefile for string attribute.'''
@@ -952,6 +954,19 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
         elif rje.isYounger(parentfile,checkfile) == checkfile: return False
         return True
 #########################################################################################################################
+    def compressionScore(self,str): # Uses zlib to generate a compression score for a string
+        ''' Uses the zlib library to score the compressibilty of a string as an estimate of complexity. Low is complex.'''
+        try:
+            # Compress the string
+            compressed_data = zlib.compress(bytes(str, 'utf-8'))
+            # Get the size of the compressed data
+            compressed_size = len(compressed_data)
+            raw_size = float(len(str))
+            # Calculate the compression ratio
+            compression_ratio = (raw_size - compressed_size) / raw_size
+            return compression_ratio
+        except: self.log.errorLog('Problem during compressionScore()')
+#########################################################################################################################
     def sourceDataFile(self,str,ask=True,expect=True,check=True,force=False,download=None,sourceurl=None):   ### Returns source data file.        #V2.0
         '''
         Returns source data file. This will be stored in the variable self.str[str] and also added to the Source table
@@ -1036,11 +1051,12 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
                 sourcefile = nowfile
                 rje.urlToFile(sourceurl,nowfile,self,backupfile=False)
                 sentry['Status'] = 'Downloaded'
-            elif download and str == 'TaxMap':
+            elif download and str in ['TaxMap','NameMap','SpecFile']:
                 try:
-                    sourcefile = nowfile
                     datecode = rje.dateTime(dateonly=True)
-                    taxdump = '%staxdump.%s.tar.gz' % (self.getStr('SourcePath'),datecode)
+                    taxdump = sourcefile
+                    if str in ['TaxMap','NameMap']:
+                        taxdump = '%staxdump.%s.tar.gz' % (self.getStr('SourcePath'),datecode)
                     #rje.urlToFile(sourceurl,taxdump,self)
                     #self.debug(sourceurl)
                     if self.force() or not rje.exists(taxdump):
@@ -1050,16 +1066,20 @@ class RJE_Object(object):     ### Metaclass for inheritance by other classes
                             os.rename('taxdump.tar.gz',taxdump)
                         elif self.getBool('Win32'): self.warnLog('Cannnot use wget with Win32=T'); raise ValueError
                         else: os.system("wget -O %s %s" % (taxdump,sourceurl))
-                    sentry['Status'] = 'Downloaded TarGZ'
-                    predump = glob.glob('*.*')
-                    self.printLog('#TARGZ','tar -xzf %s' % taxdump)
-                    os.system('tar -xzf %s' % taxdump)
-                    for dfile in glob.glob('*.*')[0:]:
-                        if dfile in predump: continue
-                        fileparts = os.path.splitext(dfile)
-                        datefile = '%s%s.%s%s' % (self.getStr('SourcePath'),fileparts[0],datecode,fileparts[1])
-                        os.rename(dfile,datefile)
-                    sentry['Status'] = 'Downloaded'
+                    if taxdump.endswith('.tar.gx'):
+                        sentry['Status'] = 'Downloaded TarGZ'
+                        predump = glob.glob('*.*')
+                        self.printLog('#TARGZ','tar -xzf %s' % taxdump)
+                        os.system('tar -xzf %s' % taxdump)
+                        for dfile in glob.glob('*.*')[0:]:
+                            if dfile in predump: continue
+                            fileparts = os.path.splitext(dfile)
+                            datefile = '%s%s.%s%s' % (self.getStr('SourcePath'),fileparts[0],datecode,fileparts[1])
+                            os.rename(dfile,datefile)
+                        sentry['Status'] = 'Downloaded'
+                    else:
+                        os.rename(sourcefile,nowfile)
+                        sentry['Status'] = 'Downloaded'
                 except: self.errorLog('Problem processing NCBI Taxa download')
             elif download and sourceurl:
                 sourcefile = nowfile
