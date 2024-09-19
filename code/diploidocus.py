@@ -19,8 +19,8 @@
 """
 Module:       Diploidocus
 Description:  Diploid genome assembly analysis toolkit
-Version:      1.5.1
-Last Edit:    29/06/23
+Version:      1.5.2
+Last Edit:    17/09/24
 Nala Citation:  Edwards RJ et al. (2021), BMC Genomics [PMID: 33726677]
 DipNR Citation: Stuart KC, Edwards RJ et al. (preprint), bioRxiv 2021.04.07.438753; [doi: 10.1101/2021.04.07.438753]
 Tidy Citation:  Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. [doi: 10.1111/1755-0998.13574]
@@ -550,6 +550,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 1.4.1 - Fixed Python3 vecscreen bug.
     # 1.5.0 - Added summarise tabular output to dipcycle mode and Set to ratings output.
     # 1.5.1 - Fixed purgehap=diploidocus bug.
+    # 1.5.2 - Fixed a purgehap BAM file bug when bam=None.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -618,7 +619,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('Diploidocus', '1.5.1', 'June 2023', '2017')
+    (program, version, last_edit, copy_right) = ('Diploidocus', '1.5.2', 'September 2024', '2017')
     description = 'Diploid genome assembly analysis toolkit.'
     author = 'Dr Richard J. Edwards.'
     comments = ['Tidy Citation: Chen SH et al. & Edwards RJ (2022): Mol. Ecol. Res. (doi: 10.1111/1755-0998.13574)',
@@ -668,7 +669,7 @@ def setupProgram(): ### Basic Setup of Program when called from commandline.
         out.verbose(2,2,cmd_list,1)                         # Prints full commandlist if verbosity >= 2 
         out.printIntro(info)                                # Prints intro text using details from Info object
         cmd_list = cmdHelp(info,out,cmd_list)               # Shows commands (help) and/or adds commands from user
-        log = rje.setLog(info,out,cmd_list)                 # Sets up Log object for controlling log file output
+        log = rje.setLog(info,out,cmd_list,py3warn=False)   # Sets up Log object for controlling log file output
         return (info,out,log,cmd_list)                      # Returns objects for use in program
     except SystemExit: sys.exit()
     except KeyboardInterrupt: sys.exit()
@@ -3251,6 +3252,7 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 vfile = self.getStr('RegCheck')
                 #pfile = self.baseFile() + 'checkpos.paf'
                 pfile = self.getPAFFile()   #baseFile() + 'checkpos.paf'
+                self.printLog('#PAF',pfile)
                 pafcmd = self.cmd_list + ['checkpos={}'.format(vfile),'pafin={}'.format(pfile)] + checkcmd
                 paf = rje_paf.PAF(self.log, pafcmd)
                 paf.list['CheckFields'] = self.list['CheckFields']
@@ -5372,7 +5374,15 @@ class Diploidocus(rje_readcore.ReadCore,rje_kat.KAT):
                 return self.depPurgeHaplotigs()
             self.headLog('PURGE_HAPLOTIGS',line='=')
             basefile = self.baseFile(strip_path=True)
-            bamfile = os.path.abspath(self.getStr('BAM'))
+            if self.getStrLC('BAM'):
+                bamfile = os.path.abspath(self.getStr('BAM'))
+            else:
+                bamfile = rje.baseFile(self.getStr('SeqIn'),strip_path=True) + '.bam'
+                if rje.exists(bamfile):
+                    self.printLog('#BAM','BAM file found: setting bam={0}'.format(bamfile))
+                    self.setStr({'BAM':bamfile})
+                else:
+                    raise ValueError('Cannot find BAM file! Set bam=FILE and try again.')
             bamstrip = os.path.basename(bamfile)
             seqin = os.path.abspath(self.getStr('SeqIn'))
             #i# Need to run PH in subdirectory to avoid conflicts between runs/cycles

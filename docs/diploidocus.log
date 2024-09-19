@@ -1,7 +1,6 @@
 #~~#	#~+~~+~#	#~~#
-#LOG	00:00:00	Activity Log for Diploidocus V1.5.1: Tue Apr 23 10:36:29 2024
-#WARN	00:00:00	Python 3.x detected but not fully supported. Please report odd behaviour.
-#DIR	00:00:00	Run from directory: /Users/00110092/Library/CloudStorage/OneDrive-TheUniversityofWesternAustralia/code/diploidocus/docs
+#LOG	00:00:00	Activity Log for Diploidocus V1.5.2: Thu Sep 19 17:04:20 2024
+#DIR	00:00:00	Run from directory: /Users/00110092/Library/CloudStorage/OneDrive-UWA/code/diploidocus/docs
 #ARG	00:00:00	Commandline arguments: i=-1 dochtml newlog
 #INI	00:00:00	INI file: ../code/diploidocus.ini; Commands loaded: -minimap2 /Users/redwards/Data/BiowareOSX/minimap2/minimap2 minimap2=/Users/redwards/Bioware/minimap2/minimap2
 #CMD	00:00:00	Full Command List: log=diploidocus.log minimap2=/Users/redwards/Bioware/minimap2/minimap2 i=-1 dochtml newlog
@@ -9,6 +8,5 @@
 #BASE	00:00:00	Output file basename: diploidocus
 #RMD	00:00:00	RMarkdown Diploidocus documentation output to diploidocus.docs.Rmd
 #RCMD	00:00:00	Rscript -e 'library(rmarkdown); rmarkdown::render("diploidocus.docs.Rmd", "html_document")'
-#RCMD	00:00:01	diploidocus.docs.html generated from diploidocus.docs.Rmd
-#WARN	00:00:01	1 warning messages: check log for details.
-#LOG	00:00:01	Diploidocus V1.5.1 End: Tue Apr 23 10:36:31 2024
+#RCMD	00:00:00	diploidocus.docs.html generated from diploidocus.docs.Rmd
+#LOG	00:00:00	Diploidocus V1.5.2 End: Thu Sep 19 17:04:20 2024

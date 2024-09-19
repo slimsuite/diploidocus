@@ -1,7 +1,7 @@
 ---
-title: "Diploidocus V1.5.1 Documentation"
+title: "Diploidocus V1.5.2 Documentation"
 author: "Richard J. Edwards"
-date: "2024-04-23"
+date: "2024-09-19"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
